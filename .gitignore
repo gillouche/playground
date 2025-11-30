@@ -1,0 +1,37 @@
+# Bazel build outputs
+bazel-*
+bazel-bin/
+bazel-out/
+bazel-testlogs/
+bazel-<workspace-name>/
+
+# Nix / direnv
+.direnv/
+result/
+.nix-profile
+.nix-channels
+.nix-defexpr/
+*.drv
+*.lock
+
+# macOS system files
+.DS_Store
+
+# Editor files
+*.swp
+*.swo
+*.swn
+*.idea/
+*.vscode/
+
+# Python / other languages (optional)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+
+# IDE files and folders
+.idea
