@@ -12,6 +12,7 @@ result/
 .nix-channels
 .nix-defexpr/
 *.drv
+.envrc 
 
 # macOS system files
 .DS_Store
