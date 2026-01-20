@@ -12,7 +12,6 @@ result/
 .nix-channels
 .nix-defexpr/
 *.drv
-*.lock
 
 # macOS system files
 .DS_Store
