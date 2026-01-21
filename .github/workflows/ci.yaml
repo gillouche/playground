@@ -45,19 +45,18 @@ jobs:
 
       - name: Build
         run: |
-          # Bazelisk should be pre-installed in runner image
-          # TODO: Once custom runner image is deployed, this will work
-          bazelisk build //...
+          # Load Nix environment which provides bazelisk
+          nix develop --command bazelisk build //...
 
       - name: Lint
         run: |
           # Find all lint targets and run them
-          bazelisk query 'attr(tags, lint, //...)' | xargs -r -n 1 bazelisk run
+          nix develop --command bash -c "bazelisk query 'attr(tags, lint, //...)' | xargs -r -n 1 bazelisk run"
 
       - name: Test
         run: |
           # Find all test targets (sh_binary with test tag) and run them
-          bazelisk query 'attr(tags, test, //...)' | xargs -r -n 1 bazelisk run
+          nix develop --command bash -c "bazelisk query 'attr(tags, test, //...)' | xargs -r -n 1 bazelisk run"
 
   package-and-push:
     name: Package & Push (main only)
@@ -92,4 +91,4 @@ jobs:
         run: |
           export DOCKER_CONFIG="$HOME/.docker"
           # Find all oci_push targets and run them
-          bazelisk query 'kind(oci_push, //...)' | xargs -r -n 1 -I {} bash -c 'echo "Pushing {}..." && bazelisk run {}'
+          nix develop --command bash -c "bazelisk query 'kind(oci_push, //...)' | xargs -r -n 1 -I {} bash -c 'echo \"Pushing {}...\" && bazelisk run {}'"
