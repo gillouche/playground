@@ -1,0 +1,17 @@
+[project]
+name = "demo-concept"
+version = "0.1.0"
+description = "Demo concept application"
+requires-python = ">=3.13"
+dependencies = [
+]
+
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+    "ruff>=0.14.13",
+]
+
+[tool.uv]
+# We can configure uv to manage the lockfile here

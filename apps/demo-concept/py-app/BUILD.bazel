@@ -1,0 +1,9 @@
+load("//:defs.bzl", "application")
+
+application(
+    name = "py-app",
+    language = "python",
+    srcs = glob(["src/**/*.py"]),
+    tests = glob(["tests/test_*.py"]),
+    image_repository = "http://nexus.home-cluster:8081/repository/docker-hosted/playground/demo-concept",
+)

@@ -1,0 +1,99 @@
+name: CI/CD Playground
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  packages: none
+  actions: none
+  id-token: none
+
+env:
+  IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
+
+jobs:
+  build-and-test:
+    name: Build & Test (trusted code only)
+
+    if: >
+      github.event_name == 'push' ||
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.head.repo.fork == false
+      )
+
+    runs-on: [self-hosted, internal, trusted]
+    timeout-minutes: 30
+
+    steps:
+      - name: Abort immediately if fork detected
+        if: env.IS_FORK == 'true'
+        run: |
+          echo "Fork PR detected — refusing to run on self-hosted runner"
+          exit 1
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Bazelisk
+        uses: bazelbuild/setup-bazelisk@v3
+
+      - name: Build
+        run: bazelisk build //...
+
+      - name: Lint
+        run: |
+          # Find all lint targets and run them
+          bazelisk query 'attr(tags, lint, //...)' | xargs -r -n 1 bazelisk run
+
+      - name: Test
+        run: |
+          # Find all test targets (sh_binary with test tag) and run them
+          bazelisk query 'attr(tags, test, //...)' | xargs -r -n 1 bazelisk run
+
+  package-and-push:
+    name: Package & Push (main only)
+
+    needs: build-and-test
+
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+
+    runs-on: [self-hosted, internal, trusted]
+    timeout-minutes: 20
+
+    # Minimal permissions for this job
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Bazelisk
+        uses: bazelbuild/setup-bazelisk@v3
+
+      - name: Login to Nexus
+        uses: docker/login-action@v3
+        with:
+          registry: nexus.home-cluster:8081
+          username: ${{ env.NEXUS_USERNAME }}
+          password: ${{ env.NEXUS_PASSWORD }}
+
+      - name: Push container image
+        run: |
+          export DOCKER_CONFIG="$HOME/.docker"
+          # Find all oci_push targets and run them
+          bazelisk query 'kind(oci_push, //...)' | xargs -r -n 1 -I {} bash -c 'echo "Pushing {}..." && bazelisk run {}'
