@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-concept
+spec:
+  replicas: 1  # Single replica for dev
+  template:
+    spec:
+      containers:
+      - name: demo-concept
+        # Never pull - use local image loaded via minikube
+        imagePullPolicy: Never

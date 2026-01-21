@@ -9,15 +9,11 @@ A modern polyglot monorepo supporting Python, Rust, Go, and TypeScript with Baze
 - [direnv](https://direnv.net/) (optional but recommended)
 - [Bazelisk](https://github.com/bazelbuild/bazelisk)
 
-### Local Development
+### Local Development (Minikube)
 
-#### Python Projects
 ```bash
 # Navigate to project
 cd apps/demo-concept/py-app
-
-# Environment auto-loads via direnv (or run: nix develop)
-# Dependencies auto-install via UV
 
 # Run linting
 uv run ruff check .
@@ -25,9 +21,15 @@ uv run ruff check .
 # Run tests
 uv run pytest
 
-# Format code
-uv run ruff format .
+# Build Docker image (for minikube)
+docker build -t py-app:latest .
+
+# Deploy to minikube
+cd ../../..
+bazelisk run //apps/demo-concept/py-app:deploy_dev
 ```
+
+**Note:** The `deploy_dev` target automatically switches to minikube context, loads the image, and deploys to the `playground-demo-concept-dev` namespace.
 
 ### Building with Bazel
 

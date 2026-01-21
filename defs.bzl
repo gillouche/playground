@@ -73,7 +73,7 @@ def application(
 cat > $@ <<'EOF'
 #!/bin/bash
 set -euo pipefail
-cd {package}
+cd "$$BUILD_WORKSPACE_DIRECTORY/{package}"
 {cmd}
 EOF
 chmod +x $@
@@ -94,7 +94,7 @@ chmod +x $@
 cat > $@ <<'EOF'
 #!/bin/bash
 set -euo pipefail
-cd {package}
+cd "$$BUILD_WORKSPACE_DIRECTORY/{package}"
 {cmd}
 EOF
 chmod +x $@
@@ -115,7 +115,7 @@ chmod +x $@
 cat > $@ <<'EOF'
 #!/bin/bash
 set -euo pipefail
-cd {package}
+cd "$$BUILD_WORKSPACE_DIRECTORY/{package}"
 {cmd}
 EOF
 chmod +x $@
@@ -147,3 +147,85 @@ chmod +x $@
             repository = image_repository,
             remote_tags = ["latest"],
         )
+        
+        # Dev deployment target for minikube
+        native.genrule(
+            name = "_deploy_dev_script",
+            outs = ["deploy_dev.sh"],
+            cmd = """
+cat > $@ <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+# Switch to minikube context
+echo "Switching to minikube context..."
+kubectl config use-context minikube
+
+echo "Loading image to minikube..."
+minikube image load {simple_name}:latest
+
+echo "Deploying to minikube..."
+DEPLOY_DIR="$$BUILD_WORKSPACE_DIRECTORY/{package}/deploy"
+
+# Extract parent directory name (e.g., demo-concept from apps/demo-concept/py-app)
+PARENT_DIR=$$(echo "{package}" | cut -d'/' -f2)
+NAMESPACE="playground-$$PARENT_DIR-dev"
+
+if [ -d "$$DEPLOY_DIR/dev" ]; then
+  kubectl apply -k "$$DEPLOY_DIR/dev" -n "$$NAMESPACE"
+elif [ -d "$$DEPLOY_DIR/base" ]; then
+  kubectl create namespace "$$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+  kubectl apply -k "$$DEPLOY_DIR/base" -n "$$NAMESPACE"
+else
+  echo "Error: No deploy directory found at $$DEPLOY_DIR"
+  exit 1
+fi
+
+echo "Deployment complete to namespace: $$NAMESPACE"
+EOF
+chmod +x $@
+            """.format(package=package_dir, repo=image_repository, simple_name=name),
+        )
+        
+        native.sh_binary(
+            name = "deploy_dev",
+            srcs = [":_deploy_dev_script"],
+            data = native.glob(["deploy/**/*"], allow_empty=True),
+        )
+        
+        # Combined dev target: build image + deploy to minikube
+        native.genrule(
+            name = "_dev_script",
+            outs = ["dev.sh"],
+            cmd = """
+cat > $@ <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+cd "$$BUILD_WORKSPACE_DIRECTORY"
+
+echo "Building OCI image..."
+bazelisk build {image_target}
+
+echo "Loading image to minikube..."
+# Load the OCI tarball directly to minikube
+minikube image load bazel-bin/{package}/image/tarball.tar --daemon
+
+echo "Deploying to minikube..."
+bazelisk run {deploy_target}
+EOF
+chmod +x $@
+            """.format(
+                image_target="//" + package_dir + ":image",
+                deploy_target="//" + package_dir + ":deploy_dev",
+                package=package_dir,
+                repo=image_repository,
+                simple_name=name,
+            ),
+        )
+        
+        native.sh_binary(
+            name = "dev",
+            srcs = [":_dev_script"],
+        )
+

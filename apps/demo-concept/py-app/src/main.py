@@ -1,6 +1,6 @@
 import logging
 import sys
-from apps.demo_concept.py_app.src.lib import get_greeting
+from lib import get_greeting
 
 # Configure logging
 logging.basicConfig(

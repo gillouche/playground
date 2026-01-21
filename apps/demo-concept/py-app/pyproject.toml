@@ -14,4 +14,3 @@ dev = [
 ]
 
 [tool.uv]
-# We can configure uv to manage the lockfile here

@@ -16,8 +16,10 @@ spec:
     spec:
       containers:
       - name: demo-concept
-        image: nexus.home-cluster:8081/repository/docker-hosted/playground/demo-concept:latest
-        imagePullPolicy: Always
+        image: demo-concept:latest
+        ports:
+        - containerPort: 8080
+          name: http
         resources:
           requests:
             memory: "64Mi"
@@ -25,14 +27,15 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "200m"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: demo-concept
-spec:
-  selector:
-    app: demo-concept
-  ports:
-  - port: 80
-    targetPort: 8080 # App doesn't really serve HTTP but standard specificaiton.
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
