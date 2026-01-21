@@ -17,7 +17,7 @@ env:
 
 jobs:
   build-and-test:
-    name: Build & Test (trusted code only)
+    name: Build & Test
 
     if: >
       github.event_name == 'push' ||
@@ -48,9 +48,15 @@ jobs:
 
       - name: Add Bazelisk to PATH
         run: |
-          BAZELISK_PATH=$(dirname $(which bazelisk 2>/dev/null || echo "/home/runner/_work/_tool/bazelisk/*/x64/bazelisk" | head -1))
-          echo "$BAZELISK_PATH" >> $GITHUB_PATH
-          echo "Bazelisk path: $BAZELISK_PATH"
+          BAZELISK_BIN=$(find /home/runner/_work/_tool/bazelisk -name bazelisk -type f 2>/dev/null | head -1)
+          if [ -n "$BAZELISK_BIN" ]; then
+            BAZELISK_PATH=$(dirname "$BAZELISK_BIN")
+            echo "$BAZELISK_PATH" >> $GITHUB_PATH
+            echo "Bazelisk found at: $BAZELISK_PATH"
+          else
+            echo "ERROR: Bazelisk not found"
+            exit 1
+          fi
 
       - name: Build
         run: bazelisk build //...
@@ -92,9 +98,15 @@ jobs:
 
       - name: Add Bazelisk to PATH
         run: |
-          BAZELISK_PATH=$(dirname $(which bazelisk 2>/dev/null || echo "/home/runner/_work/_tool/bazelisk/*/x64/bazelisk" | head -1))
-          echo "$BAZELISK_PATH" >> $GITHUB_PATH
-          echo "Bazelisk path: $BAZELISK_PATH"
+          BAZELISK_BIN=$(find /home/runner/_work/_tool/bazelisk -name bazelisk -type f 2>/dev/null | head -1)
+          if [ -n "$BAZELISK_BIN" ]; then
+            BAZELISK_PATH=$(dirname "$BAZELISK_BIN")
+            echo "$BAZELISK_PATH" >> $GITHUB_PATH
+            echo "Bazelisk found at: $BAZELISK_PATH"
+          else
+            echo "ERROR: Bazelisk not found"
+            exit 1
+          fi
 
       - name: Login to Nexus
         uses: docker/login-action@v3
