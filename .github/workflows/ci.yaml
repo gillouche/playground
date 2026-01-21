@@ -46,6 +46,12 @@ jobs:
       - name: Setup Bazelisk
         uses: bazelbuild/setup-bazelisk@v3
 
+      - name: Add Bazelisk to PATH
+        run: |
+          BAZELISK_PATH=$(dirname $(which bazelisk 2>/dev/null || echo "/home/runner/_work/_tool/bazelisk/*/x64/bazelisk" | head -1))
+          echo "$BAZELISK_PATH" >> $GITHUB_PATH
+          echo "Bazelisk path: $BAZELISK_PATH"
+
       - name: Build
         run: bazelisk build //...
 
@@ -83,6 +89,12 @@ jobs:
 
       - name: Setup Bazelisk
         uses: bazelbuild/setup-bazelisk@v3
+
+      - name: Add Bazelisk to PATH
+        run: |
+          BAZELISK_PATH=$(dirname $(which bazelisk 2>/dev/null || echo "/home/runner/_work/_tool/bazelisk/*/x64/bazelisk" | head -1))
+          echo "$BAZELISK_PATH" >> $GITHUB_PATH
+          echo "Bazelisk path: $BAZELISK_PATH"
 
       - name: Login to Nexus
         uses: docker/login-action@v3
