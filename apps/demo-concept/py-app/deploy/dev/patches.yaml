@@ -1,12 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: demo-concept
+  name: py-app
 spec:
   replicas: 1  # Single replica for dev
   template:
     spec:
       containers:
-      - name: demo-concept
+      - name: py-app
         # Never pull - use local image loaded via minikube
         imagePullPolicy: Never

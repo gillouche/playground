@@ -1,4 +1,4 @@
-load("//:defs.bzl", "application")
+load("//tools:defs.bzl", "application")
 
 application(
     name = "py-app",

@@ -30,10 +30,10 @@ jobs:
         run: |
           APP_DIR=$(find apps -type d -name "${{ github.event.inputs.app }}" | head -1)
           if [ -z "$APP_DIR" ]; then
-            echo "❌ App not found: ${{ github.event.inputs.app }}"
+            echo "App not found: ${{ github.event.inputs.app }}"
             exit 1
           fi
-          echo "✅ Found app at: $APP_DIR"
+          echo "Found app at: $APP_DIR"
           echo "app_dir=$APP_DIR" >> $GITHUB_OUTPUT
       
       - name: Create prod overlay if missing
@@ -54,16 +54,16 @@ jobs:
               newName: nexus.gillouche.homelab/repository/docker-hosted/playground/${{ github.event.inputs.app }}
               newTag: ${{ github.event.inputs.version }}
           EOF
-            echo "✅ Created prod overlay"
+            echo "Created prod overlay"
           else
-            echo "✅ Prod overlay already exists"
+            echo "Prod overlay already exists"
           fi
       
       - name: Update image tag
         run: |
           cd "${{ steps.find.outputs.app_dir }}/deploy/prod"
           
-          echo "🏷️  Updating image tag to ${{ github.event.inputs.version }}..."
+          echo "Updating image tag to ${{ github.event.inputs.version }}..."
           
           # Update or add image tag
           if grep -q "newTag:" kustomization.yaml; then
@@ -73,7 +73,7 @@ jobs:
             echo "    newTag: ${{ github.event.inputs.version }}" >> kustomization.yaml
           fi
           
-          echo "✅ Updated kustomization.yaml"
+          echo "Updated kustomization.yaml"
           cat kustomization.yaml
       
       - name: Commit and push

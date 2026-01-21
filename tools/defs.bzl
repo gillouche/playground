@@ -228,4 +228,39 @@ chmod +x $@
             name = "dev",
             srcs = [":_dev_script"],
         )
+        
+        # Build Docker image from Dockerfile (for local dev)
+        native.genrule(
+            name = "_build_docker_script",
+            outs = ["build_docker.sh"],
+            cmd = """
+cat > $@ <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+cd "$$BUILD_WORKSPACE_DIRECTORY/{package}"
+
+if [ ! -f Dockerfile ]; then
+  echo "Error: Dockerfile not found in {package}"
+  exit 1
+fi
+
+echo "Building Docker image: {simple_name}:latest"
+docker build -t {simple_name}:latest .
+
+echo "Image built successfully: {simple_name}:latest"
+docker images {simple_name}:latest
+EOF
+chmod +x $@
+            """.format(
+                package=package_dir,
+                simple_name=name,
+            ),
+        )
+        
+        native.sh_binary(
+            name = "build_docker",
+            srcs = [":_build_docker_script"],
+            tags = ["manual"],
+        )
 
