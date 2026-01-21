@@ -1,19 +1,25 @@
 FROM ghcr.io/actions/actions-runner:latest
 
-# Switch to root to install packages
+# Switch to root to install dependencies
 USER root
 
-# Install build tools required by Bazel
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    build-essential \
+# Install Nix dependencies
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
+    curl \
+    xz-utils \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Bazelisk (skip version check during build to avoid QEMU issues)
-RUN curl -L https://github.com/bazelbuild/bazelisk/releases/download/v1.28.1/bazelisk-linux-amd64 \
-    -o /usr/local/bin/bazelisk \
-    && chmod +x /usr/local/bin/bazelisk
+ENV NIX_INSTALLER_NO_SANDBOX=1
 
-# Switch back to runner user
+RUN curl -L https://nixos.org/nix/install | sh -s -- \
+    --daemon \
+    --no-channel-add
+
+# Switch to runner user for Nix installation
 USER runner
+
+RUN mkdir -p ~/.config/nix \
+    && echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf \
+    && echo 'sandbox = false' >> ~/.config/nix/nix.conf \
+    && echo '. ~/.nix-profile/etc/profile.d/nix.sh' >> ~/.bashrc

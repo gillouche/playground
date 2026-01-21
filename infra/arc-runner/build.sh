@@ -19,12 +19,27 @@ IMAGE_NAME="${REGISTRY}/docker-hosted/arc-runner"
 IMAGE_TAG="latest"
 FULL_IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
 
-echo "Building custom GitHub Actions runner image for linux/amd64..."
+echo "Building custom GitHub Actions runner image for linux/amd64 on remote server..."
 
-# Create buildx builder if it doesn't exist
-docker-buildx create --name arc-builder --use 2>/dev/null || docker-buildx use arc-builder
+# Use the persistent builder created via Ansible setup
+BUILDER_NAME="homeserver2-amd64"
 
-# Build for linux/amd64 (your K3s cluster architecture)
+if ! docker-buildx ls | grep -q "${BUILDER_NAME}"; then
+  echo "Creating builder '${BUILDER_NAME}'..."
+  docker-buildx create \
+    --name "${BUILDER_NAME}" \
+    --driver docker-container \
+    --platform linux/amd64 \
+    --use \
+    ssh://alarm@homeserver2
+else
+  echo "Using existing builder '${BUILDER_NAME}'"
+  docker-buildx use "${BUILDER_NAME}"
+fi
+
+# Bootstrap builder (ensure connection)
+docker-buildx inspect --bootstrap
+
 docker-buildx build \
   --platform linux/amd64 \
   --load \
