@@ -7,19 +7,27 @@ USER root
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     curl \
     xz-utils \
+    git \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-ENV NIX_INSTALLER_NO_SANDBOX=1
+# Create /nix directory and give ownership to runner for single-user install
+RUN mkdir -m 0755 /nix && chown runner:runner /nix
 
-RUN curl -L https://nixos.org/nix/install | sh -s -- \
-    --daemon \
-    --no-channel-add
-
-# Switch to runner user for Nix installation
+# Switch to runner user
 USER runner
 
+# Single-user installation
+RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon
+
+# Add Nix to PATH for all future commands
+ENV PATH="/home/runner/.nix-profile/bin:$PATH"
+
+# Configure Nix
 RUN mkdir -p ~/.config/nix \
     && echo 'experimental-features = nix-command flakes' >> ~/.config/nix/nix.conf \
     && echo 'sandbox = false' >> ~/.config/nix/nix.conf \
-    && echo '. ~/.nix-profile/etc/profile.d/nix.sh' >> ~/.bashrc
+    && echo 'filter-syscalls = false' >> ~/.config/nix/nix.conf
+
+# Verify Nix installation
+RUN nix --version
