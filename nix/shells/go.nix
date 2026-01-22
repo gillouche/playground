@@ -2,7 +2,7 @@
 
 pkgs.mkShell {
   packages = with pkgs; [
-    go_1_23        # Latest Go supported by Bazel
+    go_1_24        # Latest Go supported by Bazel
     git
   ];
 

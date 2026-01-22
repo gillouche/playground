@@ -35,6 +35,9 @@
           # Node shell: LTS + pnpm
           node = import ./shells/node.nix { inherit pkgs; };
           
+          # CI shell: All tools for CI
+          ci = import ./shells/ci.nix { inherit pkgs; };
+
           # Default: Bazel (for root development)
           default = self.devShells.${system}.bazel;
         }
