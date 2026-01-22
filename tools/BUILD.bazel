@@ -16,3 +16,13 @@ alias(
     name = "promote_prod",
     actual = "//tools/scripts:promote_prod",
 )
+
+alias(
+    name = "sync_dev",
+    actual = "//tools/scripts:sync_dev",
+)
+
+alias(
+    name = "rollback",
+    actual = "//tools/scripts:rollback",
+)

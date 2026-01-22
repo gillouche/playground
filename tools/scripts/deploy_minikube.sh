@@ -21,13 +21,13 @@ DEPLOY_DIR="$BUILD_WORKSPACE_DIRECTORY/$TARGET_PKG/deploy"
 # Extract parent directory name (e.g., demo-concept from apps/demo-concept/py-app)
 # TARGET_PKG is like apps/demo-concept/py-app
 PARENT_DIR=$(echo "$TARGET_PKG" | cut -d'/' -f2)
-NAMESPACE="playground-dev-$PARENT_DIR"
+NAMESPACE="playground-sandbox-$PARENT_DIR"
 
 # Ensure namespace exists
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-if [ -d "$DEPLOY_DIR/dev" ]; then
-  kubectl apply -k "$DEPLOY_DIR/dev" -n "$NAMESPACE"
+if [ -d "$DEPLOY_DIR/sandbox" ]; then
+  kubectl apply -k "$DEPLOY_DIR/sandbox" -n "$NAMESPACE"
 elif [ -d "$DEPLOY_DIR/base" ]; then
   kubectl apply -k "$DEPLOY_DIR/base" -n "$NAMESPACE"
 else

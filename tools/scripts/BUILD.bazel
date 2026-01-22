@@ -4,11 +4,13 @@ exports_files([
     "run_command.sh",
     "build_docker.sh",
     "deploy_minikube.sh",
-    "dev_workflow.sh",
+    "sandbox_workflow.sh",
     "smart_push.sh",
     "promote_test.py",
     "release_test.py",
     "promote_prod.py",
+    "sync_dev.py",
+    "rollback.py",
 ])
 
 py_binary(
@@ -24,4 +26,14 @@ py_binary(
 py_binary(
     name = "promote_prod",
     srcs = ["promote_prod.py"],
+)
+
+py_binary(
+    name = "sync_dev",
+    srcs = ["sync_dev.py"],
+)
+
+py_binary(
+    name = "rollback",
+    srcs = ["rollback.py"],
 )

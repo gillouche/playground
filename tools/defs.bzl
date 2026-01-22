@@ -126,20 +126,20 @@ def application(
             args = ["$(location :_push_image_oci)"],
         )
         
-        # Dev deployment target for minikube
+        # Sandbox deployment target for minikube
         native.sh_binary(
-            name = "deploy_dev",
+            name = "deploy_sandbox",
             srcs = ["//tools/scripts:deploy_minikube.sh"],
             args = [package_dir, image_repository, name],
             data = native.glob(["deploy/**/*"], allow_empty=True),
         )
         
-        # Combined dev target: build image + deploy to minikube
+        # Combined sandbox target: build image + deploy to minikube
         # We pass 'name' as the IMAGE_TARGET arg so it builds py-app:latest
         native.sh_binary(
-            name = "dev",
-            srcs = ["//tools/scripts:dev_workflow.sh"],
-            args = [name, "//" + package_dir + ":deploy_dev", package_dir],
+            name = "build_sandbox",
+            srcs = ["//tools/scripts:sandbox_workflow.sh"],
+            args = [name, "//" + package_dir + ":deploy_sandbox", package_dir],
         )
         
         # Build Docker image from Dockerfile (for local dev)

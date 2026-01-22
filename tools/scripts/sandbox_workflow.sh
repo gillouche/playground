@@ -11,7 +11,7 @@ echo "Building OCI image..."
 # Build using Dockerfile (minikube doesn't support oci tarballs)
 
 # Generate unique tag
-TAG="dev-$(date +%s)"
+TAG="sandbox-$(date +%s)"
 FULL_IMAGE="$IMAGE_TARGET:$TAG"
 
 echo "Building Docker image locally ($FULL_IMAGE)..."
@@ -22,8 +22,8 @@ echo "Loading image to minikube..."
 minikube image load "$FULL_IMAGE"
 
 # Update kustomization.yaml with new tag
-# $PACKAGE/deploy/dev/kustomization.yaml
-KUSTOMIZATION="$PACKAGE/deploy/dev/kustomization.yaml"
+# $PACKAGE/deploy/sandbox/kustomization.yaml
+KUSTOMIZATION="$PACKAGE/deploy/sandbox/kustomization.yaml"
 if [ -f "$KUSTOMIZATION" ]; then
     echo "Updating kustomization tag to $TAG..."
     # Use perl for portability between Mac and Linux
