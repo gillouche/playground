@@ -3,4 +3,5 @@ exports_files([
     "build_docker.sh",
     "deploy_minikube.sh",
     "dev_workflow.sh",
+    "smart_push.sh",
 ])

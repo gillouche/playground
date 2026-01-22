@@ -111,10 +111,18 @@ def application(
         )
         
         oci_push(
-            name = "push_image",
+            name = "_push_image_oci",
             image = ":image",
             repository = image_repository,
-            remote_tags = ["latest", "git-{STABLE_GIT_SHORT_COMMIT}"],
+            # No static tags here; they are passed by the wrapper
+        )
+        
+        # Wrapper script to apply dynamic git tags at runtime
+        native.sh_binary(
+            name = "push_image",
+            srcs = ["//tools/scripts:smart_push.sh"],
+            data = [":_push_image_oci"],
+            args = ["$(location :_push_image_oci)"],
         )
         
         # Dev deployment target for minikube
