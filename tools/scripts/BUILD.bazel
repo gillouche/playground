@@ -1,0 +1,6 @@
+exports_files([
+    "run_command.sh",
+    "build_docker.sh",
+    "deploy_minikube.sh",
+    "dev_workflow.sh",
+])

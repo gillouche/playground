@@ -5,5 +5,5 @@ application(
     language = "python",
     srcs = glob(["src/**/*.py"]),
     tests = glob(["tests/test_*.py"]),
-    image_repository = "nexus.gillouche.homelab/docker-hosted/playground/demo-concept",
+
 )

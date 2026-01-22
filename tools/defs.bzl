@@ -66,68 +66,37 @@ def application(
     package_dir = native.package_name()
     
     # Lint target
-    native.genrule(
-        name = "_lint_script",
-        outs = ["lint.sh"],
-        cmd = """
-cat > $@ <<'EOF'
-#!/bin/bash
-set -euo pipefail
-cd "$$BUILD_WORKSPACE_DIRECTORY/{package}"
-{cmd}
-EOF
-chmod +x $@
-        """.format(package=package_dir, cmd=lint_cmd),
-    )
-    
     native.sh_binary(
         name = "lint",
-        srcs = [":_lint_script"],
+        srcs = ["//tools/scripts:run_command.sh"],
+        args = [package_dir, lint_cmd],
         tags = ["lint"],
     )
     
     # Test target  
-    native.genrule(
-        name = "_test_script",
-        outs = ["test.sh"],
-        cmd = """
-cat > $@ <<'EOF'
-#!/bin/bash
-set -euo pipefail
-cd "$$BUILD_WORKSPACE_DIRECTORY/{package}"
-{cmd}
-EOF
-chmod +x $@
-        """.format(package=package_dir, cmd=test_cmd),
-    )
-    
     native.sh_binary(
         name = "test",
-        srcs = [":_test_script"],
+        srcs = ["//tools/scripts:run_command.sh"],
+        args = [package_dir, test_cmd],
         tags = ["test"],
     )
     
     # Build target
-    native.genrule(
-        name = "_build_script",
-        outs = ["build.sh"],
-        cmd = """
-cat > $@ <<'EOF'
-#!/bin/bash
-set -euo pipefail
-cd "$$BUILD_WORKSPACE_DIRECTORY/{package}"
-{cmd}
-EOF
-chmod +x $@
-        """.format(package=package_dir, cmd=build_cmd),
-    )
-    
     native.sh_binary(
         name = "build",
-        srcs = [":_build_script"],
+        srcs = ["//tools/scripts:run_command.sh"],
+        args = [package_dir, build_cmd],
     )
     
-    # OCI Image (if repository specified)
+    # OCI Image
+    # Infer repository from package path if not provided
+    if not image_repository:
+        pkg_path = native.package_name()
+        if pkg_path.startswith("apps/"):
+            # Strip "apps/" prefix to get "concept/app"
+            repo_suffix = pkg_path[len("apps/"):]
+            image_repository = "nexus.gillouche.homelab/docker-hosted/{}".format(repo_suffix)
+            
     if image_repository:
         pkg_tar(
             name = "app_layer",
@@ -145,122 +114,29 @@ chmod +x $@
             name = "push_image",
             image = ":image",
             repository = image_repository,
-            remote_tags = ["latest"],
+            remote_tags = ["latest", "git-{STABLE_GIT_SHORT_COMMIT}"],
         )
         
         # Dev deployment target for minikube
-        native.genrule(
-            name = "_deploy_dev_script",
-            outs = ["deploy_dev.sh"],
-            cmd = """
-cat > $@ <<'EOF'
-#!/bin/bash
-set -euo pipefail
-
-# Switch to minikube context
-echo "Switching to minikube context..."
-kubectl config use-context minikube
-
-echo "Loading image to minikube..."
-minikube image load {simple_name}:latest
-
-echo "Deploying to minikube..."
-DEPLOY_DIR="$$BUILD_WORKSPACE_DIRECTORY/{package}/deploy"
-
-# Extract parent directory name (e.g., demo-concept from apps/demo-concept/py-app)
-PARENT_DIR=$$(echo "{package}" | cut -d'/' -f2)
-NAMESPACE="playground-$$PARENT_DIR-dev"
-
-if [ -d "$$DEPLOY_DIR/dev" ]; then
-  kubectl apply -k "$$DEPLOY_DIR/dev" -n "$$NAMESPACE"
-elif [ -d "$$DEPLOY_DIR/base" ]; then
-  kubectl create namespace "$$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
-  kubectl apply -k "$$DEPLOY_DIR/base" -n "$$NAMESPACE"
-else
-  echo "Error: No deploy directory found at $$DEPLOY_DIR"
-  exit 1
-fi
-
-echo "Deployment complete to namespace: $$NAMESPACE"
-EOF
-chmod +x $@
-            """.format(package=package_dir, repo=image_repository, simple_name=name),
-        )
-        
         native.sh_binary(
             name = "deploy_dev",
-            srcs = [":_deploy_dev_script"],
+            srcs = ["//tools/scripts:deploy_minikube.sh"],
+            args = [package_dir, image_repository, name],
             data = native.glob(["deploy/**/*"], allow_empty=True),
         )
         
         # Combined dev target: build image + deploy to minikube
-        native.genrule(
-            name = "_dev_script",
-            outs = ["dev.sh"],
-            cmd = """
-cat > $@ <<'EOF'
-#!/bin/bash
-set -euo pipefail
-
-cd "$$BUILD_WORKSPACE_DIRECTORY"
-
-echo "Building OCI image..."
-bazelisk build {image_target}
-
-echo "Loading image to minikube..."
-# Load the OCI tarball directly to minikube
-minikube image load bazel-bin/{package}/image/tarball.tar --daemon
-
-echo "Deploying to minikube..."
-bazelisk run {deploy_target}
-EOF
-chmod +x $@
-            """.format(
-                image_target="//" + package_dir + ":image",
-                deploy_target="//" + package_dir + ":deploy_dev",
-                package=package_dir,
-                repo=image_repository,
-                simple_name=name,
-            ),
-        )
-        
         native.sh_binary(
             name = "dev",
-            srcs = [":_dev_script"],
+            srcs = ["//tools/scripts:dev_workflow.sh"],
+            args = ["//" + package_dir + ":image", "//" + package_dir + ":deploy_dev", package_dir],
         )
         
         # Build Docker image from Dockerfile (for local dev)
-        native.genrule(
-            name = "_build_docker_script",
-            outs = ["build_docker.sh"],
-            cmd = """
-cat > $@ <<'EOF'
-#!/bin/bash
-set -euo pipefail
-
-cd "$$BUILD_WORKSPACE_DIRECTORY/{package}"
-
-if [ ! -f Dockerfile ]; then
-  echo "Error: Dockerfile not found in {package}"
-  exit 1
-fi
-
-echo "Building Docker image: {simple_name}:latest"
-docker build -t {simple_name}:latest .
-
-echo "Image built successfully: {simple_name}:latest"
-docker images {simple_name}:latest
-EOF
-chmod +x $@
-            """.format(
-                package=package_dir,
-                simple_name=name,
-            ),
-        )
-        
         native.sh_binary(
             name = "build_docker",
-            srcs = [":_build_docker_script"],
+            srcs = ["//tools/scripts:build_docker.sh"],
+            args = [package_dir, name],
             tags = ["manual"],
         )
 
