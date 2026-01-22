@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: py-app
+spec:
+  template:
+    spec:
+      containers:
+      - name: py-app
+        imagePullPolicy: Never
+        livenessProbe: null
+        readinessProbe: null

@@ -2,6 +2,8 @@ import logging
 import sys
 from lib import get_greeting
 
+import time
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -17,7 +19,10 @@ def main():
     logger.info("Demo Concept Application Started")
     message = get_greeting("User")
     logger.info(f"Greetings: {message}")
-    logger.info("Demo Concept Application Finishing...")
+    
+    logger.info("Entering main loop...")
+    while True:
+        time.sleep(3600)
 
 if __name__ == "__main__":
     main()

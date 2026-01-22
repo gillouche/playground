@@ -19,6 +19,7 @@ def application(
       - :test - Runs tests  
       - :build - Builds artifacts
       - :image - Creates OCI image
+      - :image_tarball - Creates Tarball for localdev
       - :push_image - Pushes to registry
     
     Args:
@@ -134,10 +135,11 @@ def application(
         )
         
         # Combined dev target: build image + deploy to minikube
+        # We pass 'name' as the IMAGE_TARGET arg so it builds py-app:latest
         native.sh_binary(
             name = "dev",
             srcs = ["//tools/scripts:dev_workflow.sh"],
-            args = ["//" + package_dir + ":image", "//" + package_dir + ":deploy_dev", package_dir],
+            args = [name, "//" + package_dir + ":deploy_dev", package_dir],
         )
         
         # Build Docker image from Dockerfile (for local dev)

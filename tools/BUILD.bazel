@@ -1,3 +1,18 @@
 exports_files([
     "defs.bzl",
 ])
+
+alias(
+    name = "promote_test",
+    actual = "//tools/scripts:promote_test",
+)
+
+alias(
+    name = "release_test",
+    actual = "//tools/scripts:release_test",
+)
+
+alias(
+    name = "promote_prod",
+    actual = "//tools/scripts:promote_prod",
+)

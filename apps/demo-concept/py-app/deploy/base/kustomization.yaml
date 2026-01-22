@@ -7,6 +7,6 @@ resources:
 
 # Image configuration (can be overridden by overlays)
 images:
-  - name: demo-concept
-    newName: nexus.gillouche.homelab/repository/docker-all/playground/demo-concept
+  - name: py-app
+    newName: nexus.gillouche.homelab/docker-hosted/demo-concept/py-app
     newTag: latest
