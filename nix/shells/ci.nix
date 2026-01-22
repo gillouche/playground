@@ -18,7 +18,8 @@ pkgs.mkShell {
   ];
 
   packages = with pkgs; [
-    # Additional Tools specific to CI (if any)
+    # Additional Tools specific to CI
+    skopeo  # For retagging container images
     # git and bazelisk are already in bazel.nix
   ];
 

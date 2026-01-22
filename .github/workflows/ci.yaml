@@ -101,3 +101,31 @@ jobs:
           export DOCKER_CONFIG="$HOME/.docker"
           # Find all oci_push targets and run them
           nix develop ./nix#ci --command bash -c "bazelisk query 'kind(oci_push, //...)' | xargs -r -n 1 -I {} bash -c 'echo \"Pushing {}...\" && bazelisk run {}'"
+
+      - name: Retag images as :latest
+        run: |
+          # Extract git sha for tagging
+          GIT_SHA=$(git rev-parse --short HEAD)
+          
+          # Find all concepts and apps
+          for CONCEPT_DIR in apps/*/; do
+            CONCEPT=$(basename "$CONCEPT_DIR")
+            
+            for APP_DIR in "$CONCEPT_DIR"*/; do
+              # Skip if it's deploy or other non-app directories
+              if [[ ! -d "$APP_DIR/src" ]]; then
+                continue
+              fi
+              
+              APP=$(basename "$APP_DIR")
+              IMAGE_BASE="nexus.gillouche.homelab/docker-hosted/$CONCEPT/$APP"
+              
+              echo "Retagging $IMAGE_BASE:git-$GIT_SHA to $IMAGE_BASE:latest"
+              
+              # Use skopeo to copy the git-tagged image to latest tag
+              nix develop ./nix#ci --command skopeo copy \
+                "docker://$IMAGE_BASE:git-$GIT_SHA" \
+                "docker://$IMAGE_BASE:latest"
+            done
+          done
+
