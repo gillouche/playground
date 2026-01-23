@@ -46,11 +46,17 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Load SeaweedFS credentials
+        run: |
+          # SeaweedFS S3 credentials for Bazel remote cache
+          echo "AWS_ACCESS_KEY_ID=$SEAWEEDFS_ACCESS_KEY" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=$SEAWEEDFS_SECRET_KEY" >> $GITHUB_ENV
+
       - name: Build
         run: |
           # Load Nix environment which provides bazelisk
           # Explicitly use the ci shell from nix/flake.nix
-          nix develop ./nix#ci --command bazelisk build //...
+          nix develop ./nix#ci --command bazelisk build --config=ci //...
 
       - name: Lint
         run: |
@@ -120,12 +126,9 @@ jobs:
               APP=$(basename "$APP_DIR")
               IMAGE_BASE="nexus.gillouche.homelab/docker-hosted/$CONCEPT/$APP"
               
-              echo "Retagging $IMAGE_BASE:git-$GIT_SHA to $IMAGE_BASE:latest"
+              echo "Tagging $IMAGE_BASE:git-$GIT_SHA as :latest"
               
-              # Use skopeo to copy the git-tagged image to latest tag
-              nix develop ./nix#ci --command skopeo copy \
-                "docker://$IMAGE_BASE:git-$GIT_SHA" \
-                "docker://$IMAGE_BASE:latest"
+              # Use crane to tag without pulling the image
+              nix develop ./nix#ci --command crane tag "$IMAGE_BASE:git-$GIT_SHA" latest
             done
           done
-
