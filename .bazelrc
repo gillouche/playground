@@ -17,6 +17,7 @@ build --remote_accept_cached=true
 # CI-specific config (use with --config=ci)
 # Credentials will be provided via environment variables:
 # AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
-build:ci --remote_cache=https://seaweedfs-s3.k3s.gillouche.homelab/bazel-cache
+# Start with internal Filer endpoint which supports native HTTP cache
+build:ci --remote_cache=http://seaweedfs-filer.seaweedfs.svc.cluster.local:8888/buckets/bazel-cache
 build:ci --remote_upload_local_results=true
 build:ci --remote_cache_async
