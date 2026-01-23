@@ -4,4 +4,4 @@ resources:
   - ../base
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-concept/py-app
-    newTag: git-initial
+    newTag: git-5a30fb1

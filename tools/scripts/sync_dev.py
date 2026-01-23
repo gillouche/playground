@@ -3,31 +3,42 @@
 import argparse
 import os
 import re
-import requests
+import json
+import urllib.request
+import urllib.error
+import ssl
 
 NEXUS_URL = "https://nexus.gillouche.homelab"
 
-def query_nexus_latest(concept, app):
+def create_ssl_context(ca_cert=None, insecure=False):
+    if insecure:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+    
+    ctx = ssl.create_default_context()
+    if ca_cert:
+        ctx.load_verify_locations(cafile=ca_cert)
+    return ctx
+
+def query_nexus_latest(concept, app, ssl_context=None):
     """Query Nexus for the latest tag and extract git-{sha}."""
-    # First, get the digest of the :latest tag
     manifest_url = f"{NEXUS_URL}/v2/docker-hosted/{concept}/{app}/manifests/latest"
     headers = {"Accept": "application/vnd.docker.distribution.manifest.v2+json"}
     
     try:
-        response = requests.get(manifest_url, headers=headers)
-        response.raise_for_status()
-        
-        # Get the digest of :latest
-        latest_digest = response.headers.get("docker-content-digest")
+        req = urllib.request.Request(manifest_url, headers=headers)
+        with urllib.request.urlopen(req, context=ssl_context) as response:
+            latest_digest = response.headers.get("docker-content-digest")
+            
         if not latest_digest:
             print(f"Warning: Could not get digest for {app}:latest")
             return None
         
-        # Now query all tags to find which git-* tag has the same digest
         tags_url = f"{NEXUS_URL}/v2/docker-hosted/{concept}/{app}/tags/list"
-        tags_response = requests.get(tags_url)
-        tags_response.raise_for_status()
-        tags_data = tags_response.json()
+        with urllib.request.urlopen(tags_url, context=ssl_context) as tags_response:
+             tags_data = json.loads(tags_response.read().decode('utf-8'))
         
         git_tags = [t for t in tags_data.get("tags", []) if t.startswith("git-")]
         
@@ -35,22 +46,22 @@ def query_nexus_latest(concept, app):
             print(f"Warning: No git-* tags found for {app}")
             return None
         
-        # Find which git-* tag matches the latest digest
         for git_tag in git_tags:
             tag_manifest_url = f"{NEXUS_URL}/v2/docker-hosted/{concept}/{app}/manifests/{git_tag}"
-            tag_response = requests.get(tag_manifest_url, headers=headers)
+            tag_req = urllib.request.Request(tag_manifest_url, headers=headers)
             
-            if tag_response.ok:
-                tag_digest = tag_response.headers.get("docker-content-digest")
-                if tag_digest == latest_digest:
-                    return git_tag
-        
-        # Fallback: if we can't correlate by digest, return the first git tag
-        # (This assumes latest corresponds to the most recent build)
+            try:
+                with urllib.request.urlopen(tag_req, context=ssl_context) as tag_response:
+                    tag_digest = tag_response.headers.get("docker-content-digest")
+                    if tag_digest == latest_digest:
+                        return git_tag
+            except urllib.error.HTTPError:
+                continue
+
         print(f"Warning: Could not correlate :latest digest to git tag for {app}, using first git tag")
         return git_tags[0] if git_tags else None
         
-    except requests.exceptions.RequestException as e:
+    except urllib.error.URLError as e:
         print(f"Error querying Nexus for {app}: {e}")
         return None
 
@@ -74,16 +85,19 @@ def update_bom(concept, app, tag):
     """Update the Dev BOM with new tag."""
     bom_path = f"releases/dev/{concept}.yaml"
     
-    if not os.path.exists(bom_path):
-        # Create new BOM
-        with open(bom_path, 'w') as f:
-            f.write("images:\n")
-            f.write(f"  {app}:\n")
-            f.write(f"    tag: {tag}\n")
-        return
+def update_bom(concept, app, tag):
+    """Update the Dev BOM with new tag."""
+    bom_path = f"releases/dev/{concept}.yaml"
     
-    with open(bom_path, 'r') as f:
-        content = f.read()
+    if os.path.exists(bom_path):
+        with open(bom_path, 'r') as f:
+            content = f.read()
+    else:
+        content = ""
+    
+    # Ensure root key exists
+    if "images:" not in content:
+        content = "images:\n" + content.lstrip()
     
     # Update existing app or add new
     pattern = re.compile(rf"(\s+{app}:.*\n\s+tag: ).*")
@@ -93,6 +107,9 @@ def update_bom(concept, app, tag):
         content = pattern.sub(rf"\1{tag}", content)
     else:
         # Append new app
+        # Ensure we append to valid yaml structure
+        if not content.endswith("\n"):
+            content += "\n"
         content += f"  {app}:\n"
         content += f"    tag: {tag}\n"
     
@@ -121,18 +138,22 @@ def update_kustomization(concept, app, tag):
     else:
         print(f"Warning: Could not find image entry for {app} in {kustomization_path}")
 
-def sync_dev(concept, app=None):
+def sync_dev(concept, app=None, ssl_context=None):
     """Sync Dev environment with Nexus latest."""
     current_bom = read_bom(concept)
     apps_to_sync = [app] if app else list(current_bom.keys())
     
-    # If no apps in BOM and no specific app, try to discover from concept structure
     if not apps_to_sync:
-        # Look for apps in apps/{concept}/*
         concept_dir = f"apps/{concept}"
         if os.path.exists(concept_dir):
-            apps_to_sync = [d for d in os.listdir(concept_dir) 
-                          if os.path.isdir(os.path.join(concept_dir, d))]
+            apps_to_sync = []
+            for d in os.listdir(concept_dir):
+                full_path = os.path.join(concept_dir, d)
+                if os.path.isdir(full_path):
+                    # Heuristic: Apps usually have a src directory or BUILD.bazel
+                    if os.path.exists(os.path.join(full_path, "src")) or \
+                       os.path.exists(os.path.join(full_path, "BUILD.bazel")):
+                        apps_to_sync.append(d)
     
     if not apps_to_sync:
         print(f"No apps found for concept '{concept}'. Please specify --app or check BOM.")
@@ -142,7 +163,7 @@ def sync_dev(concept, app=None):
     
     for app_name in apps_to_sync:
         print(f"Syncing {app_name}...")
-        latest_tag = query_nexus_latest(concept, app_name)
+        latest_tag = query_nexus_latest(concept, app_name, ssl_context)
         
         if not latest_tag:
             print(f"  Skipped (no tag found)")
@@ -167,12 +188,23 @@ def sync_dev(concept, app=None):
         print("\nNo updates needed.")
 
 def main():
+    workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
+    if workspace_dir:
+        os.chdir(workspace_dir)
+
     parser = argparse.ArgumentParser(description="Sync Dev BOM with Nexus latest tags")
     parser.add_argument("--concept", required=True, help="Concept name (e.g., demo-concept)")
-    parser.add_argument("--app", help="Optional: Specific app to sync. If omitted, syncs all apps in concept.")
+    parser.add_argument("--app", help="Optional: Specific app to sync.")
+    parser.add_argument("--ca-cert", help="Path to CA certificate bundle for Nexus")
+    parser.add_argument("--insecure", action="store_true", help="Skip SSL verification (NOT RECOMMENDED)")
     
     args = parser.parse_args()
-    sync_dev(args.concept, args.app)
+    
+    # Use args.ca_cert or fallback to SSL_CERT_FILE env var
+    ca_cert = args.ca_cert or os.environ.get("SSL_CERT_FILE")
+    
+    ssl_context = create_ssl_context(ca_cert, args.insecure)
+    sync_dev(args.concept, args.app, ssl_context)
 
 if __name__ == "__main__":
     main()
