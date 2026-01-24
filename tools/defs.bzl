@@ -119,10 +119,10 @@ def application(
                     --target tmp/app/site-packages \\
                     --system \\
                     --python-version 3.13 \\
-                    --python-platform aarch64-manylinux_2_28
+                    --python-platform aarch64-unknown-linux-musl
                 # Set deterministic timestamps and ownership
                 find tmp/app -exec touch -t 197001010000 {} +
-                tar --owner=0 --group=0 --mode=0755 -cf $@ -C tmp/app .
+                tar --owner=0 --group=0 --mode=0755 -cf $@ -C tmp .
             """,
         )
 
@@ -141,7 +141,7 @@ def application(
         
         oci_image(
             name = "image",
-            base = "@python_base",
+            base = "@python_base_linux_arm64_v8",
             tars = [
                 ":deps_layer",
                 ":app_layer"
