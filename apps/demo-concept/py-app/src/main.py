@@ -1,4 +1,3 @@
-import html
 import logging
 import sys
 import os

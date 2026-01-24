@@ -58,15 +58,15 @@ jobs:
 
       - name: Unit Tests & Coverage
         run: |
-          nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, unit, //...)' | xargs -r -n 1 bazelisk run"
+          nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, unit, //...)' | while read target; do echo \">>> Running \$target\"; bazelisk run \"\$target\" || exit 1; done"
 
       - name: Lint
         run: |
-          nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, lint, //...)' | xargs -r -n 1 bazelisk run"
+          nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, lint, //...)' | while read target; do echo \">>> Running \$target\"; bazelisk run \"\$target\" || exit 1; done"
 
       - name: Integration Tests & Coverage
         run: |
-          nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, integration, //...)' | xargs -r -n 1 bazelisk run"
+          nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, integration, //...)' | while read target; do echo \">>> Running \$target\"; bazelisk run \"\$target\" || exit 1; done"
 
   package-and-push:
     name: Package & Push (main only)
