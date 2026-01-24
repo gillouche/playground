@@ -19,11 +19,11 @@ app.post("/renovate", async (req, res) => {
     } = req.body;
 
     const embed = {
-      title: "Renovate opened a PR",
-      url: prUrl,
+      title: prTitle || `Renovate Update: ${depName || "Dependency"}`,
+      url: prUrl || "https://github.com/gillouche", // Default to user profile if PR URL missing
       color: 0x1abc9c,
       fields: [
-        { name: "Repository", value: repository, inline: true },
+        { name: "Repository", value: repository || "Unknown Repo", inline: true },
         { name: "Dependency", value: depName || "multiple", inline: true },
         {
           name: "Version",
