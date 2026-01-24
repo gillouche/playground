@@ -30,7 +30,7 @@ spec:
       containers:
       - name: py-app
         image: py-app:latest
-        command: ["/usr/bin/python3", "/app/src/main.py"]
+        command: ["/usr/bin/python3", "/app/main.py"]
         ports:
         - containerPort: 8080
           name: http

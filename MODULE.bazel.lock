@@ -651,7 +651,7 @@
     "@@rules_oci+//oci:extensions.bzl%oci": {
       "general": {
         "bzlTransitiveDigest": "dOnAIBiZmY7QKI2ErFnw2w1Jtz7GJx4e/V4qtE973XQ=",
-        "usagesDigest": "YvbeEgikPNUwBU0yTyNLX0WGJ90ccNAoGLndszLedQ0=",
+        "usagesDigest": "gNThLGGLo/OEY+A4f6Npo0E1WJyfUCUSS+P6j4SsJW0=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -661,24 +661,24 @@
             "attributes": {
               "www_authenticate_challenges": {},
               "scheme": "https",
-              "registry": "gcr.io",
-              "repository": "distroless/python3-debian12",
-              "identifier": "latest",
+              "registry": "cgr.dev",
+              "repository": "chainguard/python",
+              "identifier": "sha256:6252e33e2d954d5d4188e68c8268545baa5e05d47f62d9bec295e5cc063bd07f",
               "platform": "linux/amd64",
               "target_name": "distroless_python_linux_amd64",
               "bazel_tags": []
             }
           },
-          "distroless_python_linux_arm64_v8": {
+          "distroless_python_linux_arm64": {
             "repoRuleId": "@@rules_oci+//oci/private:pull.bzl%oci_pull",
             "attributes": {
               "www_authenticate_challenges": {},
               "scheme": "https",
-              "registry": "gcr.io",
-              "repository": "distroless/python3-debian12",
-              "identifier": "latest",
-              "platform": "linux/arm64/v8",
-              "target_name": "distroless_python_linux_arm64_v8",
+              "registry": "cgr.dev",
+              "repository": "chainguard/python",
+              "identifier": "sha256:6252e33e2d954d5d4188e68c8268545baa5e05d47f62d9bec295e5cc063bd07f",
+              "platform": "linux/arm64",
+              "target_name": "distroless_python_linux_arm64",
               "bazel_tags": []
             }
           },
@@ -688,12 +688,12 @@
               "target_name": "distroless_python",
               "www_authenticate_challenges": {},
               "scheme": "https",
-              "registry": "gcr.io",
-              "repository": "distroless/python3-debian12",
-              "identifier": "latest",
+              "registry": "cgr.dev",
+              "repository": "chainguard/python",
+              "identifier": "sha256:6252e33e2d954d5d4188e68c8268545baa5e05d47f62d9bec295e5cc063bd07f",
               "platforms": {
                 "@@platforms//cpu:x86_64": "@distroless_python_linux_amd64",
-                "@@platforms//cpu:arm64": "@distroless_python_linux_arm64_v8"
+                "@@platforms//cpu:arm64": "@distroless_python_linux_arm64"
               },
               "bzlmod_repository": "distroless_python",
               "reproducible": true
@@ -817,7 +817,7 @@
           "explicitRootModuleDirectDeps": [
             "distroless_python",
             "distroless_python_linux_amd64",
-            "distroless_python_linux_arm64_v8"
+            "distroless_python_linux_arm64"
           ],
           "explicitRootModuleDirectDevDeps": [],
           "useAllRepos": "NO",

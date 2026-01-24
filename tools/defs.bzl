@@ -99,6 +99,34 @@ def application(
             image_repository = "nexus.gillouche.homelab/docker-hosted/{}".format(repo_suffix)
             
     if image_repository:
+        # 1. Create a requirements.txt from pyproject.toml / uv.lock
+        native.genrule(
+            name = "gen_requirements",
+            srcs = ["pyproject.toml", "uv.lock"],
+            outs = ["requirements.txt"],
+            cmd = "uv export --project $$(dirname $(location pyproject.toml)) --format requirements-txt --no-dev --frozen > $@",
+        )
+
+        # 2. Install dependencies and package into a tarball
+        native.genrule(
+            name = "install_deps",
+            srcs = ["requirements.txt"],
+            outs = ["deps.tar"],
+            cmd = """
+                mkdir -p tmp/app/site-packages
+                uv pip install -r $(location requirements.txt) --target tmp/app/site-packages --system --python-version 3.13
+                # Ensure deterministic mtimes for caching
+                find tmp -exec touch -t 197001010000 {} +
+                tar -cf $@ -C tmp .
+            """,
+        )
+
+        # 3. Wrap the tarball (mainly to be a valid target for oci_image provided tars)
+        pkg_tar(
+            name = "deps_layer",
+            deps = [":install_deps"],
+        )
+
         pkg_tar(
             name = "app_layer",
             srcs = srcs,
@@ -107,8 +135,14 @@ def application(
         
         oci_image(
             name = "image",
-            base = "@distroless_python_linux_arm64_v8",
-            tars = [":app_layer"],
+            base = "@distroless_python_linux_arm64",
+            tars = [
+                ":deps_layer",
+                ":app_layer"
+            ],
+            env = {
+                 "PYTHONPATH": "/app/site-packages",
+            },
         )
         
         oci_push(
