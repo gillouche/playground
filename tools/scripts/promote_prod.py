@@ -89,12 +89,6 @@ def main():
     # Update Prod BOM record
     update_prod_bom(args.concept, images)
     
-    # Archive Prod BOM for rollback capability
-    archived_bom = f"releases/prod/{args.concept}-{args.version}.yaml"
-    import shutil
-    shutil.copy(f"releases/prod/{args.concept}.yaml", archived_bom)
-    print(f"Archived Prod BOM -> {archived_bom}")
-    
     # Update Kustomization for each app in the BOM
     for app, tag in images.items():
         update_kustomization(args.concept, app, tag)

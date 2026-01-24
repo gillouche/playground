@@ -30,6 +30,11 @@ py_binary(
 )
 
 py_binary(
+    name = "release_prod",
+    srcs = ["release_prod.py"],
+)
+
+py_binary(
     name = "sync_dev",
     srcs = ["sync_dev.py"],
 )
@@ -37,4 +42,9 @@ py_binary(
 py_binary(
     name = "rollback",
     srcs = ["rollback.py"],
+)
+
+sh_binary(
+    name = "smart_push",
+    srcs = ["smart_push.sh"],
 )

@@ -18,6 +18,11 @@ alias(
 )
 
 alias(
+    name = "release_prod",
+    actual = "//tools/scripts:release_prod",
+)
+
+alias(
     name = "sync_dev",
     actual = "//tools/scripts:sync_dev",
 )
@@ -31,4 +36,9 @@ sh_binary(
     name = "gen_manifests",
     srcs = ["//tools/scripts:ytt_gen.sh"],
     tags = ["local"],
+)
+
+alias(
+    name = "smart_push",
+    actual = "//tools/scripts:smart_push",
 )

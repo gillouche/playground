@@ -1,21 +1,46 @@
-#!/bin/bash
-set -euo pipefail
+#!/usr/bin/env bash
 
-PUSH_CMD="$1"
+set -e
 
-# Resolve the executable path relative to the workspace root
-# Bazel runfiles handling
-if [[ ! "$PUSH_CMD" = /* ]]; then
-  # pass the "location" of the target.
-  :
+# Usage: ./smart_push.sh [base_commit]
+# Defaults to HEAD^ if no base_commit provided
+BASE_COMMIT=${1:-HEAD^}
+
+echo "Analyzing changes since $BASE_COMMIT..."
+
+# 1. Get list of changed files
+CHANGED_FILES=$(git diff --name-only "$BASE_COMMIT" | grep -vE "^(\.git|releases|deploy)" || true)
+
+if [ -z "$CHANGED_FILES" ]; then
+    echo "No relevant code changes detected. Skipping image push."
+    exit 0
 fi
 
-GIT_TAG="git-$(git rev-parse --short HEAD)"
+# Convert newlines to spaces for bazel query
+FILES_LIST=$(echo "$CHANGED_FILES" | tr '\n' ' ')
 
-echo "Pushing image with tags: latest, $GIT_TAG"
+echo "Changed files: $FILES_LIST"
 
-# Run the oci_push command with runtime flags
-# Note: rules_oci oci_push accepts flags passed after --
-shift
-echo "Delegating to oci_push with args: $@"
-"$PUSH_CMD" --tag latest --tag "$GIT_TAG" "$@"
+# 2. Query Bazel for affected oci_push targets
+# We use a set() of all changed files and find reverse dependencies that are of kind oci_push
+QUERY="kind(oci_push, rdeps(//..., set($FILES_LIST)))"
+
+echo "Querying Bazel for affected targets..."
+TARGETS=$(bazelisk query "$QUERY" 2>/dev/null || true)
+
+if [ -z "$TARGETS" ]; then
+    echo "No OCI push targets affected by these changes."
+    exit 0
+fi
+
+echo "Affected targets to push:"
+echo "$TARGETS"
+
+# 3. Push the targets
+GIT_SHA=$(git rev-parse --short HEAD)
+echo "Pushing images with tags: latest, git-$GIT_SHA"
+
+for target in $TARGETS; do
+    echo "Pushing $target..."
+    bazelisk run "$target" -- --tag latest --tag "git-$GIT_SHA"
+done
