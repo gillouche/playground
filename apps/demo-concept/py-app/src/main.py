@@ -6,7 +6,7 @@ import platform
 from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
-from lib import get_greeting
+from lib import get_greeting, sanitize
 
 
 logging.basicConfig(
@@ -32,11 +32,6 @@ async def lifespan(application: FastAPI):
     # Shutdown logic if needed
 
 app = FastAPI(lifespan=lifespan)
-
-def sanitize(input_str: str | None) -> str:
-    if not input_str:
-        return ""
-    return html.escape(input_str.strip())
 
 @app.get("/")
 async def root(name: str | None = None):

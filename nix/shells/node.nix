@@ -4,7 +4,7 @@ let
 in
 pkgs.mkShell {
   packages = base.packages ++ (with pkgs; [
-    nodejs_22      # Node LTS
+    nodejs_22
     pnpm
   ]);
 

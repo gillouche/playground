@@ -4,10 +4,11 @@ let
 in
 pkgs.mkShell {
   packages = base.packages ++ (with pkgs; [
-    rustc          # Latest stable Rust
+    rustc
     cargo
     rustfmt
     clippy
+    cargo-tarpaulin
   ]);
 
   shellHook = base.shellHook + ''

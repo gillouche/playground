@@ -4,8 +4,8 @@ let
 in
 pkgs.mkShell {
   packages = base.packages ++ (with pkgs; [
-    python313      # Latest Python 3.13
-    uv             # UV package manager
+    python313
+    uv
   ]);
 
   shellHook = base.shellHook + ''

@@ -35,4 +35,6 @@ else
   exit 1
 fi
 
+kubectl rollout restart deployment -n "$NAMESPACE"
+
 echo "Deployment complete to namespace: $NAMESPACE"

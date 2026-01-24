@@ -23,8 +23,18 @@ alias(
 )
 
 alias(
-    name = "sync_dev",
-    actual = "//tools/scripts:sync_dev",
+    name = "deploy_dev",
+    actual = "//tools/scripts:deploy_dev",
+)
+
+alias(
+    name = "deploy_test",
+    actual = "//tools/scripts:deploy_test",
+)
+
+alias(
+    name = "deploy_prod",
+    actual = "//tools/scripts:deploy_prod",
 )
 
 alias(

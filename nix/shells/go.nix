@@ -4,7 +4,7 @@ let
 in
 pkgs.mkShell {
   packages = base.packages ++ (with pkgs; [
-    go_1_24        # Latest Go supported by Bazel
+    go_1_24
   ]);
 
   shellHook = base.shellHook + ''

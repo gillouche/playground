@@ -6,6 +6,7 @@
     ytt
     curl
     jq
+    kubectl
   ];
 
   shellHook = ''

@@ -5,56 +5,37 @@ def application(
     name,
     language,
     srcs = [],
-    tests = [],
+    unit_tests = [],
+    integration_tests = [],
     lint_cmd = None,
     test_cmd = None,
     build_cmd = None,
     image_repository = "",
     base_image = "@python_base"):
-    """
-    Generic application builder for monorepo.
     
-    Creates consistent targets across languages:
-      - :lint - Runs linting
-      - :test - Runs tests  
-      - :build - Builds artifacts
-      - :image - Creates OCI image
-      - :image_tarball - Creates Tarball for localdev
-      - :push_image - Pushes to registry
-      - :load_image - Loads image into local docker (replaces old build_docker)
-    
-    Args:
-        name: Application name
-        language: python|rust|go|typescript
-        srcs: Source files
-        tests: Test files
-        lint_cmd: Command to run linting (defaults based on language)
-        test_cmd: Command to run tests (defaults based on language)
-        build_cmd: Command to build (defaults based on language)
-        image_repository: Docker registry URL
-        base_image: Base OCI image
-    """
-    
-    # Language-specific defaults
     defaults = {
         "python": {
             "lint": "uv sync --group dev && uv run ruff check .",
             "test": "uv sync --group dev && uv run pytest",
+            "coverage": "uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80",
             "build": "uv sync",
         },
         "rust": {
             "lint": "cargo clippy",
             "test": "cargo test",
+            "coverage": "cargo tarpaulin --fail-under 80",
             "build": "cargo build --release",
         },
         "go": {
             "lint": "golangci-lint run",
             "test": "go test ./...",
+            "coverage": "$BUILD_WORKSPACE_DIRECTORY/tools/scripts/check_go_coverage.sh .",
             "build": "go build -o bin/app",
         },
         "typescript": {
             "lint": "npm run lint",
             "test": "npm test",
+            "coverage": "npm run coverage",
             "build": "npm run build",
         },
     }
@@ -63,6 +44,9 @@ def application(
     lint_cmd = lint_cmd or lang_defaults.get("lint", "echo 'No lint configured'")
     test_cmd = test_cmd or lang_defaults.get("test", "echo 'No tests configured'")
     build_cmd = build_cmd or lang_defaults.get("build", "echo 'No build configured'")
+
+    # Coverage command defaults
+    coverage_cmd = lang_defaults.get("coverage", "echo 'No coverage configured'")
     
     # Create wrapper scripts for each command
     package_dir = native.package_name()
@@ -75,13 +59,39 @@ def application(
         tags = ["lint"],
     )
     
-    # Test target  
-    native.sh_binary(
-        name = "test",
-        srcs = ["//tools/scripts:run_command.sh"],
-        args = [package_dir, test_cmd],
-        tags = ["test"],
-    )
+    # Unit Test Target
+    if unit_tests:
+        # Construct unit test command (default for Python)
+        unit_cmd = test_cmd
+        unit_cov_cmd = coverage_cmd
+        
+        if language == "python":
+            unit_cmd = "uv sync --group dev && uv run pytest tests/unit"
+            unit_cov_cmd = "uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80 tests/unit"
+            
+        native.sh_binary(
+            name = "unit_test",
+            srcs = ["//tools/scripts:run_command.sh"],
+            args = [package_dir, unit_cov_cmd],
+            tags = ["test", "unit"],
+        )
+        
+    # Integration Test Target
+    if integration_tests:
+         # Construct integration test command (default for Python)
+        int_cmd = test_cmd
+        int_cov_cmd = coverage_cmd
+        
+        if language == "python":
+            int_cmd = "uv sync --group dev && uv run pytest tests/integration"
+            int_cov_cmd = "uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80 tests/integration"
+            
+        native.sh_binary(
+            name = "integration_test",
+            srcs = ["//tools/scripts:run_command.sh"],
+            args = [package_dir, int_cov_cmd],
+            tags = ["test", "integration"],
+        )
     
     # Build target
     native.sh_binary(
@@ -90,13 +100,17 @@ def application(
         args = [package_dir, build_cmd],
     )
     
-    # OCI Image
-    # Infer repository from package path if not provided
-    if not image_repository:
-        pkg_path = native.package_name()
-        if pkg_path.startswith("apps/"):
-            # Strip "apps/" prefix to get "concept/app"
-            repo_suffix = pkg_path[len("apps/"):]
+    # Infer repository and concept from package path
+    concept = "unknown"
+    pkg_path = native.package_name()
+    if pkg_path.startswith("apps/"):
+        # Strip "apps/" prefix to get "concept/app"
+        repo_suffix = pkg_path[len("apps/"):]
+        parts = repo_suffix.split("/")
+        if len(parts) >= 1:
+            concept = parts[0]
+            
+        if not image_repository:
             image_repository = "nexus.gillouche.homelab/docker-hosted/{}".format(repo_suffix)
             
     if image_repository:
@@ -167,7 +181,6 @@ def application(
         )
         
         # Load image into local docker daemon
-        # Replaces old 'build_docker' ensuring local parity with prod
         oci_load(
             name = "build_docker",
             image = ":image",
@@ -176,7 +189,7 @@ def application(
 
         # Sandbox deployment target for minikube
         native.sh_binary(
-            name = "deploy_sandbox",
+            name = "_deploy_minikube",
             srcs = ["//tools/scripts:deploy_minikube.sh"],
             args = [package_dir, image_repository, name],
             data = native.glob(["deploy/**/*"], allow_empty=True),
@@ -184,8 +197,29 @@ def application(
         
         # Combined sandbox target: load image + deploy to minikube
         native.sh_binary(
-            name = "build_sandbox",
+            name = "deploy_sandbox",
             srcs = ["//tools/scripts:sandbox_workflow.sh"],
-            args = [name, "//" + package_dir + ":deploy_sandbox", package_dir],
+            args = [name, "//" + package_dir + ":_deploy_minikube", package_dir],
+        )
+
+        # Dev Deployment
+        native.sh_binary(
+            name = "deploy_dev",
+            srcs = ["//tools/scripts:run_command.sh"],
+            args = [package_dir, "bazelisk run //tools:deploy_dev -- --concept " + concept + " --app " + name], 
+        )
+
+        # Test Deployment
+        native.sh_binary(
+            name = "deploy_test",
+            srcs = ["//tools/scripts:run_command.sh"],
+            args = [package_dir, "bazelisk run //tools:deploy_test -- --concept " + concept + " --app " + name + " --version $(git rev-parse --short HEAD)"], 
+        )
+
+        # Prod Deployment
+        native.sh_binary(
+            name = "deploy_prod",
+            srcs = ["//tools/scripts:run_command.sh"],
+            args = [package_dir, "bazelisk run //tools:deploy_prod -- --concept " + concept + " --app " + name + " --version $(git rev-parse --short HEAD)"], 
         )
 

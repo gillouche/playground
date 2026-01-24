@@ -54,19 +54,19 @@ jobs:
 
       - name: Build
         run: |
-          # Load Nix environment which provides bazelisk
-          # Explicitly use the ci shell from nix/flake.nix
           nix develop ./nix#ci --command bazelisk build --config=ci //...
+
+      - name: Unit Tests & Coverage
+        run: |
+          nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, unit, //...)' | xargs -r -n 1 bazelisk run"
 
       - name: Lint
         run: |
-          # Find all lint targets and run them
           nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, lint, //...)' | xargs -r -n 1 bazelisk run"
 
-      - name: Test
+      - name: Integration Tests & Coverage
         run: |
-          # Find all test targets (sh_binary with test tag) and run them
-          nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, test, //...)' | xargs -r -n 1 bazelisk run"
+          nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, integration, //...)' | xargs -r -n 1 bazelisk run"
 
   package-and-push:
     name: Package & Push (main only)
@@ -107,5 +107,4 @@ jobs:
           export DOCKER_CONFIG="$HOME/.docker"
           
           echo "Run smart push..."
-          # smart_push.sh defaults to HEAD^ comparison
           nix develop ./nix#ci --command bazelisk run //tools:smart_push

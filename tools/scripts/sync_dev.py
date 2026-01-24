@@ -187,9 +187,8 @@ def sync_dev(concept, app=None, ssl_context=None):
     else:
         print("\nNo updates needed.")
     
-    # Automatically trigger manifest generation
-    print("\nRefreshing ytt manifests...")
-    os.system("bazelisk run //tools:gen_manifests")
+    else:
+        print("\nNo updates needed.")
 
 def main():
     workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")

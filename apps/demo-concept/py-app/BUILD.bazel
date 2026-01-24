@@ -4,6 +4,7 @@ application(
     name = "py-app",
     language = "python",
     srcs = glob(["src/**/*.py"]),
-    tests = glob(["tests/test_*.py"]),
+    unit_tests = glob(["tests/unit/**/*.py"]),
+    integration_tests = glob(["tests/integration/**/*.py"]),
 
 )
