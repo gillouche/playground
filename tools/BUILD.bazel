@@ -46,6 +46,7 @@ sh_binary(
     name = "gen_manifests",
     srcs = ["//tools/scripts:ytt_gen.sh"],
     tags = ["local"],
+    visibility = ["//visibility:public"],
 )
 
 alias(
