@@ -18,23 +18,13 @@ exports_files([
 ])
 
 py_binary(
-    name = "promote_test",
-    srcs = ["promote_test.py"],
+    name = "freeze",
+    srcs = ["freeze.py"],
 )
 
 py_binary(
-    name = "release_test",
-    srcs = ["release_test.py"],
-)
-
-py_binary(
-    name = "promote_prod",
-    srcs = ["promote_prod.py"],
-)
-
-py_binary(
-    name = "release_prod",
-    srcs = ["release_prod.py"],
+    name = "promote",
+    srcs = ["promote.py"],
 )
 
 py_binary(
@@ -51,22 +41,4 @@ sh_binary(
     name = "smart_push",
     srcs = ["smart_push.sh"],
     data = ["determine_base_commit.py"],
-)
-
-sh_binary(
-    name = "deploy_dev",
-    srcs = ["deploy_dev.sh"],
-    data = ["sync_dev.py", "//tools:gen_manifests"],
-)
-
-sh_binary(
-    name = "deploy_test",
-    srcs = ["deploy_test.sh"],
-    data = [":promote_test", ":release_test"],
-)
-
-sh_binary(
-    name = "deploy_prod",
-    srcs = ["deploy_prod.sh"],
-    data = [":promote_prod", ":release_prod"],
 )

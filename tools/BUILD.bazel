@@ -3,38 +3,18 @@ exports_files([
 ])
 
 alias(
-    name = "promote_test",
-    actual = "//tools/scripts:promote_test",
+    name = "freeze",
+    actual = "//tools/scripts:freeze",
 )
 
 alias(
-    name = "release_test",
-    actual = "//tools/scripts:release_test",
+    name = "promote",
+    actual = "//tools/scripts:promote",
 )
 
 alias(
-    name = "promote_prod",
-    actual = "//tools/scripts:promote_prod",
-)
-
-alias(
-    name = "release_prod",
-    actual = "//tools/scripts:release_prod",
-)
-
-alias(
-    name = "deploy_dev",
-    actual = "//tools/scripts:deploy_dev",
-)
-
-alias(
-    name = "deploy_test",
-    actual = "//tools/scripts:deploy_test",
-)
-
-alias(
-    name = "deploy_prod",
-    actual = "//tools/scripts:deploy_prod",
+    name = "sync_dev",
+    actual = "//tools/scripts:sync_dev",
 )
 
 alias(
