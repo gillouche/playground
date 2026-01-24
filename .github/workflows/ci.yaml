@@ -16,20 +16,32 @@ env:
   IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
 
 jobs:
+  notify-start:
+    name: Notify Start
+    runs-on: playground-runner
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Send start notification
+        run: |
+          ./tools/scripts/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA"
+
   build-and-test:
     name: Build & Test
-
+    needs: notify-start
     if: >
-      github.event_name == 'push' ||
+      always() && 
+      (needs.notify-start.result == 'success' || needs.notify-start.result == 'skipped') &&
       (
-        github.event_name == 'pull_request' &&
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        github.event.pull_request.head.repo.fork == false
+        github.event_name == 'push' ||
+        (
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.pull_request.head.repo.fork == false
+        )
       )
-
     runs-on: playground-runner
     timeout-minutes: 30
-
     env:
       PLAYGROUND_ROOT: ${{ github.workspace }}
 
@@ -70,19 +82,14 @@ jobs:
 
   package-and-push:
     name: Package & Push (main only)
-
     needs: build-and-test
-
     if: >
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main'
-
     runs-on: playground-runner
     timeout-minutes: 20
-
     permissions:
       contents: read
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -108,3 +115,28 @@ jobs:
           
           echo "Run smart push..."
           nix develop ./nix#ci --command bazelisk run //tools:smart_push
+
+  notify-end:
+    name: Notify End
+    needs: [build-and-test, package-and-push]
+    if: always()
+    runs-on: playground-runner
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Send completion notification
+        run: |
+          if [ "${{ needs.build-and-test.result }}" == "failure" ] || [ "${{ needs.package-and-push.result }}" == "failure" ]; then
+            STATUS="FAILURE"
+            MSG="Build or Deployment failed."
+          elif [ "${{ needs.build-and-test.result }}" == "cancelled" ]; then
+             STATUS="FAILURE"
+             MSG="Build cancelled."
+          else
+            STATUS="SUCCESS"
+            MSG="Build and deployment successful."
+          fi
+          
+          # If skipped, it's irrelevant unless build failed
+          
+          ./tools/scripts/notify_discord.sh "$STATUS" "CI Pipeline" "$MSG"
