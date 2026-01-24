@@ -10,3 +10,15 @@ labels:
   - pairs:
       environment: dev
     includeSelectors: false
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: py-app.demo-concept.dev.k3s.gillouche.homelab
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: py-app.demo-concept.dev.k3s.gillouche.homelab
+    target:
+      kind: Ingress
+      name: py-app

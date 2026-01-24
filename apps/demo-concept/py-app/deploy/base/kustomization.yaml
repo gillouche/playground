@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
+  - ingress.yaml
 
 # Image configuration (can be overridden by overlays)
 images:

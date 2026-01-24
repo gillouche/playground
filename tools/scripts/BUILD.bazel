@@ -11,6 +11,7 @@ exports_files([
     "promote_prod.py",
     "sync_dev.py",
     "rollback.py",
+    "ytt_gen.sh",
 ])
 
 py_binary(

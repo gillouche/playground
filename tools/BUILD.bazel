@@ -26,3 +26,9 @@ alias(
     name = "rollback",
     actual = "//tools/scripts:rollback",
 )
+
+sh_binary(
+    name = "gen_manifests",
+    srcs = ["//tools/scripts:ytt_gen.sh"],
+    tags = ["local"],
+)

@@ -1,13 +1,14 @@
 { pkgs }:
-
+let
+  base = import ./base.nix { inherit pkgs; };
+in
 pkgs.mkShell {
-  packages = with pkgs; [
+  packages = base.packages ++ (with pkgs; [
     python313      # Latest Python 3.13
     uv             # UV package manager
-    git
-  ];
+  ]);
 
-  shellHook = ''
+  shellHook = base.shellHook + ''
     echo "Python version -> $(python --version)"
     echo "uv version -> $(uv --version)"
     echo ""

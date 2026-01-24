@@ -1,13 +1,14 @@
 { pkgs }:
-
+let
+  base = import ./base.nix { inherit pkgs; };
+in
 pkgs.mkShell {
-  packages = with pkgs; [
+  packages = base.packages ++ (with pkgs; [
     nodejs_22      # Node LTS
     pnpm
-    git
-  ];
+  ]);
 
-  shellHook = ''
+  shellHook = base.shellHook + ''
     echo "Node $(node --version)"
     echo "pnpm $(pnpm --version)"
   '';

@@ -5,3 +5,9 @@ resources:
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-concept/py-app
     newTag: git-initial
+
+patches:
+  - path: py-app-ingress-patches.yaml
+    target:
+      kind: Ingress
+      name: py-app

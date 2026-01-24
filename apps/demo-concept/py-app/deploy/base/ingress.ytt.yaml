@@ -1,0 +1,25 @@
+#@ load("@ytt:data", "data")
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: #@ data.values.app
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - #@ "{}.{}.{}.k3s.gillouche.homelab".format(data.values.app, data.values.concept, data.values.env)
+  rules:
+  - host: #@ "{}.{}.{}.k3s.gillouche.homelab".format(data.values.app, data.values.concept, data.values.env)
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: #@ data.values.app
+            port:
+              number: 80
