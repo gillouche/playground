@@ -93,26 +93,23 @@ jobs:
           username: ${{ env.NEXUS_USERNAME }}
           password: ${{ env.NEXUS_PASSWORD }}
 
-      - name: Retag Image
-        id: retag
+      - name: Build and Push Release Image
+        id: push
         env:
           CONCEPT: ${{ steps.info.outputs.concept }}
           APP: ${{ steps.info.outputs.app }}
           VERSION: ${{ steps.info.outputs.version }}
-          SHORT_SHA: ${{ steps.info.outputs.short_sha }}
         run: |
-          IMAGE_BASE="nexus.gillouche.homelab/docker-hosted/$CONCEPT/$APP"
-          SRC_TAG="git-$SHORT_SHA"
-          DEST_TAG="$VERSION"
+          export DOCKER_CONFIG="$HOME/.docker"
+          TARGET="//apps/$CONCEPT/$APP:_push_image_oci"
+          
+          echo "Building and pushing $TARGET with tag $VERSION..."
+          
+          # Force build and push using Bazel+Nix environment
+          nix develop ./nix#ci --command bazelisk run "$TARGET" -- --tag "$VERSION"
 
-          echo "Retagging $IMAGE_BASE:$SRC_TAG to $IMAGE_BASE:$DEST_TAG"
-
-          docker pull "$IMAGE_BASE:$SRC_TAG"
-          docker tag "$IMAGE_BASE:$SRC_TAG" "$IMAGE_BASE:$DEST_TAG"
-          docker push "$IMAGE_BASE:$DEST_TAG"
-
-          echo "Successfully pushed $IMAGE_BASE:$DEST_TAG"
-          echo "image_tag=$DEST_TAG" >> $GITHUB_OUTPUT
+          echo "Successfully pushed $VERSION"
+          echo "image_tag=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Send success notification
         if: success()
@@ -121,7 +118,7 @@ jobs:
           RELEASE_APP: ${{ steps.info.outputs.app }}
           RELEASE_VERSION: ${{ steps.info.outputs.version }}
           RELEASE_TAG: ${{ steps.info.outputs.tag_ref }}
-          RELEASE_IMAGE_TAG: ${{ steps.retag.outputs.image_tag }}
+          RELEASE_IMAGE_TAG: ${{ steps.push.outputs.image_tag }}
         run: |
           ./tools/scripts/notify_discord.sh SUCCESS "Release" "Release completed for $RELEASE_CONCEPT/$RELEASE_APP"
 
