@@ -3,10 +3,18 @@
 set -e
 
 # Usage: ./smart_push.sh [base_commit]
-# Defaults to HEAD^ if no base_commit provided
-BASE_COMMIT=${1:-HEAD^}
+# Defaults to HEAD~1 if no base_commit provided
+BASE_COMMIT=${1:-HEAD~1}
 
-echo "Analyzing changes since $BASE_COMMIT..."
+# Validate commit exists
+if ! git rev-parse --verify "$BASE_COMMIT" >/dev/null 2>&1; then
+    echo "Error: Base commit $BASE_COMMIT not found."
+    exit 1
+fi
+
+echo "Analyzing changes between $BASE_COMMIT and HEAD..."
+git rev-parse --short "$BASE_COMMIT"
+git rev-parse --short HEAD
 
 # 1. Get list of changed files
 CHANGED_FILES=$(git diff --name-only "$BASE_COMMIT" | grep -vE "^(\.git|releases|deploy)" || true)
