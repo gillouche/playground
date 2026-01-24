@@ -1,4 +1,4 @@
-name: Playground - CI/CD pipelines
+name: Build & Test
 
 on:
   push:
