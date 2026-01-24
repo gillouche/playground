@@ -7,6 +7,7 @@ metadata:
 labels:
   - pairs:
       concept: demo-concept
+    includeSelectors: false
 
 commonAnnotations:
   owner: gillouche
