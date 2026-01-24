@@ -98,6 +98,10 @@ def main():
     # Update Kustomization for each app in the BOM
     for app, tag in images.items():
         update_kustomization(args.concept, app, tag)
+        
+    # Automatically trigger manifest generation
+    print("\nRefreshing ytt manifests...")
+    os.system("bazelisk run //tools:gen_manifests")
 
 if __name__ == "__main__":
     main()

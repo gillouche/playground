@@ -83,6 +83,10 @@ def main():
     
     update_bom(args.concept, args.app, args.version)
     update_kustomization(args.concept, args.app, args.version)
+    
+    # Automatically trigger manifest generation
+    print("\nRefreshing ytt manifests...")
+    os.system("bazelisk run //tools:gen_manifests")
 
 if __name__ == "__main__":
     main()

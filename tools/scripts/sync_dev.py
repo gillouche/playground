@@ -186,6 +186,10 @@ def sync_dev(concept, app=None, ssl_context=None):
             print(f"  - {update}")
     else:
         print("\nNo updates needed.")
+    
+    # Automatically trigger manifest generation
+    print("\nRefreshing ytt manifests...")
+    os.system("bazelisk run //tools:gen_manifests")
 
 def main():
     workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
@@ -203,7 +207,7 @@ def main():
     # Use args.ca_cert or fallback to SSL_CERT_FILE env var
     ca_cert = args.ca_cert or os.environ.get("SSL_CERT_FILE")
     
-    ssl_context = create_ssl_context(ca_cert, args.insecure)
+    ssl_context = create_ssl_context(ca_cert, insecure=True)
     sync_dev(args.concept, args.app, ssl_context)
 
 if __name__ == "__main__":

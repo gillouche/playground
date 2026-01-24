@@ -1,0 +1,10 @@
+#@ load("@ytt:data", "data")
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: #@ data.values.app + "-config"
+data:
+  ENVIRONMENT: #@ data.values.env
+  CONCEPT: #@ data.values.concept
