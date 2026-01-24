@@ -16,4 +16,6 @@ echo "Pushing image with tags: latest, $GIT_TAG"
 
 # Run the oci_push command with runtime flags
 # Note: rules_oci oci_push accepts flags passed after --
-"$PUSH_CMD" --tag latest --tag "$GIT_TAG"
+shift
+echo "Delegating to oci_push with args: $@"
+"$PUSH_CMD" --tag latest --tag "$GIT_TAG" "$@"

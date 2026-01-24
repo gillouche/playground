@@ -36,6 +36,8 @@ def query_nexus_latest(concept, app, ssl_context=None):
             print(f"Warning: Could not get digest for {app}:latest")
             return None
         
+        print(f"DEBUG: Latest digest from Nexus: {latest_digest}")
+
         tags_url = f"{NEXUS_URL}/v2/docker-hosted/{concept}/{app}/tags/list"
         with urllib.request.urlopen(tags_url, context=ssl_context) as tags_response:
              tags_data = json.loads(tags_response.read().decode('utf-8'))
@@ -53,12 +55,14 @@ def query_nexus_latest(concept, app, ssl_context=None):
             try:
                 with urllib.request.urlopen(tag_req, context=ssl_context) as tag_response:
                     tag_digest = tag_response.headers.get("docker-content-digest")
+                    # print(f"DEBUG: Checking {git_tag}: {tag_digest}")
                     if tag_digest == latest_digest:
+                        print(f"DEBUG: Match found: {git_tag}")
                         return git_tag
             except urllib.error.HTTPError:
                 continue
 
-        print(f"Warning: Could not correlate :latest digest to git tag for {app}, using first git tag")
+        print(f"Warning: Could not correlate :latest digest ({latest_digest}) to any git tag for {app}")
         return git_tags[0] if git_tags else None
         
     except urllib.error.URLError as e:
