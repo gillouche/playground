@@ -32,6 +32,9 @@ spec:
         image: py-app:latest
         command: ["/usr/local/bin/python"]
         args: ["/app/main.py"]
+        envFrom:
+        - configMapRef:
+            name: py-app-config
         ports:
         - containerPort: 8080
           name: http
