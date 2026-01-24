@@ -2,9 +2,11 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../py-app/deploy/base
-commonLabels:
-  app: py-app
-  concept: demo-concept
+metadata:
+  name: py-app
+labels:
+  - pairs:
+      concept: demo-concept
 
 commonAnnotations:
   owner: gillouche

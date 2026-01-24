@@ -5,5 +5,7 @@ resources:
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-concept/py-app
     newTag: git-5a30fb1
-commonLabels:
-  environment: dev
+
+labels:
+  - pairs:
+      environment: dev

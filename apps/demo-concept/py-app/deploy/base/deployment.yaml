@@ -2,18 +2,29 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: py-app
-  labels:
-    app: py-app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: py-app
+      app: py-app # Keep selector stable
   template:
     metadata:
       labels:
-        app: py-app
+        app: py-app # Keep template label to match selector
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-group
+                operator: In
+                values:
+                - rpi
       containers:
       - name: py-app
         image: py-app:latest
