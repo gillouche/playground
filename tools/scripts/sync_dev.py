@@ -186,9 +186,6 @@ def sync_dev(concept, app=None, ssl_context=None):
             print(f"  - {update}")
     else:
         print("\nNo updates needed.")
-    
-    else:
-        print("\nNo updates needed.")
 
 def main():
     workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")

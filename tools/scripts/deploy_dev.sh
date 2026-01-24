@@ -9,4 +9,7 @@ python3 tools/scripts/sync_dev.py "$@"
 
 # 2. Regenerate Manifests (Explicit step)
 echo "Regenerating manifests..."
+if [ -n "${BUILD_WORKSPACE_DIRECTORY:-}" ]; then
+  cd "$BUILD_WORKSPACE_DIRECTORY"
+fi
 bazelisk run //tools:gen_manifests

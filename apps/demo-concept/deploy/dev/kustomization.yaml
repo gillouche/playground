@@ -6,7 +6,7 @@ resources:
   - py-app-configmap.yaml
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-concept/py-app
-    newTag: git-426bba9
+    newTag: git-c2ff2b8
 
 labels:
   - pairs:
