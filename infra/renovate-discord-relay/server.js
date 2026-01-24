@@ -6,6 +6,8 @@ app.use(express.json());
 
 app.post("/renovate", async (req, res) => {
   try {
+    console.log("Renovate webhook received:", JSON.stringify(req.body, null, 2));
+
     const {
       repository,
       prTitle,

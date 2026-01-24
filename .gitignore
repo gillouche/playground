@@ -31,6 +31,8 @@ __pycache__/
 *.pyd
 **/.coverage
 
+# Node
+**/node_modules/
 # Logs
 *.log
 
