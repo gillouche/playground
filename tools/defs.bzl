@@ -1,5 +1,5 @@
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
-load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push", "oci_load")
 
 def application(
     name,
@@ -10,7 +10,7 @@ def application(
     test_cmd = None,
     build_cmd = None,
     image_repository = "",
-    base_image = "@distroless_python"):
+    base_image = "@python_base"):
     """
     Generic application builder for monorepo.
     
@@ -21,6 +21,7 @@ def application(
       - :image - Creates OCI image
       - :image_tarball - Creates Tarball for localdev
       - :push_image - Pushes to registry
+      - :load_image - Loads image into local docker (replaces old build_docker)
     
     Args:
         name: Application name
@@ -107,17 +108,21 @@ def application(
             cmd = "uv export --project $$(dirname $(location pyproject.toml)) --format requirements-txt --no-dev --frozen > $@",
         )
 
-        # 2. Install dependencies and package into a tarball
+        # 2. Install dependencies using uv for ARM64
         native.genrule(
             name = "install_deps",
             srcs = ["requirements.txt"],
             outs = ["deps.tar"],
             cmd = """
                 mkdir -p tmp/app/site-packages
-                uv pip install -r $(location requirements.txt) --target tmp/app/site-packages --system --python-version 3.13
-                # Ensure deterministic mtimes for caching
-                find tmp -exec touch -t 197001010000 {} +
-                tar -cf $@ -C tmp .
+                uv pip install -r $(location requirements.txt) \\
+                    --target tmp/app/site-packages \\
+                    --system \\
+                    --python-version 3.13 \\
+                    --python-platform aarch64-manylinux_2_28
+                # Set deterministic timestamps and ownership
+                find tmp/app -exec touch -t 197001010000 {} +
+                tar --owner=0 --group=0 --mode=0755 -cf $@ -C tmp/app .
             """,
         )
 
@@ -131,11 +136,12 @@ def application(
             name = "app_layer",
             srcs = srcs,
             package_dir = "/app",
+            mode = "0755",
         )
         
         oci_image(
             name = "image",
-            base = "@distroless_python_linux_arm64",
+            base = "@python_base",
             tars = [
                 ":deps_layer",
                 ":app_layer"
@@ -160,6 +166,14 @@ def application(
             args = ["$(location :_push_image_oci)"],
         )
         
+        # Load image into local docker daemon
+        # Replaces old 'build_docker' ensuring local parity with prod
+        oci_load(
+            name = "build_docker",
+            image = ":image",
+            repo_tags = ["{}:latest".format(name)],
+        )
+
         # Sandbox deployment target for minikube
         native.sh_binary(
             name = "deploy_sandbox",
@@ -168,19 +182,10 @@ def application(
             data = native.glob(["deploy/**/*"], allow_empty=True),
         )
         
-        # Combined sandbox target: build image + deploy to minikube
-        # We pass 'name' as the IMAGE_TARGET arg so it builds py-app:latest
+        # Combined sandbox target: load image + deploy to minikube
         native.sh_binary(
             name = "build_sandbox",
             srcs = ["//tools/scripts:sandbox_workflow.sh"],
             args = [name, "//" + package_dir + ":deploy_sandbox", package_dir],
-        )
-        
-        # Build Docker image from Dockerfile (for local dev)
-        native.sh_binary(
-            name = "build_docker",
-            srcs = ["//tools/scripts:build_docker.sh"],
-            args = [package_dir, name],
-            tags = ["manual"],
         )
 

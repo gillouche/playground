@@ -6,6 +6,8 @@ spec:
   replicas: 1  # Single replica for dev
   template:
     spec:
+      # Clear affinity for local dev
+      affinity: null
       containers:
       - name: py-app
         # Never pull - use local image loaded via minikube

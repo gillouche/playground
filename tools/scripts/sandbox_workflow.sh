@@ -7,27 +7,21 @@ PACKAGE="$3"
 
 cd "$BUILD_WORKSPACE_DIRECTORY"
 
-echo "Building OCI image..."
-# Build using Dockerfile (minikube doesn't support oci tarballs)
+echo "Building OCI image via Bazel (oci_load)..."
+# Use the same build process as prod (via oci_load / build_docker)
+# This ensures local sandbox matches production exactly
+bazelisk run "//$PACKAGE:build_docker"
 
-# Generate unique tag
-TAG="sandbox-$(date +%s)"
-FULL_IMAGE="$IMAGE_TARGET:$TAG"
-
-echo "Building Docker image locally ($FULL_IMAGE)..."
-# $PACKAGE/Dockerfile
-docker build --no-cache -t "$FULL_IMAGE" "$PACKAGE"
-
+# The image is now loaded as ${IMAGE_TARGET}:latest in local Docker
 echo "Loading image to minikube..."
-minikube image load "$FULL_IMAGE"
+minikube image load "${IMAGE_TARGET}:latest"
 
-# Update kustomization.yaml with new tag
-# $PACKAGE/deploy/sandbox/kustomization.yaml
+# Update kustomization.yaml to use 'latest' tag for sandbox
 KUSTOMIZATION="$PACKAGE/deploy/sandbox/kustomization.yaml"
 if [ -f "$KUSTOMIZATION" ]; then
-    echo "Updating kustomization tag to $TAG..."
+    echo "Ensuring kustomization uses 'latest' tag..."
     # Use perl for portability between Mac and Linux
-    perl -pi -e "s/newTag: .*/newTag: $TAG/" "$KUSTOMIZATION"
+    perl -pi -e 's/newTag: .*/newTag: latest/' "$KUSTOMIZATION"
 else
     echo "Warning: Kustomization file not found at $KUSTOMIZATION"
 fi

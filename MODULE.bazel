@@ -11,12 +11,9 @@ use_repo(python, "python_3_13")
 
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(
-    name = "distroless_python",
-    image = "cgr.dev/chainguard/python",
-    platforms = [
-        "linux/amd64",
-        "linux/arm64",
-    ],
-    digest = "sha256:6252e33e2d954d5d4188e68c8268545baa5e05d47f62d9bec295e5cc063bd07f",
+    name = "python_base",
+    image = "index.docker.io/library/python",
+    platforms = ["linux/arm64/v8"],
+    tag = "3.13-slim",
 )
-use_repo(oci, "distroless_python", "distroless_python_linux_amd64", "distroless_python_linux_arm64")
+use_repo(oci, "python_base")
