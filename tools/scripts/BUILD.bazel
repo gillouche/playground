@@ -50,6 +50,7 @@ py_binary(
 sh_binary(
     name = "smart_push",
     srcs = ["smart_push.sh"],
+    data = ["determine_base_commit.py"],
 )
 
 sh_binary(

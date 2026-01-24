@@ -18,9 +18,7 @@ pkgs.mkShell {
   ];
 
   packages = with pkgs; [
-    # Additional Tools specific to CI
     go-containerregistry  # Provides 'crane' for efficient image operations
-    # git and bazelisk are already in bazel.nix
   ];
 
   shellHook = ''
