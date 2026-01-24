@@ -213,13 +213,13 @@ def application(
         native.sh_binary(
             name = "deploy_test",
             srcs = ["//tools/scripts:run_command.sh"],
-            args = [package_dir, "bazelisk run //tools:deploy_test -- --concept " + concept + " --app " + name + " --version $(git rev-parse --short HEAD)"], 
+            args = [package_dir, "bazelisk run //tools:deploy_test -- --concept " + concept + " --app " + name + " --version $$(git rev-parse --short HEAD)"], 
         )
 
         # Prod Deployment
         native.sh_binary(
             name = "deploy_prod",
             srcs = ["//tools/scripts:run_command.sh"],
-            args = [package_dir, "bazelisk run //tools:deploy_prod -- --concept " + concept + " --app " + name + " --version $(git rev-parse --short HEAD)"], 
+            args = [package_dir, "bazelisk run //tools:deploy_prod -- --concept " + concept + " --app " + name + " --version $$(git rev-parse --short HEAD)"], 
         )
 
