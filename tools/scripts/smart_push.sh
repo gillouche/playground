@@ -4,7 +4,6 @@ set -e
 BASE_COMMIT=""
 DRY_RUN=false
 
-# Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         --dry-run)
@@ -31,9 +30,6 @@ if [ -n "$BASE_COMMIT" ]; then
     echo "Using provided base commit: $BASE_COMMIT"
 else
     echo "Determining last pushed commit from Nexus..."
-    # We must be in workspace for python script to find files heuristic or run properly?
-    # Actually python script uses BUILD_WORKSPACE_DIRECTORY env var too.
-    # But for 'bazelisk query', we MUST be in workspace.
     cd "$BUILD_WORKSPACE_DIRECTORY"
     BASE_COMMIT=$(python3 tools/scripts/determine_base_commit.py)
     echo "Detected base commit: $BASE_COMMIT"
@@ -52,6 +48,7 @@ CHANGED_FILES=$(git diff --name-only "$BASE_COMMIT" | grep -vE "^(\.git|releases
 
 if [ -z "$CHANGED_FILES" ]; then
     echo "No relevant code changes detected. Skipping image push."
+    echo "SMART_PUSH_RESULT: image_pushed=false"
     exit 0
 fi
 
@@ -66,6 +63,7 @@ TARGETS=$(bazelisk query --keep_going "$QUERY" 2>/dev/null || true)
 
 if [ -z "$TARGETS" ]; then
     echo "No OCI push targets affected by these changes."
+    echo "SMART_PUSH_RESULT: image_pushed=false"
     exit 0
 fi
 
@@ -79,3 +77,5 @@ for target in $TARGETS; do
     echo "Pushing $target..."
     bazelisk run "$target" -- --tag latest --tag "git-$GIT_SHA"
 done
+
+echo "SMART_PUSH_RESULT: image_pushed=true image_tag=git-$GIT_SHA"

@@ -19,6 +19,22 @@ jobs:
         if: env.IS_FORK == 'true'
         run: |
           echo "Fork PR detected - refusing to run on self-hosted runner"
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -s -H "Content-Type: application/json" -d '{
+              "embeds": [{
+                "title": "Fork son hosted runner - Release Pipeline",
+                "description": "Fork PR detected attempting to run on self-hosted runner. Blocked.",
+                "color": 15158332,
+                "fields": [
+                  {"name": "Repository", "value": "'"$GITHUB_REPOSITORY"'", "inline": true},
+                  {"name": "Ref", "value": "'"$GITHUB_REF"'", "inline": true},
+                  {"name": "Actor", "value": "'"$GITHUB_ACTOR"'", "inline": true}
+                ],
+                "footer": {"text": "GitHub Actions • Release"},
+                "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
+              }]
+            }' "$DISCORD_WEBHOOK_URL"
+          fi
           exit 1
 
       - name: Checkout
@@ -33,27 +49,37 @@ jobs:
           # Ref is refs/tags/concept/app/vX.Y.Z
           TAG_REF=${GITHUB_REF#refs/tags/}
           echo "Full Tag: $TAG_REF"
-          
+
           # Parse concept/app/version
           IFS='/' read -r CONCEPT APP VERSION <<< "$TAG_REF"
-          
+
           # Validation
           if [[ -z "$CONCEPT" || -z "$APP" || -z "$VERSION" ]]; then
             echo "Error: Tag format must be concept/app/version"
             exit 1
           fi
-          
+
           echo "Concept: $CONCEPT"
           echo "App: $APP"
           echo "Version: $VERSION"
-          
+
           echo "concept=$CONCEPT" >> $GITHUB_OUTPUT
           echo "app=$APP" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          
+          echo "tag_ref=$TAG_REF" >> $GITHUB_OUTPUT
+
           # Short SHA of the commit tagged
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Send start notification
+        env:
+          RELEASE_CONCEPT: ${{ steps.info.outputs.concept }}
+          RELEASE_APP: ${{ steps.info.outputs.app }}
+          RELEASE_VERSION: ${{ steps.info.outputs.version }}
+          RELEASE_TAG: ${{ steps.info.outputs.tag_ref }}
+        run: |
+          ./tools/scripts/notify_discord.sh START "Release" "Release started for $RELEASE_CONCEPT/$RELEASE_APP $RELEASE_VERSION"
 
       - name: Load Secrets from Runner Env
         run: |
@@ -68,6 +94,7 @@ jobs:
           password: ${{ env.NEXUS_PASSWORD }}
 
       - name: Retag Image
+        id: retag
         env:
           CONCEPT: ${{ steps.info.outputs.concept }}
           APP: ${{ steps.info.outputs.app }}
@@ -77,11 +104,33 @@ jobs:
           IMAGE_BASE="nexus.gillouche.homelab/docker-hosted/$CONCEPT/$APP"
           SRC_TAG="git-$SHORT_SHA"
           DEST_TAG="$VERSION"
-          
+
           echo "Retagging $IMAGE_BASE:$SRC_TAG to $IMAGE_BASE:$DEST_TAG"
-          
+
           docker pull "$IMAGE_BASE:$SRC_TAG"
           docker tag "$IMAGE_BASE:$SRC_TAG" "$IMAGE_BASE:$DEST_TAG"
           docker push "$IMAGE_BASE:$DEST_TAG"
-          
+
           echo "Successfully pushed $IMAGE_BASE:$DEST_TAG"
+          echo "image_tag=$DEST_TAG" >> $GITHUB_OUTPUT
+
+      - name: Send success notification
+        if: success()
+        env:
+          RELEASE_CONCEPT: ${{ steps.info.outputs.concept }}
+          RELEASE_APP: ${{ steps.info.outputs.app }}
+          RELEASE_VERSION: ${{ steps.info.outputs.version }}
+          RELEASE_TAG: ${{ steps.info.outputs.tag_ref }}
+          RELEASE_IMAGE_TAG: ${{ steps.retag.outputs.image_tag }}
+        run: |
+          ./tools/scripts/notify_discord.sh SUCCESS "Release" "Release completed for $RELEASE_CONCEPT/$RELEASE_APP"
+
+      - name: Send failure notification
+        if: failure()
+        env:
+          RELEASE_CONCEPT: ${{ steps.info.outputs.concept }}
+          RELEASE_APP: ${{ steps.info.outputs.app }}
+          RELEASE_VERSION: ${{ steps.info.outputs.version }}
+          RELEASE_TAG: ${{ steps.info.outputs.tag_ref }}
+        run: |
+          ./tools/scripts/notify_discord.sh FAILURE "Release" "Release failed for $RELEASE_CONCEPT/$RELEASE_APP"

@@ -2,6 +2,13 @@
 set -e
 
 # Usage: notify_discord.sh [START|SUCCESS|FAILURE] [JOB_NAME] [DETAILS]
+#
+# Environment variables for release notifications:
+#   RELEASE_CONCEPT - concept name
+#   RELEASE_APP - app name
+#   RELEASE_VERSION - version
+#   RELEASE_TAG - full release tag
+#   RELEASE_IMAGE_TAG - created image tag
 
 STATUS="${1:-INFO}"
 JOB_NAME="${2:-CI Job}"
@@ -27,6 +34,10 @@ case "$STATUS" in
         COLOR=15158332 # Red
         TITLE="Build Failed: $JOB_NAME"
         ;;
+    CRITICAL)
+        COLOR=15158332 # Red
+        TITLE="Fork on hosted runner: $JOB_NAME"
+        ;;
     *)
         COLOR=10181046 # Gray
         TITLE="Build Status: $JOB_NAME"
@@ -39,16 +50,53 @@ COMMIT_MSG=$(git log -1 --pretty=%B 2>/dev/null | head -n 1 || echo "N/A")
 REPO_URL="https://github.com/gillouche/playground"
 RUN_URL="${REPO_URL}/actions/runs/${GITHUB_RUN_ID:-0}"
 
-# Build JSON Payload
-PAYLOAD=$(cat <<EOF
-{
-  "embeds": [
-    {
-      "title": "$TITLE",
-      "description": "$DETAILS",
-      "url": "$RUN_URL",
-      "color": $COLOR,
-      "fields": [
+# Build fields array based on notification type
+if [ -n "$RELEASE_CONCEPT" ]; then
+    # Release notification - show release-specific fields
+    FIELDS=$(cat <<EOF
+        {
+          "name": "Concept",
+          "value": "$RELEASE_CONCEPT",
+          "inline": true
+        },
+        {
+          "name": "App",
+          "value": "$RELEASE_APP",
+          "inline": true
+        },
+        {
+          "name": "Version",
+          "value": "$RELEASE_VERSION",
+          "inline": true
+        },
+        {
+          "name": "Tag",
+          "value": "\`$RELEASE_TAG\`",
+          "inline": true
+        },
+        {
+          "name": "Commit",
+          "value": "[\`$COMMIT_SHA\`]($REPO_URL/commit/$COMMIT_SHA)",
+          "inline": true
+        }
+EOF
+)
+    # Add image tag field if provided
+    if [ -n "$RELEASE_IMAGE_TAG" ]; then
+        FIELDS="$FIELDS,"
+        FIELDS="$FIELDS"$(cat <<EOF
+
+        {
+          "name": "Image Tag",
+          "value": "\`$RELEASE_IMAGE_TAG\`",
+          "inline": true
+        }
+EOF
+)
+    fi
+else
+    # Standard CI notification
+    FIELDS=$(cat <<EOF
         {
           "name": "Commit",
           "value": "[\`$COMMIT_SHA\`]($REPO_URL/commit/$COMMIT_SHA)",
@@ -60,10 +108,25 @@ PAYLOAD=$(cat <<EOF
           "inline": true
         },
         {
-            "name": "Branch",
-            "value": "${GITHUB_REF_NAME:-unknown}",
-            "inline": true
+          "name": "Branch",
+          "value": "${GITHUB_REF_NAME:-unknown}",
+          "inline": true
         }
+EOF
+)
+fi
+
+# Build JSON Payload
+PAYLOAD=$(cat <<EOF
+{
+  "embeds": [
+    {
+      "title": "$TITLE",
+      "description": "$DETAILS",
+      "url": "$RUN_URL",
+      "color": $COLOR,
+      "fields": [
+$FIELDS
       ],
       "footer": {
         "text": "GitHub Actions • $JOB_NAME"

@@ -16,29 +16,14 @@ env:
   IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
 
 jobs:
-  notify-start:
-    name: Notify Start
-    runs-on: playground-runner
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Send start notification
-        run: |
-          ./tools/scripts/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA"
-
   build-and-test:
     name: Build & Test
-    needs: notify-start
     if: >
-      always() && 
-      (needs.notify-start.result == 'success' || needs.notify-start.result == 'skipped') &&
+      github.event_name == 'push' ||
       (
-        github.event_name == 'push' ||
-        (
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository &&
-          github.event.pull_request.head.repo.fork == false
-        )
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.pull_request.head.repo.fork == false
       )
     runs-on: playground-runner
     timeout-minutes: 30
@@ -50,6 +35,22 @@ jobs:
         if: env.IS_FORK == 'true'
         run: |
           echo "Fork PR detected - refusing to run on self-hosted runner"
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -s -H "Content-Type: application/json" -d '{
+              "embeds": [{
+                "title": "Fork son hosted runner - CI Pipeline",
+                "description": "Fork PR detected attempting to run on self-hosted runner. Blocked.",
+                "color": 15158332,
+                "fields": [
+                  {"name": "Repository", "value": "'"$GITHUB_REPOSITORY"'", "inline": true},
+                  {"name": "PR", "value": "'"$GITHUB_REF"'", "inline": true},
+                  {"name": "Actor", "value": "'"$GITHUB_ACTOR"'", "inline": true}
+                ],
+                "footer": {"text": "GitHub Actions • CI Pipeline"},
+                "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
+              }]
+            }' "$DISCORD_WEBHOOK_URL"
+          fi
           exit 1
 
       - name: Checkout repository
@@ -57,6 +58,10 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
+
+      - name: Send start notification
+        run: |
+          ./tools/scripts/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA"
 
       - name: Load SeaweedFS credentials
         run: |
@@ -90,6 +95,9 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+    outputs:
+      image_pushed: ${{ steps.push.outputs.image_pushed }}
+      image_tag: ${{ steps.push.outputs.image_tag }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -110,11 +118,23 @@ jobs:
           password: ${{ env.NEXUS_PASSWORD }}
 
       - name: Push container images
+        id: push
         run: |
           export DOCKER_CONFIG="$HOME/.docker"
-          
+
           echo "Run smart push..."
-          nix develop ./nix#ci --command bazelisk run //tools:smart_push
+          OUTPUT=$(nix develop ./nix#ci --command bazelisk run //tools:smart_push 2>&1 | tee /dev/stderr)
+
+          # Parse the SMART_PUSH_RESULT line
+          RESULT_LINE=$(echo "$OUTPUT" | grep "SMART_PUSH_RESULT:" || echo "")
+          if echo "$RESULT_LINE" | grep -q "image_pushed=true"; then
+            IMAGE_TAG=$(echo "$RESULT_LINE" | grep -oP 'image_tag=\K[^\s]+')
+            echo "image_pushed=true" >> "$GITHUB_OUTPUT"
+            echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "image_pushed=false" >> "$GITHUB_OUTPUT"
+            echo "image_tag=" >> "$GITHUB_OUTPUT"
+          fi
 
   notify-end:
     name: Notify End
@@ -125,18 +145,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Send completion notification
+        env:
+          IMAGE_PUSHED: ${{ needs.package-and-push.outputs.image_pushed }}
+          IMAGE_TAG: ${{ needs.package-and-push.outputs.image_tag }}
         run: |
           if [ "${{ needs.build-and-test.result }}" == "failure" ] || [ "${{ needs.package-and-push.result }}" == "failure" ]; then
             STATUS="FAILURE"
-            MSG="Build or Deployment failed."
+            MSG="Build or deployment failed."
           elif [ "${{ needs.build-and-test.result }}" == "cancelled" ]; then
-             STATUS="FAILURE"
-             MSG="Build cancelled."
+            STATUS="FAILURE"
+            MSG="Build cancelled."
+          elif [ "${{ needs.build-and-test.result }}" == "skipped" ]; then
+            # Build was skipped (e.g., fork PR) - don't notify
+            echo "Build was skipped, no notification needed"
+            exit 0
           else
             STATUS="SUCCESS"
-            MSG="Build and deployment successful."
+            if [ "$IMAGE_PUSHED" == "true" ] && [ -n "$IMAGE_TAG" ]; then
+              MSG="Build successful. Image pushed: $IMAGE_TAG"
+            else
+              MSG="Build successful. No code changes detected."
+            fi
           fi
-          
-          # If skipped, it's irrelevant unless build failed
-          
+
           ./tools/scripts/notify_discord.sh "$STATUS" "CI Pipeline" "$MSG"
