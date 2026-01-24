@@ -7,3 +7,8 @@ resources:
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-concept/py-app
     newTag: git-initial
+
+labels:
+  - pairs:
+      environment: prod
+    includeSelectors: false

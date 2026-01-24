@@ -7,3 +7,8 @@ resources:
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-concept/py-app
     newTag: v0.0.1
+
+labels:
+  - pairs:
+      environment: test
+    includeSelectors: false
