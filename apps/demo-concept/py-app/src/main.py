@@ -1,5 +1,7 @@
 import logging
 import sys
+import os
+import platform
 from lib import get_greeting
 
 import time
@@ -17,6 +19,13 @@ logger = logging.getLogger("demo-concept")
 
 def main():
     logger.info("Demo Concept Application Started")
+    
+    # Log Environment Information
+    logger.info(f"Architecture: {platform.machine()}")
+    logger.info(f"System: {platform.system()}")
+    logger.info(f"Python Version: {sys.version.split()[0]}")
+    logger.info(f"Environment: {os.environ}")
+
     message = get_greeting("User")
     logger.info(f"Greetings: {message}")
     
