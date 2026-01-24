@@ -107,7 +107,11 @@ def application(
         
         oci_image(
             name = "image",
-            base = base_image,
+            base = select({
+                "@platforms//cpu:arm64": "@distroless_python_linux_arm64_v8",
+                "@platforms//cpu:x86_64": "@distroless_python_linux_amd64",
+                "//conditions:default": base_image,
+            }),
             tars = [":app_layer"],
         )
         
