@@ -8,7 +8,7 @@ resources:
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-concept/py-app
     newName: py-app
-    newTag: sandbox-1769121259
+    newTag: sandbox-1769218223
 patches:
   - path: patch-pull-policy.yaml
   - path: patches.yaml
