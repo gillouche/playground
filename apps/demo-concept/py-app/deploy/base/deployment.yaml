@@ -23,7 +23,7 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: node-group
+              - key: topology.kubernetes.io/node-group
                 operator: In
                 values:
                 - rpi
