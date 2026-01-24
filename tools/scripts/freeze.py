@@ -22,7 +22,18 @@ def freeze_concept(concept, version):
     if os.path.exists(dest_path):
         print(f"Warning: Destination BOM {dest_path} already exists. Overwriting.")
 
-    shutil.copy2(source_path, dest_path)
+    # Read source content
+    with open(source_path, 'r') as f:
+        content = f.read()
+
+    # Prepend metadata
+    metadata = f"metadata:\n  concept: {concept}\n  version: {version}\n"
+    new_content = metadata + content
+
+    # Write versioned BOM
+    with open(dest_path, 'w') as f:
+        f.write(new_content)
+        
     print(f"Successfully frozen {concept} {version}")
     print(f"Created: {dest_path}")
 
