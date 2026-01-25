@@ -9,7 +9,7 @@ patches:
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
-    newTag: "1898969"
+    newTag: c12d973
 
 labels:
   - pairs:
