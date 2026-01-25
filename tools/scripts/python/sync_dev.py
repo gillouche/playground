@@ -41,8 +41,8 @@ def query_nexus_latest(app, component, ssl_context=None):
         with urllib.request.urlopen(tags_url, context=ssl_context) as tags_response:
              tags_data = json.loads(tags_response.read().decode('utf-8'))
         
-        # Filter tags, excluding 'latest'
-        all_tags = [t for t in tags_data.get("tags", []) if t != "latest"]
+        # Filter tags, excluding 'latest' and 'git-' prefixed tags
+        all_tags = [t for t in tags_data.get("tags", []) if t != "latest" and not t.startswith("git-")]
         
         if not all_tags:
             print(f"Warning: No tags found for {component}")
