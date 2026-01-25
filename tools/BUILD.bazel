@@ -4,34 +4,32 @@ exports_files([
 
 alias(
     name = "freeze",
-    actual = "//tools/scripts:freeze",
+    actual = "//tools/scripts/python:freeze",
 )
 
 alias(
     name = "promote",
-    actual = "//tools/scripts:promote",
+    actual = "//tools/scripts/python:promote",
 )
 
 alias(
     name = "sync_dev",
-    actual = "//tools/scripts:sync_dev",
+    actual = "//tools/scripts/python:sync_dev",
 )
 
 alias(
     name = "rollback",
-    actual = "//tools/scripts:rollback",
+    actual = "//tools/scripts/python:rollback",
 )
 
-sh_binary(
+alias(
     name = "gen_manifests",
-    srcs = ["//tools/scripts:ytt_gen.sh"],
-    tags = ["local"],
-    visibility = ["//visibility:public"],
+    actual = "//tools/scripts/shell:gen_manifests",
 )
 
 alias(
     name = "smart_push",
-    actual = "//tools/scripts:smart_push",
+    actual = "//tools/scripts/shell:smart_push",
 )
 
 

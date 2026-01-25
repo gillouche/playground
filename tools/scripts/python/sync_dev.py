@@ -41,27 +41,28 @@ def query_nexus_latest(app, component, ssl_context=None):
         with urllib.request.urlopen(tags_url, context=ssl_context) as tags_response:
              tags_data = json.loads(tags_response.read().decode('utf-8'))
         
-        # Filter for git- tags
-        git_tags = [t for t in tags_data.get("tags", []) if t.startswith("git-")]
+        # Filter tags, excluding 'latest'
+        all_tags = [t for t in tags_data.get("tags", []) if t != "latest"]
         
-        if not git_tags:
-            print(f"Warning: No git-* tags found for {component}")
+        if not all_tags:
+            print(f"Warning: No tags found for {component}")
             return None
         
-        for git_tag in git_tags:
-            tag_manifest_url = f"{NEXUS_URL}/v2/docker-hosted/{app}/{component}/manifests/{git_tag}"
+        # Check matching digest
+        for tag in all_tags:
+            tag_manifest_url = f"{NEXUS_URL}/v2/docker-hosted/{app}/{component}/manifests/{tag}"
             tag_req = urllib.request.Request(tag_manifest_url, headers=headers)
             
             try:
                 with urllib.request.urlopen(tag_req, context=ssl_context) as tag_response:
                     tag_digest = tag_response.headers.get("docker-content-digest")
                     if tag_digest == latest_digest:
-                        return git_tag
+                        return tag
             except urllib.error.HTTPError:
                 continue
 
-        print(f"Warning: Could not correlate :latest digest ({latest_digest}) to any git tag for {component}")
-        return git_tags[0] if git_tags else None
+        print(f"Warning: Could not correlate :latest digest ({latest_digest}) to any other tag for {component}")
+        return all_tags[0] if all_tags else None
         
     except urllib.error.URLError as e:
         print(f"Error querying Nexus for {app}/{component}: {e}")
@@ -77,7 +78,7 @@ def read_bom(app):
     with open(bom_path, 'r') as f:
         content = f.read()
         # Simple parsing: find component: \n    tag: value
-        pattern = re.compile(r"  (\S+):\s*\n\s+tag: (git-\S+)")
+        pattern = re.compile(r"  (\S+):\s*\n\s+tag: (\S+)")
         for match in pattern.finditer(content):
             components[match.group(1)] = match.group(2)
     
@@ -102,7 +103,7 @@ def update_bom(app, component, tag):
     
     if pattern.search(content):
         # Update existing
-        content = pattern.sub(rf"\1{tag}", content)
+        content = pattern.sub(rf"\g<1>{tag}", content)
     else:
         # Append new component
         if not content.endswith("\n"):
@@ -127,10 +128,10 @@ def update_kustomization(app, component, tag):
     
     # Update newTag for this component
     # Assumes image name: .../app/component
-    pattern = re.compile(rf"(-\s+name: .*{app}/{component}.*?\n\s+newTag: ).*")
+    pattern = re.compile(rf"(-\s+name: .*{app}/{component}(?::\S+)?[\s\n]+newTag: ).*")
     
     if pattern.search(content):
-        content = pattern.sub(rf"\1{tag}", content)
+        content = pattern.sub(rf"\g<1>{tag}", content)
         with open(kustomization_path, 'w') as f:
             f.write(content)
     else:
