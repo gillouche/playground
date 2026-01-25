@@ -15,3 +15,4 @@ labels:
   - pairs:
       environment: prod
     includeSelectors: false
+    includeTemplates: true

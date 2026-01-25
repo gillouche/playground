@@ -16,3 +16,4 @@ labels:
   - pairs:
       component: greeting-service
     includeSelectors: false
+    includeTemplates: true

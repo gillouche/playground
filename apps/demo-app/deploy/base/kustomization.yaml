@@ -11,6 +11,7 @@ labels:
   - pairs:
       app: demo-app
     includeSelectors: false
+    includeTemplates: true
 
 commonAnnotations:
   owner: gillouche
