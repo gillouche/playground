@@ -71,7 +71,7 @@ def application(
             
         native.sh_binary(
             name = "unit_test",
-            srcs = ["//tools/scripts:run_command.sh"],
+            srcs = ["//tools/scripts/shell:run_command.sh"],
             args = [package_dir, unit_cov_cmd],
             tags = ["test", "unit"],
         )
@@ -88,7 +88,7 @@ def application(
             
         native.sh_binary(
             name = "integration_test",
-            srcs = ["//tools/scripts:run_command.sh"],
+            srcs = ["//tools/scripts/shell:run_command.sh"],
             args = [package_dir, int_cov_cmd],
             tags = ["test", "integration"],
         )
@@ -96,7 +96,7 @@ def application(
     # Build target
     native.sh_binary(
         name = "build",
-        srcs = ["//tools/scripts:run_command.sh"],
+        srcs = ["//tools/scripts/shell:run_command.sh"],
         args = [package_dir, build_cmd],
     )
     
@@ -205,21 +205,21 @@ def application(
         # Dev Deployment
         native.sh_binary(
             name = "deploy_dev",
-            srcs = ["//tools/scripts:run_command.sh"],
+            srcs = ["//tools/scripts/shell:run_command.sh"],
             args = [package_dir, "bazelisk run //tools:sync_dev -- --app " + concept + " --component " + name], 
         )
 
         # Test Deployment
         native.sh_binary(
             name = "deploy_test",
-            srcs = ["//tools/scripts:run_command.sh"],
-            args = [package_dir, "bazelisk run //tools:deploy_test -- --concept " + concept + " --app " + name + " --version $$(git rev-parse --short HEAD)"], 
+            srcs = ["//tools/scripts/shell:run_command.sh"],
+            args = [package_dir, "echo 'Not implemented yet'"], 
         )
 
         # Prod Deployment
         native.sh_binary(
             name = "deploy_prod",
-            srcs = ["//tools/scripts:run_command.sh"],
-            args = [package_dir, "bazelisk run //tools:deploy_prod -- --concept " + concept + " --app " + name + " --version $$(git rev-parse --short HEAD)"], 
+            srcs = ["//tools/scripts/shell:run_command.sh"],
+            args = [package_dir, "echo 'Not implemented yet'"], 
         )
 
