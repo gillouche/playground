@@ -54,7 +54,7 @@ def application(
     # Lint target
     native.sh_binary(
         name = "lint",
-        srcs = ["//tools/scripts:run_command.sh"],
+        srcs = ["//tools/scripts/shell:run_command.sh"],
         args = [package_dir, lint_cmd],
         tags = ["lint"],
     )
@@ -175,7 +175,7 @@ def application(
         # Wrapper script to apply dynamic git tags at runtime
         native.sh_binary(
             name = "push_image",
-            srcs = ["//tools/scripts:smart_push.sh"],
+            srcs = ["//tools/scripts/shell:smart_push.sh"],
             data = [":_push_image_oci"],
             args = ["$(location :_push_image_oci)"],
         )
@@ -190,7 +190,7 @@ def application(
         # Sandbox deployment target for minikube
         native.sh_binary(
             name = "_deploy_minikube",
-            srcs = ["//tools/scripts:deploy_minikube.sh"],
+            srcs = ["//tools/scripts/shell:deploy_minikube.sh"],
             args = [package_dir, image_repository, name],
             data = native.glob(["deploy/**/*"], allow_empty=True),
         )
@@ -198,7 +198,7 @@ def application(
         # Combined sandbox target: load image + deploy to minikube
         native.sh_binary(
             name = "deploy_sandbox",
-            srcs = ["//tools/scripts:sandbox_workflow.sh"],
+            srcs = ["//tools/scripts/shell:sandbox_workflow.sh"],
             args = [name, "//" + package_dir + ":_deploy_minikube", package_dir],
         )
 

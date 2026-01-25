@@ -1,0 +1,26 @@
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "run_command.sh",
+    "deploy_minikube.sh",
+    "sandbox_workflow.sh",
+    "smart_push.sh",
+    "ytt_gen.sh",
+])
+
+# Deploy Dev target (was previously in tools/scripts/BUILD.bazel)
+# It called deploy_dev.sh (now removed).
+# But wait, I changed it to point to sync_dev. 
+# So there is no shell binary for deploy_dev anymore in my verified state.
+# I just need to export the scripts used by macros.
+
+sh_binary(
+    name = "smart_push",
+    srcs = ["smart_push.sh"],
+    data = ["//tools/scripts/python:determine_base_commit"],
+)
+
+sh_binary(
+    name = "gen_manifests",
+    srcs = ["ytt_gen.sh"],
+)

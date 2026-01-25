@@ -1,14 +1,11 @@
 package(default_visibility = ["//visibility:public"])
 
 exports_files([
-    "run_command.sh",
-    "deploy_minikube.sh",
-    "sandbox_workflow.sh",
-    "smart_push.sh",
     "sync_dev.py",
     "rollback.py",
-    "ytt_gen.sh",
-    "ytt_gen.sh",
+    "freeze.py",
+    "promote.py",
+    "determine_base_commit.py",
 ])
 
 py_binary(
@@ -31,8 +28,8 @@ py_binary(
     srcs = ["rollback.py"],
 )
 
-sh_binary(
-    name = "smart_push",
-    srcs = ["smart_push.sh"],
-    data = ["determine_base_commit.py"],
+# Used by smart_push
+py_binary(
+    name = "determine_base_commit",
+    srcs = ["determine_base_commit.py"],
 )

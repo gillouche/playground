@@ -30,6 +30,7 @@ __pycache__/
 *.pyo
 *.pyd
 **/.coverage
+**/.venv
 
 # Node
 **/node_modules/
