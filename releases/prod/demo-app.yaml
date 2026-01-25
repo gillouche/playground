@@ -1,13 +1,13 @@
 metadata:
   app: demo-app
-  version: v0.0.2
-  created_at: 2026-01-25T15:23:56.214785+00:00
+  version: v0.0.3
+  created_at: 2026-01-25T17:58:03.127006+00:00
 
 images:
   greeting-service:
-    tag: v0.0.2
-    commit: c12d973d06229f8372ab073e846096fda90d25c0
-    full_tag: demo-app/greeting-service/v0.0.2
+    tag: v0.0.3
+    commit: 3ae8cd157163b358a4fc37d8c7f36a083b62ceb5
+    full_tag: demo-app/greeting-service/v0.0.3
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:v0.0.2
-      digest: sha256:97ddcaa8de3d34b96137504cf39158decd8155b6ef087de46d84d6feba1e5cc3
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:v0.0.3
+      digest: sha256:04acb61fc6c733932fb41d418d6c36be48f3e6d452de4c1ede1fc47197bfb5d6
