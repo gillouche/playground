@@ -5,3 +5,4 @@ metadata:
 data:
   ENVIRONMENT: sandbox
   APP: demo-app
+  LOG_LEVEL: DEBUG

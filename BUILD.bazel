@@ -1,2 +1,2 @@
 # Root BUILD file
-exports_files(["defs.bzl"])
+exports_files(["defs.bzl", "ca-bundle.pem"])

@@ -8,8 +8,9 @@ from fastapi import FastAPI
 from lib import get_greeting, sanitize
 
 
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler(sys.stdout)]
 )
@@ -22,7 +23,8 @@ async def lifespan(application: FastAPI):
     logger.info(f"Architecture: {platform.machine()}")
     logger.info(f"System: {platform.system()}")
     logger.info(f"Python Version: {sys.version.split()[0]}")
-    logger.info(f"Environment: {os.environ}")
+    logger.info(f"Environment: {os.environ.get('ENVIRONMENT', 'unknown')}")
+    logger.debug(f"Hostname: {os.environ.get('HOSTNAME', 'unknown')}")
     
     greeting = get_greeting("User")
     logger.info(f"App says: {greeting}")

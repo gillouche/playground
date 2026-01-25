@@ -10,16 +10,25 @@ import ssl
 
 NEXUS_URL = "https://nexus.gillouche.homelab"
 
-def create_ssl_context(ca_cert=None, insecure=False):
-    if insecure:
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        return ctx
+def create_ssl_context(ca_cert=None):
+    if ca_cert:
+        print(f"DEBUG: Using CA cert: {ca_cert}")
+    if ca_cert:
+        print(f"DEBUG: Using CA cert: {ca_cert}")
+    else:
+        print("DEBUG: Using system default CA certs")
     
-    ctx = ssl.create_default_context()
+    # Use manual context creation to avoid strict flag 'X509_V_FLAG_X509_STRICT' 
+    # which rejects CAs with non-critical BasicConstraints
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.verify_mode = ssl.CERT_REQUIRED
+    ctx.check_hostname = True
+    
     if ca_cert:
         ctx.load_verify_locations(cafile=ca_cert)
+    else:
+        ctx.load_default_certs()
+        
     return ctx
 
 def query_nexus_latest(app, component, ssl_context=None):
@@ -205,14 +214,22 @@ def main():
     parser.add_argument("--app", required=True, help="App name (e.g., demo-app)")
     parser.add_argument("--component", help="Optional: Specific component to sync.")
     parser.add_argument("--ca-cert", help="Path to CA certificate bundle for Nexus")
-    parser.add_argument("--insecure", action="store_true", help="Skip SSL verification (NOT RECOMMENDED)")
-    
     args = parser.parse_args()
     
-    # Use args.ca_cert or fallback to SSL_CERT_FILE env var
-    ca_cert = args.ca_cert or os.environ.get("SSL_CERT_FILE")
+    # Prioritize ca-bundle.pem in workspace if running via Bazel
+    workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
+    ca_cert = args.ca_cert
     
-    ssl_context = create_ssl_context(ca_cert, insecure=True)
+    if not ca_cert and workspace_dir:
+        repo_ca = os.path.join(workspace_dir, "ca-bundle.pem")
+        if os.path.exists(repo_ca):
+            ca_cert = repo_ca
+
+    # Fallback to SSL_CERT_FILE
+    if not ca_cert:
+        ca_cert = os.environ.get("SSL_CERT_FILE")
+    
+    ssl_context = create_ssl_context(ca_cert)
     sync_dev(args.app, args.component, ssl_context)
 
 if __name__ == "__main__":

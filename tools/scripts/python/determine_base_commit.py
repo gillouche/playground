@@ -11,11 +11,23 @@ import re
 
 NEXUS_URL = "https://nexus.gillouche.homelab"
 
-def create_ssl_context(insecure=True):
-    ctx = ssl.create_default_context()
-    if insecure:
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
+def create_ssl_context(ca_cert=None):
+    if ca_cert:
+        print(f"DEBUG: Using CA cert: {ca_cert}")
+    else:
+        print("DEBUG: Using system default CA certs")
+        
+    # Use manual context creation to avoid strict flag 'X509_V_FLAG_X509_STRICT' 
+    # which rejects CAs with non-critical BasicConstraints
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.verify_mode = ssl.CERT_REQUIRED
+    ctx.check_hostname = True
+    
+    if ca_cert:
+        ctx.load_verify_locations(cafile=ca_cert)
+    else:
+        ctx.load_default_certs()
+        
     return ctx
 
 def get_git_tag_for_component(app, component, ssl_context):
@@ -78,7 +90,15 @@ def main():
         print("HEAD~1") # Fallback
         return
 
-    ssl_ctx = create_ssl_context()
+    workspace = os.environ.get("BUILD_WORKSPACE_DIRECTORY", ".")
+    repo_ca = os.path.join(workspace, "ca-bundle.pem")
+    ca_cert = None
+    if os.path.exists(repo_ca):
+        ca_cert = repo_ca
+    elif os.environ.get("SSL_CERT_FILE"):
+        ca_cert = os.environ.get("SSL_CERT_FILE")
+        
+    ssl_ctx = create_ssl_context(ca_cert)
     found_shas = set()
 
     # 2. Query Nexus in parallel

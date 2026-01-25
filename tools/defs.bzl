@@ -48,6 +48,15 @@ def application(
     # Coverage command defaults
     coverage_cmd = lang_defaults.get("coverage", "echo 'No coverage configured'")
     
+    if language == "python":
+        ssl_init = "if [ -f \"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\" ]; then export SSL_CERT_FILE=\"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\"; fi && "
+        if not lint_cmd.startswith("echo"):
+            lint_cmd = ssl_init + lint_cmd
+        if not build_cmd.startswith("echo"):
+            build_cmd = ssl_init + build_cmd
+        if not coverage_cmd.startswith("echo"):
+            coverage_cmd = ssl_init + coverage_cmd
+    
     # Create wrapper scripts for each command
     package_dir = native.package_name()
     
@@ -66,8 +75,9 @@ def application(
         unit_cov_cmd = coverage_cmd
         
         if language == "python":
-            unit_cmd = "uv sync --group dev && uv run pytest tests/unit"
-            unit_cov_cmd = "uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80 tests/unit"
+            ssl_init = "if [ -f \"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\" ]; then export SSL_CERT_FILE=\"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\"; fi && "
+            unit_cmd = ssl_init + "uv sync --group dev && uv run pytest tests/unit"
+            unit_cov_cmd = ssl_init + "uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80 tests/unit"
             
         native.sh_binary(
             name = "unit_test",
@@ -83,8 +93,9 @@ def application(
         int_cov_cmd = coverage_cmd
         
         if language == "python":
-            int_cmd = "uv sync --group dev && uv run pytest tests/integration"
-            int_cov_cmd = "uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80 tests/integration"
+            ssl_init = "if [ -f \"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\" ]; then export SSL_CERT_FILE=\"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\"; fi && "
+            int_cmd = ssl_init + "uv sync --group dev && uv run pytest tests/integration"
+            int_cov_cmd = ssl_init + "uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80 tests/integration"
             
         native.sh_binary(
             name = "integration_test",

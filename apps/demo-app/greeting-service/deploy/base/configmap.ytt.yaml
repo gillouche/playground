@@ -13,3 +13,8 @@ data:
   ENVIRONMENT: #@ data.values.env
   APP: #@ data.values.app
   COMPONENT: #@ data.values.component
+  #@ if data.values.env == "dev":
+  LOG_LEVEL: "DEBUG"
+  #@ else:
+  LOG_LEVEL: "INFO"
+  #@ end

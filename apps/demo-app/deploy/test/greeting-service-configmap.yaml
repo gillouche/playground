@@ -10,3 +10,4 @@ data:
   ENVIRONMENT: test
   APP: demo-app
   COMPONENT: greeting-service
+  LOG_LEVEL: INFO
