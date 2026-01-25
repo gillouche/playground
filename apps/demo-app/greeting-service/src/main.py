@@ -48,6 +48,23 @@ async def healthz():
 async def ready():
     return {"status": "ready"}
 
+@app.get("/info")
+async def info():
+    """
+    Return operational information about the pod's environment.
+    Useful for verification and observability.
+    """
+    return {
+        "hostname": os.environ.get("HOSTNAME", platform.node()),
+        "version": os.environ.get("APP_VERSION"),
+        "environment": os.environ.get("ENVIRONMENT"),
+        "app": os.environ.get("APP_NAME"),
+        "component": os.environ.get("COMPONENT"),
+        "node": os.environ.get("NODE_NAME"),
+        "pod_ip": os.environ.get("POD_IP"),
+        "log_level": os.environ.get("LOG_LEVEL", "INFO"),
+    }
+
 def main():
     uvicorn.run(app, host="0.0.0.0", port=8080)
 
