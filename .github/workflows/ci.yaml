@@ -58,7 +58,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Send start notification
@@ -71,21 +71,65 @@ jobs:
           echo "AWS_ACCESS_KEY_ID=$SEAWEEDFS_ACCESS_KEY" >> $GITHUB_ENV
           echo "AWS_SECRET_ACCESS_KEY=$SEAWEEDFS_SECRET_KEY" >> $GITHUB_ENV
 
-      - name: Build
+      - name: Determine affected targets
+        id: affected
         run: |
-          nix develop ./nix#ci --command bazelisk build --config=ci //...
+          echo "Determining affected targets..."
+          OUTPUT=$(nix develop ./nix#ci --command bazelisk run //tools:affected_targets 2>&1 | tee /dev/stderr)
+
+          # Parse the output and set as environment variables
+          FULL_REBUILD=$(echo "$OUTPUT" | grep "^AFFECTED_FULL_REBUILD=" | cut -d= -f2)
+          BUILD_TARGETS=$(echo "$OUTPUT" | grep "^AFFECTED_BUILD_TARGETS=" | cut -d= -f2-)
+          UNIT_TARGETS=$(echo "$OUTPUT" | grep "^AFFECTED_UNIT_TARGETS=" | cut -d= -f2-)
+          LINT_TARGETS=$(echo "$OUTPUT" | grep "^AFFECTED_LINT_TARGETS=" | cut -d= -f2-)
+          INTEGRATION_TARGETS=$(echo "$OUTPUT" | grep "^AFFECTED_INTEGRATION_TARGETS=" | cut -d= -f2-)
+
+          echo "full_rebuild=$FULL_REBUILD" >> "$GITHUB_OUTPUT"
+          echo "build_targets=$BUILD_TARGETS" >> "$GITHUB_OUTPUT"
+          echo "unit_targets=$UNIT_TARGETS" >> "$GITHUB_OUTPUT"
+          echo "lint_targets=$LINT_TARGETS" >> "$GITHUB_OUTPUT"
+          echo "integration_targets=$INTEGRATION_TARGETS" >> "$GITHUB_OUTPUT"
+
+          # Determine if we have any work to do
+          if [ -z "$BUILD_TARGETS" ] && [ -z "$UNIT_TARGETS" ] && [ -z "$LINT_TARGETS" ] && [ -z "$INTEGRATION_TARGETS" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No affected targets found - will skip build/test/lint steps"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build
+        if: steps.affected.outputs.has_changes == 'true' && steps.affected.outputs.build_targets != ''
+        run: |
+          echo "Building affected targets..."
+          nix develop ./nix#ci --command bazelisk build --config=ci ${{ steps.affected.outputs.build_targets }}
 
       - name: Unit Tests & Coverage
+        if: steps.affected.outputs.has_changes == 'true' && steps.affected.outputs.unit_targets != ''
         run: |
-          nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, unit, //...)' | while read target; do echo \">>> Running \$target\"; bazelisk run \"\$target\" || exit 1; done"
+          echo "Running affected unit tests..."
+          for target in ${{ steps.affected.outputs.unit_targets }}; do
+            echo ">>> Running $target"
+            nix develop ./nix#ci --command bazelisk run "$target" || exit 1
+          done
 
       - name: Lint
+        if: steps.affected.outputs.has_changes == 'true' && steps.affected.outputs.lint_targets != ''
         run: |
-          nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, lint, //...)' | while read target; do echo \">>> Running \$target\"; bazelisk run \"\$target\" || exit 1; done"
+          echo "Running affected lint targets..."
+          for target in ${{ steps.affected.outputs.lint_targets }}; do
+            echo ">>> Running $target"
+            nix develop ./nix#ci --command bazelisk run "$target" || exit 1
+          done
 
       - name: Integration Tests & Coverage
+        if: steps.affected.outputs.has_changes == 'true' && steps.affected.outputs.integration_targets != ''
         run: |
-          nix develop ./nix#ci --command bash -c "bazelisk query 'attr(tags, integration, //...)' | while read target; do echo \">>> Running \$target\"; bazelisk run \"\$target\" || exit 1; done"
+          echo "Running affected integration tests..."
+          for target in ${{ steps.affected.outputs.integration_targets }}; do
+            echo ">>> Running $target"
+            nix develop ./nix#ci --command bazelisk run "$target" || exit 1
+          done
 
   package-and-push:
     name: Package & Push (main only)

@@ -32,4 +32,9 @@ alias(
     actual = "//tools/scripts/shell:smart_push",
 )
 
+alias(
+    name = "affected_targets",
+    actual = "//tools/scripts/shell:affected_targets",
+)
+
 

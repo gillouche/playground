@@ -6,6 +6,7 @@ exports_files([
     "sandbox_workflow.sh",
     "smart_push.sh",
     "ytt_gen.sh",
+    "affected_targets.sh",
 ])
 
 # Deploy Dev target (was previously in tools/scripts/BUILD.bazel)
@@ -23,4 +24,10 @@ sh_binary(
 sh_binary(
     name = "gen_manifests",
     srcs = ["ytt_gen.sh"],
+)
+
+sh_binary(
+    name = "affected_targets",
+    srcs = ["affected_targets.sh"],
+    data = ["//tools/scripts/python:determine_base_commit"],
 )
