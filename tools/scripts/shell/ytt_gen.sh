@@ -36,8 +36,8 @@ generate_app_env() {
         # Run ytt with context
         $cmd -f "$template" \
             -f "$base_dir/values.yaml" \
-            -v app="$app" \
-            -v concept="$concept" \
+            -v component="$app" \
+            -v app="$concept" \
             -v env="$env" \
             > "$output_file"
     done

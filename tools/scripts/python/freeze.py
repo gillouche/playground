@@ -31,16 +31,19 @@ def get_latest_reachable_tag(app, component):
     try:
         # Get all matching tags sorted by creatordate
         # format: objectname refname
-        cmd = ["git", "tag", "--list", match_pattern, "--sort=-creatordate", "--format=%(objectname) %(refname:short)"]
+        cmd = ["git", "tag", "--list", match_pattern, "--sort=-creatordate", "--format=%(refname:short)"]
         output = subprocess.check_output(cmd, encoding="utf-8").strip()
         
         if not output:
             return None
         
         # Iterate tags to find the first one reachable from HEAD
-        # git merge-base --is-ancestor tag HEAD
-        for line in output.splitlines():
-            sha, tag_name = line.split(" ", 1)
+        for tag_name in output.splitlines():
+            # Resolve commit SHA (handles annotated tags)
+            try:
+                sha = subprocess.check_output(["git", "rev-list", "-n", "1", tag_name], encoding="utf-8").strip()
+            except subprocess.CalledProcessError:
+                continue
             
             # Check reachability
             rc = subprocess.call(["git", "merge-base", "--is-ancestor", sha, "HEAD"])
@@ -116,7 +119,7 @@ def freeze_app(app, version):
         "release": {
             "version": version,
             "app": app,
-            "created_at": datetime.datetime.utcnow().isoformat() + "Z"
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
         },
         "images": {}
     }
@@ -186,7 +189,7 @@ def freeze_app(app, version):
     
     output_content = "\n".join(output_lines) + "\n"
     
-    dest_path = f"releases/dev/{app}-{version}.yaml"
+    dest_path = os.path.join(workspace, f"releases/dev/{app}-{version}.yaml")
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
     
     with open(dest_path, 'w') as f:

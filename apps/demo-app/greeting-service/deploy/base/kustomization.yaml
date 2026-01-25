@@ -11,3 +11,8 @@ images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
     newName: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
     newTag: latest
+
+labels:
+  - pairs:
+      component: greeting-service
+    includeSelectors: false

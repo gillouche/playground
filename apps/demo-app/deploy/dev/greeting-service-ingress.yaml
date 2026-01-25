@@ -13,7 +13,7 @@ spec:
   - host: greeting-service.demo-app.dev.k3s.gillouche.homelab
     http:
       paths:
-      - path: /
+      - path: /greeting-service
         pathType: Prefix
         backend:
           service:

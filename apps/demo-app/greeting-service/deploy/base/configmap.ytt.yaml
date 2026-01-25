@@ -7,6 +7,9 @@ metadata:
   name: #@ data.values.component + "-config"
   labels:
     app: #@ data.values.app
+    component: #@ data.values.component
+    environment: #@ data.values.env
 data:
   ENVIRONMENT: #@ data.values.env
   APP: #@ data.values.app
+  COMPONENT: #@ data.values.component
