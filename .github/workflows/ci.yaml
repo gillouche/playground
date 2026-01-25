@@ -31,6 +31,8 @@ jobs:
     timeout-minutes: 30
     env:
       PLAYGROUND_ROOT: ${{ github.workspace }}
+    outputs:
+      has_changes: ${{ steps.affected.outputs.has_changes }}
 
     steps:
       - name: Abort immediately if fork detected
@@ -60,10 +62,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Send start notification
-        run: |
-          ./tools/scripts/shell/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA"
 
       - name: Load SeaweedFS credentials
         run: |
@@ -97,6 +95,11 @@ jobs:
           else
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Send start notification
+        if: steps.affected.outputs.has_changes == 'true'
+        run: |
+          ./tools/scripts/shell/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA"
 
       - name: Build
         if: steps.affected.outputs.has_changes == 'true' && steps.affected.outputs.build_targets != ''
@@ -209,8 +212,11 @@ jobs:
             STATUS="SUCCESS"
             if [ "$IMAGE_PUSHED" == "true" ] && [ -n "$IMAGE_TAG" ]; then
               MSG="Build successful. Image pushed: $IMAGE_TAG"
+            elif [ "${{ needs.build-and-test.outputs.has_changes }}" == "false" ]; then
+              echo "No changes detected, skipping end notification."
+              exit 0
             else
-              MSG="Build successful. No code changes detected."
+              MSG="Build successful. No code changes detected?"
             fi
           fi
 
