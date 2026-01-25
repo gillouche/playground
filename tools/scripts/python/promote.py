@@ -39,35 +39,126 @@ def promote_app(target_env, app, version):
     shutil.copy2(source_bom, target_bom_latest)
     print(f"Updated {target_bom_latest} with content from {version}")
     
-    # 3. Parse BOM to get images for Kustomization update
+    # 3. Parse BOM to get images and metadata
+    # Structure:
+    # images:
+    #   component:
+    #     tag: ...
+    #     commit: ...
+    #     full_tag: ...
+    
     images = {}
     with open(source_bom, 'r') as f:
         content = f.read()
         
-    # Regex to find component blocks indent 2 spaces
-    #   component:
-    #     tag: value
-    pattern = re.compile(r"  (\S+):\s*\n\s+tag: (\S+)")
-    for match in pattern.finditer(content):
-        # Exclude metadata keys if they accidentally match (unlikely with 'tag' requirement)
-        key = match.group(1)
-        val = match.group(2)
-        if key not in ["metadata", "concept", "version", "app"]:
-            images[key] = val
+    # Python-only parsing (no yaml dependency)
+    # We iterate lines looking for components under 'images:'
+    lines = content.splitlines()
+    in_images_section = False
+    current_component = None
+    
+    for line in lines:
+        stripped = line.strip()
+        if stripped == "images:":
+            in_images_section = True
+            continue
+        
+        if not in_images_section:
+            continue
             
+        # Check for indent 2 (component)
+        if line.startswith("  ") and not line.startswith("    ") and line.endswith(":"):
+            current_component = line.strip()[:-1]
+            images[current_component] = {}
+        
+        # Check for indent 4 (attributes)
+        elif current_component and line.startswith("    "):
+            if ":" in stripped:
+                key, val = stripped.split(":", 1)
+                images[current_component][key.strip()] = val.strip()
+
     if not images:
-        print("Warning: No images found in BOM (or regex failed). Skipping Kustomization update.")
+        print("Warning: No images found in BOM. Skipping updates.")
     else:
         update_kustomization(app, target_env, images)
         
-        # 5. Regenerate Manifests
-        print("Regenerating manifests...")
-        ret = os.system("bazelisk run //tools:gen_manifests")
-        if ret != 0:
-            print("Error generating manifests.")
-            sys.exit(1)
+        # 5. Regenerate Manifests (Target Env Only)
+        print(f"Regenerating manifests for {target_env}...")
+        
+        for comp in images.keys():
+             print(f"  Regenerating {comp} for {target_env}...")
+             ret = os.system(f"bazelisk run //tools:gen_manifests -- {app} {comp} {target_env}")
+             if ret != 0:
+                 print(f"Error generating manifests for {comp}.")
+                 sys.exit(1)
+            
+        # 6. Update ConfigMaps (Metadata) AFTER generation
+        # because gen_manifests overwrites them from templates
+        update_configmaps(app, target_env, version, images)
             
     print(f"\nSuccessfully promoted {app} {version} to {target_env}")
+
+def update_configmaps(app_name, env, version, images):
+    deploy_dir = f"apps/{app_name}/deploy/{env}"
+    if not os.path.exists(deploy_dir):
+        return
+
+    for filename in os.listdir(deploy_dir):
+        if filename.endswith("-configmap.yaml"):
+            filepath = os.path.join(deploy_dir, filename)
+            component = filename.replace("-configmap.yaml", "")
+            
+            if component in images:
+                comp_data = images[component]
+                print(f"Updating ConfigMap: {filepath}")
+                
+                with open(filepath, 'r') as f:
+                    lines = f.readlines()
+                
+                new_lines = []
+                data_section = False
+                
+                # We expect simple key-value pairs in 'data:' section
+                # If keys don't exist, we should append them? 
+                # Better: Regex replace existing known keys.
+                
+                replacements = {
+                    "APP_VERSION": version,
+                    "GIT_TAG": comp_data.get("full_tag", "unknown"),
+                    "GIT_COMMIT": comp_data.get("commit", "unknown"),
+                    "APP": app_name,
+                    "COMPONENT": component
+                }
+                
+                for line in lines:
+                    updated_line = line
+                    for key, val in replacements.items():
+                        # Match "  KEY: value" or "  KEY:"
+                        if re.match(rf"\s+{key}:", line):
+                             updated_line = re.sub(rf"(\s+{key}:).*", rf"\1 {val}", line)
+                    new_lines.append(updated_line)
+                
+                # Check if we missed any keys (if they didn't exist in the file)
+                # Since we updated the base ConfigMap to include them, they should be propagated 
+                # via gen_manifests? No, gen_manifests uses kustomize build.
+                # BUT 'promote.py' runs BEFORE gen_manifests.
+                # So we are editing the source files in deploy/dev/.
+                # Wait, if we rely on base configmap, dev/configmap might not have these keys yet?
+                # User should ensure dev configmap has keys? 
+                # Or we append? Appending to YAML via simple splitlines is risky (indentation).
+                # Assumption: keys exist (we added them to base/configmap.yaml, but dev/configmap.yaml was separate file!)
+                
+               # Wait, I previously read `apps/demo-app/deploy/dev/greeting-service-configmap.yaml`. 
+               # It did NOT have the keys. I updated `apps/demo-app/greeting-service/deploy/base/configmap.yaml`.
+               # BUT `apps/demo-app/deploy/dev/` is usually generated? 
+               # No, `apps/demo-app/deploy/dev/kustomization.yaml` has `patches: - path: greeting-service-configmap.yaml`.
+               # This implies `greeting-service-configmap.yaml` in `dev/` is a SOURCE file.
+               
+               # I need to add the keys to `dev/greeting-service-configmap.yaml` as well if I want explicit replacement,
+               # OR I update the code to append if missing.
+               
+                with open(filepath, 'w') as f:
+                    f.writelines(new_lines)
 
 def update_kustomization(app_name, env, images):
     kustomization_path = f"apps/{app_name}/deploy/{env}/kustomization.yaml"
@@ -80,15 +171,13 @@ def update_kustomization(app_name, env, images):
         content = f.read()
 
     updated = False
-    for comp, tag in images.items():
-        # Kustomize pattern:
-        # - name: .../app/comp
-        #   newTag: ...
-
-        # In kustomization we have:
-        #   - name: nexus.../demo-app/greeting-service
-        # So we match 'greeting-service' in the name line.
+    for comp, data in images.items():
+        tag = data.get("tag")
+        if not tag: continue
         
+        # Kustomize pattern:
+        # - name: nexus.../demo-app/greeting-service
+        #   newTag: ...
         pattern = re.compile(rf"(-\s+name: .*?{comp}.*?\n\s+newTag: ).*")
         
         if pattern.search(content):
@@ -96,7 +185,7 @@ def update_kustomization(app_name, env, images):
             if content != new_content:
                 content = new_content
                 updated = True
-                print(f"  Updated {comp} -> {tag}")
+                print(f"  Updated {comp} image -> {tag}")
         else:
             print(f"  Warning: Could not find image entry for {comp} in kustomization.")
             

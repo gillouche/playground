@@ -7,3 +7,8 @@ metadata:
 data:
   ENVIRONMENT: base
   APP: demo-app
+  APP_VERSION: unknown
+  COMPONENT: greeting-service
+  GIT_TAG: unknown
+  GIT_COMMIT: unknown
+  LOG_LEVEL: INFO

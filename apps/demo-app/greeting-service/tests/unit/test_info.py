@@ -9,7 +9,7 @@ def test_info_endpoint():
     os.environ["HOSTNAME"] = "test-host"
     os.environ["APP_VERSION"] = "v1.2.3"
     os.environ["ENVIRONMENT"] = "test"
-    os.environ["APP_NAME"] = "my-app"
+    os.environ["APP"] = "my-app"
     os.environ["COMPONENT"] = "my-component"
     os.environ["NODE_NAME"] = "worker-node-1"
     os.environ["POD_IP"] = "10.0.0.1"
@@ -32,7 +32,7 @@ def test_info_endpoint():
     del os.environ["HOSTNAME"]
     del os.environ["APP_VERSION"] 
     del os.environ["ENVIRONMENT"]
-    del os.environ["APP_NAME"]
+    del os.environ["APP"]
     del os.environ["COMPONENT"]
     del os.environ["NODE_NAME"]
     del os.environ["POD_IP"]

@@ -18,3 +18,6 @@ data:
   #@ else:
   LOG_LEVEL: "INFO"
   #@ end
+  APP_VERSION: "unknown"
+  GIT_TAG: "unknown"
+  GIT_COMMIT: "unknown"
