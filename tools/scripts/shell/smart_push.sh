@@ -31,7 +31,7 @@ if [ -n "$BASE_COMMIT" ]; then
 else
     echo "Determining last pushed commit from Nexus..."
     cd "$BUILD_WORKSPACE_DIRECTORY"
-    BASE_COMMIT=$(python3 tools/scripts/determine_base_commit.py)
+    BASE_COMMIT=$(python3 tools/scripts/python/determine_base_commit.py)
     echo "Detected base commit: $BASE_COMMIT"
 fi
 

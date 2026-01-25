@@ -176,7 +176,7 @@ def application(
         native.sh_binary(
             name = "push_image",
             srcs = ["//tools/scripts/shell:smart_push.sh"],
-            data = [":_push_image_oci"],
+            data = [":_push_image_oci", "//tools/scripts/python:determine_base_commit"],
             args = ["$(location :_push_image_oci)"],
         )
         
