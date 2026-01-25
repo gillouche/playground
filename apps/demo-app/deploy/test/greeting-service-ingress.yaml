@@ -4,6 +4,10 @@ metadata:
   name: greeting-service
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
+  labels:
+    app: demo-app
+    component: greeting-service
+    environment: test
 spec:
   ingressClassName: traefik
   tls:

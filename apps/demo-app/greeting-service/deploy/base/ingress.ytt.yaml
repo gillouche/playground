@@ -7,6 +7,10 @@ metadata:
   name: #@ data.values.component
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
+  labels:
+    app: #@ data.values.app
+    component: #@ data.values.component
+    environment: #@ data.values.env
 spec:
   ingressClassName: traefik
   tls:
