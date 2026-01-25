@@ -3,7 +3,10 @@ kind: Kustomization
 resources:
   - ../base
   - greeting-service-ingress.yaml
-  - greeting-service-configmap.yaml
+
+patches:
+  - path: greeting-service-configmap.yaml
+
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
     newTag: git-c2ff2b8
