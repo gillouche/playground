@@ -8,7 +8,6 @@ from fastapi import FastAPI
 from lib import get_greeting, sanitize
 
 
-
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',

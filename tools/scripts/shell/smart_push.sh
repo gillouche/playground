@@ -56,7 +56,7 @@ FILES_LIST=$(echo "$CHANGED_FILES" | tr '\n' ' ')
 
 echo "Changed files: $FILES_LIST"
 
-QUERY="kind(oci_push, rdeps(//..., set($FILES_LIST)))"
+QUERY="kind(oci_push, rdeps(//..., set($FILES_LIST)) union siblings(set($FILES_LIST)))"
 
 echo "Querying Bazel for affected targets..."
 TARGETS=$(bazelisk query --keep_going "$QUERY" 2>/dev/null || true)

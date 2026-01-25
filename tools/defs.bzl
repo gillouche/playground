@@ -65,6 +65,7 @@ def application(
         name = "lint",
         srcs = ["//tools/scripts/shell:run_command.sh"],
         args = [package_dir, lint_cmd],
+        data = srcs + unit_tests + integration_tests,
         tags = ["lint"],
     )
     
@@ -83,6 +84,7 @@ def application(
             name = "unit_test",
             srcs = ["//tools/scripts/shell:run_command.sh"],
             args = [package_dir, unit_cov_cmd],
+            data = unit_tests + srcs,
             tags = ["test", "unit"],
         )
         
@@ -101,6 +103,7 @@ def application(
             name = "integration_test",
             srcs = ["//tools/scripts/shell:run_command.sh"],
             args = [package_dir, int_cov_cmd],
+            data = integration_tests + srcs,
             tags = ["test", "integration"],
         )
     
