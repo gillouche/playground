@@ -94,10 +94,14 @@ jobs:
         if: always()
         env:
           STATUS: ${{ job.status }}
-          TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_CONCEPT: ${{ steps.parse.outputs.app }}
+          RELEASE_APP: ${{ steps.parse.outputs.component }}
+          RELEASE_VERSION: ${{ steps.parse.outputs.version }}
+          RELEASE_IMAGE_TAG: ${{ steps.sha.outputs.short_sha }} # Using SHA as image tag
         run: |
-          MSG="Released $TAG"
+          MSG="Released $RELEASE_TAG"
           if [ "$STATUS" != "success" ]; then
-             MSG="Release failed for $TAG"
+             MSG="Release failed for $RELEASE_TAG"
           fi
-          ./tools/scripts/notify_discord.sh "${STATUS^^}" "Release Component" "$MSG"
+          ./tools/scripts/shell/notify_discord.sh "${STATUS^^}" "Release Component" "$MSG"

@@ -3,6 +3,8 @@ name: Build & Test
 on:
   push:
     branches: [ main ]
+    tags-ignore:
+      - '**'
   pull_request:
     branches: [ main ]
 
@@ -61,7 +63,7 @@ jobs:
 
       - name: Send start notification
         run: |
-          ./tools/scripts/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA"
+          ./tools/scripts/shell/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA"
 
       - name: Load SeaweedFS credentials
         run: |
@@ -168,4 +170,4 @@ jobs:
             fi
           fi
 
-          ./tools/scripts/notify_discord.sh "$STATUS" "CI Pipeline" "$MSG"
+          ./tools/scripts/shell/notify_discord.sh "$STATUS" "CI Pipeline" "$MSG"

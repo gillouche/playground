@@ -21,18 +21,24 @@ if [ -z "$WEBHOOK_URL" ]; then
 fi
 
 # Define colors and titles based on status
+# Determine action verb based on context
+ACTION_VERB="Build"
+if [ -n "$RELEASE_TAG" ] || [ -n "$RELEASE_CONCEPT" ]; then
+    ACTION_VERB="Release"
+fi
+
 case "$STATUS" in
     START)
         COLOR=3447003 # Blue
-        TITLE="Build Started: $JOB_NAME"
+        TITLE="$ACTION_VERB Started: $JOB_NAME"
         ;;
     SUCCESS)
         COLOR=3066993 # Green
-        TITLE="Build Succeeded: $JOB_NAME"
+        TITLE="$ACTION_VERB Succeeded: $JOB_NAME"
         ;;
     FAILURE)
         COLOR=15158332 # Red
-        TITLE="Build Failed: $JOB_NAME"
+        TITLE="$ACTION_VERB Failed: $JOB_NAME"
         ;;
     CRITICAL)
         COLOR=15158332 # Red
@@ -40,7 +46,7 @@ case "$STATUS" in
         ;;
     *)
         COLOR=10181046 # Gray
-        TITLE="Build Status: $JOB_NAME"
+        TITLE="$ACTION_VERB Status: $JOB_NAME"
         ;;
 esac
 
