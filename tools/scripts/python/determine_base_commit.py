@@ -2,6 +2,7 @@
 
 import os
 import ssl
+import sys
 import json
 import urllib.request
 import urllib.error
@@ -13,9 +14,9 @@ NEXUS_URL = "https://nexus.gillouche.homelab"
 
 def create_ssl_context(ca_cert=None):
     if ca_cert:
-        print(f"DEBUG: Using CA cert: {ca_cert}")
+        print(f"DEBUG: Using CA cert: {ca_cert}", file=sys.stderr)
     else:
-        print("DEBUG: Using system default CA certs")
+        print("DEBUG: Using system default CA certs", file=sys.stderr)
         
     # Use manual context creation to avoid strict flag 'X509_V_FLAG_X509_STRICT' 
     # which rejects CAs with non-critical BasicConstraints

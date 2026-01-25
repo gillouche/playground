@@ -49,7 +49,7 @@ if [ -n "$BASE_COMMIT" ]; then
     echo "Using provided base commit: $BASE_COMMIT" >&2
 else
     echo "Determining last pushed commit from Nexus..." >&2
-    BASE_COMMIT=$(python3 tools/scripts/python/determine_base_commit.py 2>&2)
+    BASE_COMMIT=$(python3 tools/scripts/python/determine_base_commit.py)
     echo "Detected base commit: $BASE_COMMIT" >&2
 fi
 

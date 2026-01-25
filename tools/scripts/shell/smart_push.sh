@@ -44,7 +44,8 @@ echo "Analyzing changes between $BASE_COMMIT and HEAD..."
 git rev-parse --short "$BASE_COMMIT"
 git rev-parse --short HEAD
 
-CHANGED_FILES=$(git diff --name-only "$BASE_COMMIT" | grep -vE "^(\.git|releases|deploy)" || true)
+# Filter out non-code directories: .git, releases/, and any nested deploy/ folders
+CHANGED_FILES=$(git diff --name-only "$BASE_COMMIT" | grep -vE "^(\\.git|releases/|.*/deploy/)" || true)
 
 if [ -z "$CHANGED_FILES" ]; then
     echo "No relevant code changes detected. Skipping image push."
