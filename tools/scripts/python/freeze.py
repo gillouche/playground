@@ -189,7 +189,8 @@ def freeze_app(app, version):
     
     output_content = "\n".join(output_lines) + "\n"
     
-    dest_path = os.path.join(workspace, f"releases/dev/{app}-{version}.yaml")
+    # Updated path logic: releases/versions/<app>/<version>.yaml
+    dest_path = os.path.join(workspace, f"releases/versions/{app}/{version}.yaml")
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
     
     with open(dest_path, 'w') as f:

@@ -55,18 +55,18 @@ def rollback(env, app, version):
         print(f"Error: --env must be 'test' or 'prod', got '{env}'")
         sys.exit(1)
     
-    archived_bom = f"releases/{env}/{app}-{version}.yaml"
+    archived_bom = f"releases/versions/{app}/{version}.yaml"
     head_bom = f"releases/{env}/{app}.yaml"
     
     if not os.path.exists(archived_bom):
         print(f"Error: Archived BOM not found: {archived_bom}")
         print(f"Available versions:")
-        # List available versions
-        env_dir = f"releases/{env}"
-        if os.path.exists(env_dir):
-            for f in os.listdir(env_dir):
-                if f.startswith(f"{app}-") and f.endswith(".yaml"):
-                    print(f"  - {f.replace(app + '-', '').replace('.yaml', '')}")
+        # List available versions in central store
+        versions_dir = f"releases/versions/{app}"
+        if os.path.exists(versions_dir):
+            for f in os.listdir(versions_dir):
+                if f.endswith(".yaml"):
+                    print(f"  - {f.replace('.yaml', '')}")
         sys.exit(1)
     
     print(f"Rolling back {app} in {env} to {version}...")

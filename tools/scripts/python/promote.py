@@ -17,10 +17,8 @@ def promote_app(target_env, app, version):
     4. Regenerate manifests
     """
     
-    # Always source from Dev frozen BOM
-    source_env = "dev"
-        
-    source_bom = f"releases/{source_env}/{app}-{version}.yaml"
+    # Always source from Central Version Store
+    source_bom = f"releases/versions/{app}/{version}.yaml"
     target_bom_latest = f"releases/{target_env}/{app}.yaml"
     
     print(f"Promoting {app} {version} to {target_env} (Source: {source_bom})...")
