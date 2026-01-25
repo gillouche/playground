@@ -17,7 +17,7 @@ spec:
   - host: greeting-service.demo-app.test.k3s.gillouche.homelab
     http:
       paths:
-      - path: /greeting-service
+      - path: /
         pathType: Prefix
         backend:
           service:

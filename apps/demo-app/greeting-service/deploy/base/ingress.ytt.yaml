@@ -20,7 +20,7 @@ spec:
   - host: #@ "{}.{}.{}.k3s.gillouche.homelab".format(data.values.component, data.values.app, data.values.env)
     http:
       paths:
-      - path: #@ "/" + data.values.component
+      - path: #@ "/"
         pathType: Prefix
         backend:
           service:
