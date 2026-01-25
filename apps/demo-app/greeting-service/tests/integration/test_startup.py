@@ -17,7 +17,7 @@ def test_startup_logs(caplog):
         # Trigger startup via TestClient context manager
         # Capture logs MUST allow startup to happen inside
         with caplog.at_level(logging.DEBUG, logger="demo-app"):
-            with TestClient(app) as client:
+            with TestClient(app):
                 pass
                 
         # Assertions
@@ -31,7 +31,7 @@ def test_startup_logs(caplog):
 
 def test_startup_unknown_env(caplog):
      with caplog.at_level(logging.INFO, logger="demo-app"):
-         with TestClient(app) as client:
+         with TestClient(app):
              pass
              
      assert "Environment: unknown" in caplog.text
