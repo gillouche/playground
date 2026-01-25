@@ -1,0 +1,5 @@
+#@data/values
+---
+component: "greeting-service"
+app: "demo-app"
+env: "dev"

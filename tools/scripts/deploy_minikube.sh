@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 set -euo pipefail
 
 TARGET_PKG="$1"
@@ -10,18 +11,15 @@ echo "Switching to minikube context..."
 kubectl config use-context minikube
 
 echo "Loading image to minikube..."
-# Assuming image is built locally as simple_name:latest by a previous step or simply tagged
-# Note: The original script loaded {simple_name}:latest. 
-# We need to ensure the image exists. 
 minikube image load "${SIMPLE_NAME}:latest"
 
 echo "Deploying to minikube..."
 DEPLOY_DIR="$BUILD_WORKSPACE_DIRECTORY/$TARGET_PKG/deploy"
 
-# Extract parent directory name (e.g., demo-concept from apps/demo-concept/py-app)
-# TARGET_PKG is like apps/demo-concept/py-app
-PARENT_DIR=$(echo "$TARGET_PKG" | cut -d'/' -f2)
-NAMESPACE="playground-sandbox-$PARENT_DIR"
+# Extract app name (e.g., demo-app from apps/demo-app/greeting-service)
+# TARGET_PKG is like apps/demo-app/greeting-service
+APP_NAME=$(echo "$TARGET_PKG" | cut -d'/' -f2)
+NAMESPACE="playground-sandbox-$APP_NAME"
 
 # Ensure namespace exists
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -

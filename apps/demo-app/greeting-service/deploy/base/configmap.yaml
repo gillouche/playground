@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: greeting-service-config
+  labels:
+    component: greeting-service
+data:
+  ENVIRONMENT: base
+  APP: demo-app

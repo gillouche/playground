@@ -6,29 +6,29 @@ import shutil
 import re
 import sys
 
-def promote_concept(target_env, concept, version):
+def promote_app(target_env, app, version):
     """
-    Promote a concept version to the target environment.
+    Promote an app version to the target environment.
     
     Logic:
-    1. Always source from Dev frozen BOM: releases/dev/{concept}-{version}.yaml
-    2. Update target environment latest BOM: releases/{target}/{concept}.yaml
-    3. Update apps/{concept}/deploy/{target}/kustomization.yaml with tags from BOM
+    1. Always source from Dev frozen BOM: releases/dev/{app}-{version}.yaml
+    2. Update target environment latest BOM: releases/{target}/{app}.yaml
+    3. Update apps/{app}/deploy/{target}/kustomization.yaml with tags from BOM
     4. Regenerate manifests
     """
     
     # Always source from Dev frozen BOM
     source_env = "dev"
         
-    source_bom = f"releases/{source_env}/{concept}-{version}.yaml"
-    target_bom_latest = f"releases/{target_env}/{concept}.yaml"
+    source_bom = f"releases/{source_env}/{app}-{version}.yaml"
+    target_bom_latest = f"releases/{target_env}/{app}.yaml"
     
-    print(f"Promoting {concept} {version} to {target_env} (Source: {source_bom})...")
+    print(f"Promoting {app} {version} to {target_env} (Source: {source_bom})...")
     
     # 1. Validate Source
     if not os.path.exists(source_bom):
         print(f"Error: Source BOM {source_bom} does not exist.")
-        print(f"Tip: Run //tools:freeze --concept {concept} --version {version} first.")
+        print(f"Tip: Run //tools:freeze --app {app} --version {version} first.")
         sys.exit(1)
         
     # 2. Update Target Latest BOM
@@ -45,22 +45,22 @@ def promote_concept(target_env, concept, version):
     images = {}
     with open(source_bom, 'r') as f:
         content = f.read()
-        # Parse simple yaml manually or use library if available. 
-        # Structure:
-        # images:
-        #   app-name:
-        #     tag: git-sha
         
-        # Regex to find app blocks
-        # Assumes format: "  app-name:\n    tag: value"
-        pattern = re.compile(r"  (\S+):\s*\n\s+tag: (\S+)")
-        for match in pattern.finditer(content):
-            images[match.group(1)] = match.group(2)
+    # Regex to find component blocks indent 2 spaces
+    #   component:
+    #     tag: value
+    pattern = re.compile(r"  (\S+):\s*\n\s+tag: (\S+)")
+    for match in pattern.finditer(content):
+        # Exclude metadata keys if they accidentally match (unlikely with 'tag' requirement)
+        key = match.group(1)
+        val = match.group(2)
+        if key not in ["metadata", "concept", "version", "app"]:
+            images[key] = val
             
     if not images:
-        print("Warning: No images found in BOM. Skipping Kustomization update.")
+        print("Warning: No images found in BOM (or regex failed). Skipping Kustomization update.")
     else:
-        update_kustomization(concept, target_env, images)
+        update_kustomization(app, target_env, images)
         
         # 5. Regenerate Manifests
         print("Regenerating manifests...")
@@ -69,10 +69,10 @@ def promote_concept(target_env, concept, version):
             print("Error generating manifests.")
             sys.exit(1)
             
-    print(f"\nSuccessfully promoted {concept} {version} to {target_env}")
+    print(f"\nSuccessfully promoted {app} {version} to {target_env}")
 
-def update_kustomization(concept, env, images):
-    kustomization_path = f"apps/{concept}/deploy/{env}/kustomization.yaml"
+def update_kustomization(app_name, env, images):
+    kustomization_path = f"apps/{app_name}/deploy/{env}/kustomization.yaml"
     
     if not os.path.exists(kustomization_path):
         print(f"Error: {kustomization_path} not found.")
@@ -82,23 +82,25 @@ def update_kustomization(concept, env, images):
         content = f.read()
 
     updated = False
-    for app, tag in images.items():
+    for comp, tag in images.items():
         # Kustomize pattern:
-        # - name: .../app
+        # - name: .../app/comp
         #   newTag: ...
+
+        # In kustomization we have:
+        #   - name: nexus.../demo-app/greeting-service
+        # So we match 'greeting-service' in the name line.
         
-        # We look for '- name: .../app' followed by 'newTag: ...'
-        # Regex needs to be robust to finding the specific app block
-        pattern = re.compile(rf"(-\s+name: .*?{app}.*?\n\s+newTag: ).*")
+        pattern = re.compile(rf"(-\s+name: .*?{comp}.*?\n\s+newTag: ).*")
         
         if pattern.search(content):
             new_content = pattern.sub(rf"\g<1>{tag}", content)
             if content != new_content:
                 content = new_content
                 updated = True
-                print(f"  Updated {app} -> {tag}")
+                print(f"  Updated {comp} -> {tag}")
         else:
-            print(f"  Warning: Could not find image entry for {app} in kustomization.")
+            print(f"  Warning: Could not find image entry for {comp} in kustomization.")
             
     if updated:
         with open(kustomization_path, 'w') as f:
@@ -108,9 +110,9 @@ def update_kustomization(concept, env, images):
         print("No Kustomization changes needed.")
 
 def main():
-    parser = argparse.ArgumentParser(description="Promote concept version to next environment")
+    parser = argparse.ArgumentParser(description="Promote app version to next environment")
     parser.add_argument("--target", required=True, choices=["test", "prod"], help="Target environment")
-    parser.add_argument("--concept", required=True, help="Concept name")
+    parser.add_argument("--app", required=True, help="App name (e.g. demo-app)")
     parser.add_argument("--version", required=True, help="Version tag (e.g. v1.0.0)")
 
     args = parser.parse_args()
@@ -120,7 +122,7 @@ def main():
     if workspace_dir:
         os.chdir(workspace_dir)
 
-    promote_concept(args.target, args.concept, args.version)
+    promote_app(args.target, args.app, args.version)
 
 if __name__ == "__main__":
     main()

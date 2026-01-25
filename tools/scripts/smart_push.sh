@@ -71,11 +71,11 @@ echo "Affected targets to push:"
 echo "$TARGETS"
 
 GIT_SHA=$(git rev-parse --short HEAD)
-echo "Pushing images with tags: latest, git-$GIT_SHA"
+echo "Pushing images with tags: latest, $GIT_SHA"
 
 for target in $TARGETS; do
     echo "Pushing $target..."
-    bazelisk run "$target" -- --tag latest --tag "git-$GIT_SHA"
+    bazelisk run "$target" -- --tag latest --tag "$GIT_SHA"
 done
 
-echo "SMART_PUSH_RESULT: image_pushed=true image_tag=git-$GIT_SHA"
+echo "SMART_PUSH_RESULT: image_pushed=true image_tag=$GIT_SHA"

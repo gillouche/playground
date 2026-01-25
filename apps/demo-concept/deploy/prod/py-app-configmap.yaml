@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: py-app-config
-data:
-  ENVIRONMENT: prod
-  CONCEPT: demo-concept

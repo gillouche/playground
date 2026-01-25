@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: greeting-service
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - greeting-service.demo-app.prod.k3s.gillouche.homelab
+  rules:
+  - host: greeting-service.demo-app.prod.k3s.gillouche.homelab
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: greeting-service
+            port:
+              number: 80

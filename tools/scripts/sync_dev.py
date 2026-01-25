@@ -22,9 +22,10 @@ def create_ssl_context(ca_cert=None, insecure=False):
         ctx.load_verify_locations(cafile=ca_cert)
     return ctx
 
-def query_nexus_latest(concept, app, ssl_context=None):
+def query_nexus_latest(app, component, ssl_context=None):
     """Query Nexus for the latest tag and extract git-{sha}."""
-    manifest_url = f"{NEXUS_URL}/v2/docker-hosted/{concept}/{app}/manifests/latest"
+    # Nexus path: docker-hosted/{app}/{component}
+    manifest_url = f"{NEXUS_URL}/v2/docker-hosted/{app}/{component}/manifests/latest"
     headers = {"Accept": "application/vnd.docker.distribution.manifest.v2+json"}
     
     try:
@@ -33,21 +34,22 @@ def query_nexus_latest(concept, app, ssl_context=None):
             latest_digest = response.headers.get("docker-content-digest")
             
         if not latest_digest:
-            print(f"Warning: Could not get digest for {app}:latest")
+            print(f"Warning: Could not get digest for {app}/{component}:latest")
             return None
         
-        tags_url = f"{NEXUS_URL}/v2/docker-hosted/{concept}/{app}/tags/list"
+        tags_url = f"{NEXUS_URL}/v2/docker-hosted/{app}/{component}/tags/list"
         with urllib.request.urlopen(tags_url, context=ssl_context) as tags_response:
              tags_data = json.loads(tags_response.read().decode('utf-8'))
         
+        # Filter for git- tags
         git_tags = [t for t in tags_data.get("tags", []) if t.startswith("git-")]
         
         if not git_tags:
-            print(f"Warning: No git-* tags found for {app}")
+            print(f"Warning: No git-* tags found for {component}")
             return None
         
         for git_tag in git_tags:
-            tag_manifest_url = f"{NEXUS_URL}/v2/docker-hosted/{concept}/{app}/manifests/{git_tag}"
+            tag_manifest_url = f"{NEXUS_URL}/v2/docker-hosted/{app}/{component}/manifests/{git_tag}"
             tag_req = urllib.request.Request(tag_manifest_url, headers=headers)
             
             try:
@@ -58,36 +60,32 @@ def query_nexus_latest(concept, app, ssl_context=None):
             except urllib.error.HTTPError:
                 continue
 
-        print(f"Warning: Could not correlate :latest digest ({latest_digest}) to any git tag for {app}")
+        print(f"Warning: Could not correlate :latest digest ({latest_digest}) to any git tag for {component}")
         return git_tags[0] if git_tags else None
         
     except urllib.error.URLError as e:
-        print(f"Error querying Nexus for {app}: {e}")
+        print(f"Error querying Nexus for {app}/{component}: {e}")
         return None
 
-def read_bom(concept):
+def read_bom(app):
     """Read the current Dev BOM."""
-    bom_path = f"releases/dev/{concept}.yaml"
+    bom_path = f"releases/dev/{app}.yaml"
     if not os.path.exists(bom_path):
         return {}
     
-    apps = {}
+    components = {}
     with open(bom_path, 'r') as f:
         content = f.read()
-        # Simple parsing: find app: \n    tag: value
+        # Simple parsing: find component: \n    tag: value
         pattern = re.compile(r"  (\S+):\s*\n\s+tag: (git-\S+)")
         for match in pattern.finditer(content):
-            apps[match.group(1)] = match.group(2)
+            components[match.group(1)] = match.group(2)
     
-    return apps
+    return components
 
-def update_bom(concept, app, tag):
+def update_bom(app, component, tag):
     """Update the Dev BOM with new tag."""
-    bom_path = f"releases/dev/{concept}.yaml"
-    
-def update_bom(concept, app, tag):
-    """Update the Dev BOM with new tag."""
-    bom_path = f"releases/dev/{concept}.yaml"
+    bom_path = f"releases/dev/{app}.yaml"
     
     if os.path.exists(bom_path):
         with open(bom_path, 'r') as f:
@@ -99,26 +97,26 @@ def update_bom(concept, app, tag):
     if "images:" not in content:
         content = "images:\n" + content.lstrip()
     
-    # Update existing app or add new
-    pattern = re.compile(rf"(\s+{app}:.*\n\s+tag: ).*")
+    # Update existing component or add new
+    pattern = re.compile(rf"(\s+{component}:.*\n\s+tag: ).*")
     
     if pattern.search(content):
         # Update existing
         content = pattern.sub(rf"\1{tag}", content)
     else:
-        # Append new app
-        # Ensure we append to valid yaml structure
+        # Append new component
         if not content.endswith("\n"):
             content += "\n"
-        content += f"  {app}:\n"
+        content += f"  {component}:\n"
         content += f"    tag: {tag}\n"
     
     with open(bom_path, 'w') as f:
         f.write(content)
 
-def update_kustomization(concept, app, tag):
+def update_kustomization(app, component, tag):
     """Update the kustomization.yaml with new tag."""
-    kustomization_path = f"apps/{concept}/deploy/dev/kustomization.yaml"
+    # New structure: apps/{app}/deploy/dev/kustomization.yaml
+    kustomization_path = f"apps/{app}/deploy/dev/kustomization.yaml"
     
     if not os.path.exists(kustomization_path):
         print(f"Warning: {kustomization_path} not found. Skipping kustomization update.")
@@ -127,63 +125,73 @@ def update_kustomization(concept, app, tag):
     with open(kustomization_path, 'r') as f:
         content = f.read()
     
-    # Update newTag for this app
-    # Pattern assumes standard kustomization format
-    pattern = re.compile(rf"(-\s+name: .*{app}.*?\n\s+newTag: ).*")
+    # Update newTag for this component
+    # Assumes image name: .../app/component
+    pattern = re.compile(rf"(-\s+name: .*{app}/{component}.*?\n\s+newTag: ).*")
     
     if pattern.search(content):
         content = pattern.sub(rf"\1{tag}", content)
         with open(kustomization_path, 'w') as f:
             f.write(content)
     else:
-        print(f"Warning: Could not find image entry for {app} in {kustomization_path}")
+        print(f"Warning: Could not find image entry for {app}/{component} in {kustomization_path}")
 
-def sync_dev(concept, app=None, ssl_context=None):
+def sync_dev(app, component=None, ssl_context=None):
     """Sync Dev environment with Nexus latest."""
-    current_bom = read_bom(concept)
-    apps_to_sync = [app] if app else list(current_bom.keys())
+    current_bom = read_bom(app)
     
-    if not apps_to_sync:
-        concept_dir = f"apps/{concept}"
-        if os.path.exists(concept_dir):
-            apps_to_sync = []
-            for d in os.listdir(concept_dir):
-                full_path = os.path.join(concept_dir, d)
-                if os.path.isdir(full_path):
-                    # Heuristic: Apps usually have a src directory or BUILD.bazel
+    # If specific component requested, sync it.
+    # Otherwise scan apps/{app} for components
+    components_to_sync = [component] if component else list(current_bom.keys())
+    
+    if not components_to_sync and not component:
+        app_dir = f"apps/{app}"
+        if os.path.exists(app_dir):
+            components_to_sync = []
+            for d in os.listdir(app_dir):
+                full_path = os.path.join(app_dir, d)
+                if os.path.isdir(full_path) and d != "deploy":
+                    # Heuristic: Components usually have a src directory or BUILD.bazel
                     if os.path.exists(os.path.join(full_path, "src")) or \
                        os.path.exists(os.path.join(full_path, "BUILD.bazel")):
-                        apps_to_sync.append(d)
+                        components_to_sync.append(d)
     
-    if not apps_to_sync:
-        print(f"No apps found for concept '{concept}'. Please specify --app or check BOM.")
+    if not components_to_sync:
+        print(f"No components found for app '{app}'. Please specify --component or check BOM.")
         return
     
-    updated_apps = []
+    updated_components = []
     
-    for app_name in apps_to_sync:
-        print(f"Syncing {app_name}...")
-        latest_tag = query_nexus_latest(concept, app_name, ssl_context)
+    for comp_name in components_to_sync:
+        print(f"Syncing {comp_name}...")
+        # Nexus path: docker-hosted/{app}/{component}
+        latest_tag = query_nexus_latest(app, comp_name, ssl_context)
         
         if not latest_tag:
             print(f"  Skipped (no tag found)")
             continue
         
-        current_tag = current_bom.get(app_name)
+        current_tag = current_bom.get(comp_name)
         
         if current_tag == latest_tag:
             print(f"  Already up to date ({latest_tag})")
             continue
         
         print(f"  Updating {current_tag or 'N/A'} -> {latest_tag}")
-        update_bom(concept, app_name, latest_tag)
-        update_kustomization(concept, app_name, latest_tag)
-        updated_apps.append(f"{app_name}: {latest_tag}")
+        update_bom(app, comp_name, latest_tag)
+        update_kustomization(app, comp_name, latest_tag)
+        updated_components.append(f"{comp_name}: {latest_tag}")
     
-    if updated_apps:
-        print(f"\nUpdated {len(updated_apps)} app(s) in releases/dev/{concept}.yaml:")
-        for update in updated_apps:
+    if updated_components:
+        print(f"\nUpdated {len(updated_components)} component(s) in releases/dev/{app}.yaml:")
+        for update in updated_components:
             print(f"  - {update}")
+        
+        # Regenerate manifests
+        print("Regenerating manifests...")
+        ret = os.system("bazelisk run //tools:gen_manifests")
+        if ret != 0:
+            print("Error generating manifests.")
     else:
         print("\nNo updates needed.")
 
@@ -193,8 +201,8 @@ def main():
         os.chdir(workspace_dir)
 
     parser = argparse.ArgumentParser(description="Sync Dev BOM with Nexus latest tags")
-    parser.add_argument("--concept", required=True, help="Concept name (e.g., demo-concept)")
-    parser.add_argument("--app", help="Optional: Specific app to sync.")
+    parser.add_argument("--app", required=True, help="App name (e.g., demo-app)")
+    parser.add_argument("--component", help="Optional: Specific component to sync.")
     parser.add_argument("--ca-cert", help="Path to CA certificate bundle for Nexus")
     parser.add_argument("--insecure", action="store_true", help="Skip SSL verification (NOT RECOMMENDED)")
     
@@ -204,7 +212,7 @@ def main():
     ca_cert = args.ca_cert or os.environ.get("SSL_CERT_FILE")
     
     ssl_context = create_ssl_context(ca_cert, insecure=True)
-    sync_dev(args.concept, args.app, ssl_context)
+    sync_dev(args.app, args.component, ssl_context)
 
 if __name__ == "__main__":
     main()

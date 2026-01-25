@@ -1,0 +1,103 @@
+name: Component Release
+
+on:
+  push:
+    tags:
+      - '*/*/*' # Matches app/component/vX.Y.Z
+
+jobs:
+  release-component:
+    name: Release Component
+    runs-on: playground-runner
+    # Strict security check
+    if: github.repository == 'gillouche/playground'
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need history to resolve commits
+
+      - name: Parse Tag
+        id: parse
+        run: |
+          # Tag format: app/component/version
+          # e.g. demo-app/greeting-service/v0.0.1
+          TAG_REF=${{ github.ref_name }}
+          echo "Processing tag: $TAG_REF"
+          
+          APP=$(echo "$TAG_REF" | cut -d'/' -f1)
+          COMPONENT=$(echo "$TAG_REF" | cut -d'/' -f2)
+          VERSION=$(echo "$TAG_REF" | cut -d'/' -f3)
+          
+          echo "App: $APP"
+          echo "Component: $COMPONENT"
+          echo "Version: $VERSION"
+          
+          # Validation
+          if [ -z "$APP" ] || [ -z "$COMPONENT" ] || [ -z "$VERSION" ]; then
+            echo "Error: Invalid tag format. Expected app/component/version"
+            exit 1
+          fi
+          
+          echo "app=$APP" >> $GITHUB_OUTPUT
+          echo "component=$COMPONENT" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Resolve Commit SHA
+        id: sha
+        run: |
+          # Get the commit SHA pointed to by the tag
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "Commit Short SHA: $SHORT_SHA"
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Load Secrets
+        run: |
+          echo "NEXUS_USERNAME=$NEXUS_USERNAME" >> $GITHUB_ENV
+          echo "NEXUS_PASSWORD=$NEXUS_PASSWORD" >> $GITHUB_ENV
+
+      - name: Login to Nexus
+        uses: docker/login-action@v3
+        with:
+          registry: nexus.gillouche.homelab
+          username: ${{ env.NEXUS_USERNAME }}
+          password: ${{ env.NEXUS_PASSWORD }}
+
+      - name: Retag Image
+        run: |
+          APP=${{ steps.parse.outputs.app }}
+          COMP=${{ steps.parse.outputs.component }}
+          VER=${{ steps.parse.outputs.version }}
+          SHA=${{ steps.sha.outputs.short_sha }}
+          
+          IMAGE_BASE="nexus.gillouche.homelab/docker-hosted/$APP/$COMP"
+          SRC_IMAGE="$IMAGE_BASE:$SHA"
+          DST_IMAGE="$IMAGE_BASE:$VER"
+          
+          echo "Retagging $SRC_IMAGE -> $DST_IMAGE"
+          
+          # Pull the SHA image (should exist from CI)
+          if ! docker pull "$SRC_IMAGE"; then
+            echo "Error: Source image $SRC_IMAGE not found!"
+            echo "Did the CI pipeline finish building for commit $SHA?"
+            exit 1
+          fi
+          
+          # Tag and Push
+          docker tag "$SRC_IMAGE" "$DST_IMAGE"
+          docker push "$DST_IMAGE"
+          
+          echo "Successfully released $DST_IMAGE"
+
+      - name: Notify Discord
+        if: always()
+        env:
+          STATUS: ${{ job.status }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          MSG="Released $TAG"
+          if [ "$STATUS" != "success" ]; then
+             MSG="Release failed for $TAG"
+          fi
+          ./tools/scripts/notify_discord.sh "${STATUS^^}" "Release Component" "$MSG"
