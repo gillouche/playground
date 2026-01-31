@@ -2,4 +2,4 @@ images:
   greeting-service:
     tag: 1ed386b
   infra-check-service:
-    tag: 1ed386b
+    tag: 744d4c0
