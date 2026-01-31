@@ -31,7 +31,7 @@ spec:
       - name: greeting-service
         image: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
         command: ["/usr/local/bin/python"]
-        args: ["/app/src/main.py"]
+        args: ["/app/main.py"]
         envFrom:
         - configMapRef:
             name: greeting-service-config
