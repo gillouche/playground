@@ -10,6 +10,7 @@ resources:
 patches:
   - path: greeting-service-configmap.yaml
   - path: infra-check-service-configmap.yaml
+  - path: greeting-service-command-patch.yaml
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
