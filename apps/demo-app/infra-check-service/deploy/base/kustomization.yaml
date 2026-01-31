@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - configmap.yaml
+
+images:
+  - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
+    newName: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
+    newTag: latest
+
+labels:
+  - pairs:
+      component: infra-check-service
+    includeSelectors: false
+    includeTemplates: true

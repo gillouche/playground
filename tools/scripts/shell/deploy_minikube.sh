@@ -19,7 +19,7 @@ DEPLOY_DIR="$BUILD_WORKSPACE_DIRECTORY/$TARGET_PKG/deploy"
 # Extract app name (e.g., demo-app from apps/demo-app/greeting-service)
 # TARGET_PKG is like apps/demo-app/greeting-service
 APP_NAME=$(echo "$TARGET_PKG" | cut -d'/' -f2)
-NAMESPACE="playground-sandbox-$APP_NAME"
+NAMESPACE="playground-apps-sandbox-$APP_NAME"
 
 # Ensure namespace exists
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -

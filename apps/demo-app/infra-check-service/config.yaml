@@ -1,0 +1,22 @@
+postgres:
+  host: localhost
+  port: 5432
+  database: playground
+  user: playground
+  password: playground
+
+redis:
+  host: localhost
+  port: 6379
+  password: playground
+
+kafka:
+  bootstrap_servers: localhost:9092
+  topic: infra-check
+
+mongodb:
+  host: localhost
+  port: 27017
+  database: playground
+  user: playground
+  password: playground

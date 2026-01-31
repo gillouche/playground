@@ -7,6 +7,7 @@
     curl
     jq
     kubectl
+    kustomize
   ];
 
   shellHook = ''

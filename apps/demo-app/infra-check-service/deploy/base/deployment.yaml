@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: greeting-service
+  name: infra-check-service
   labels:
-    component: greeting-service
+    component: infra-check-service
 spec:
   replicas: 1
   selector:
     matchLabels:
-      component: greeting-service
+      component: infra-check-service
   template:
     metadata:
       labels:
-        component: greeting-service
+        component: infra-check-service
     spec:
       securityContext:
         runAsNonRoot: true
@@ -28,13 +28,17 @@ spec:
                 values:
                 - rpi
       containers:
-      - name: greeting-service
-        image: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
+      - name: infra-check-service
+        image: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
+        imagePullPolicy: IfNotPresent
         command: ["/usr/local/bin/python"]
         args: ["/app/src/main.py"]
         envFrom:
         - configMapRef:
-            name: greeting-service-config
+            name: infra-check-service-config
+        - secretRef:
+            name: infra-check-secrets
+            optional: true
         env:
         - name: NODE_NAME
           valueFrom:

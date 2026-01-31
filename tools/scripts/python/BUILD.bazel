@@ -6,6 +6,7 @@ exports_files([
     "freeze.py",
     "promote.py",
     "determine_base_commit.py",
+    "package_app.py",
 ])
 
 py_binary(

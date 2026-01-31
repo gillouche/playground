@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infra-check-service
+spec:
+  template:
+    spec:
+      affinity: null
+      containers:
+      - name: infra-check-service
+        imagePullPolicy: Never

@@ -1,4 +1,5 @@
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files", pkg_strip_prefix = "strip_prefix")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_push", "oci_load")
 
 def application(
@@ -51,7 +52,7 @@ def application(
     if language == "python":
         ssl_init = "if [ -f \"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\" ]; then export SSL_CERT_FILE=\"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\"; fi && "
         if not lint_cmd.startswith("echo"):
-            lint_cmd = ssl_init + lint_cmd
+            lint_cmd = ssl_init + "unset VIRTUAL_ENV && " + lint_cmd
         if not build_cmd.startswith("echo"):
             build_cmd = ssl_init + build_cmd
         if not coverage_cmd.startswith("echo"):
@@ -77,8 +78,8 @@ def application(
         
         if language == "python":
             ssl_init = "if [ -f \"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\" ]; then export SSL_CERT_FILE=\"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\"; fi && "
-            unit_cmd = ssl_init + "uv sync --group dev && uv run pytest tests/unit"
-            unit_cov_cmd = ssl_init + "uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80 tests/unit"
+            unit_cmd = ssl_init + "unset VIRTUAL_ENV && uv sync --group dev && uv run pytest tests/unit"
+            unit_cov_cmd = ssl_init + "unset VIRTUAL_ENV && uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80 tests/unit"
             
         native.sh_binary(
             name = "unit_test",
@@ -96,8 +97,8 @@ def application(
         
         if language == "python":
             ssl_init = "if [ -f \"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\" ]; then export SSL_CERT_FILE=\"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\"; fi && "
-            int_cmd = ssl_init + "uv sync --group dev && uv run pytest tests/integration"
-            int_cov_cmd = ssl_init + "uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80 tests/integration"
+            int_cmd = ssl_init + "unset VIRTUAL_ENV && uv sync --group dev && uv run pytest tests/integration"
+            int_cov_cmd = ssl_init + "unset VIRTUAL_ENV && uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80 tests/integration"
             
         native.sh_binary(
             name = "integration_test",
@@ -139,19 +140,12 @@ def application(
         # 2. Install dependencies using uv for ARM64
         native.genrule(
             name = "install_deps",
-            srcs = ["requirements.txt"],
+            srcs = [
+                "requirements.txt",
+                "//tools/scripts/shell:install_python_deps.sh",
+            ],
             outs = ["deps.tar"],
-            cmd = """
-                mkdir -p tmp/app/site-packages
-                uv pip install -r $(location requirements.txt) \\
-                    --target tmp/app/site-packages \\
-                    --system \\
-                    --python-version 3.13 \\
-                    --python-platform aarch64-unknown-linux-musl
-                # Set deterministic timestamps and ownership
-                find tmp/app -exec touch -t 197001010000 {} +
-                tar --owner=0 --group=0 --mode=0755 -cf $@ -C tmp .
-            """,
+            cmd = "bash $(location //tools/scripts/shell:install_python_deps.sh) $(location requirements.txt) $@",
         )
 
         # 3. Wrap the tarball (mainly to be a valid target for oci_image provided tars)
@@ -160,11 +154,12 @@ def application(
             deps = [":install_deps"],
         )
 
-        pkg_tar(
-            name = "app_layer",
-            srcs = srcs,
-            package_dir = "/app",
-            mode = "0755",
+        # Manual tar packing to ensure correct structure (src/... -> /app/src/...)
+        native.genrule(
+            name = "app_layer_tar",
+            srcs = srcs + ["//tools/scripts/python:package_app.py"],
+            outs = ["app_layer.tar"],
+            cmd = "python3 $(location //tools/scripts/python:package_app.py) $@ $(SRCS)",
         )
         
         oci_image(
@@ -172,10 +167,10 @@ def application(
             base = "@python_base_linux_arm64_v8",
             tars = [
                 ":deps_layer",
-                ":app_layer"
+                ":app_layer_tar"
             ],
             env = {
-                 "PYTHONPATH": "/app/site-packages",
+                 "PYTHONPATH": "/app/src:/app/site-packages",
             },
         )
         

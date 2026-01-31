@@ -14,6 +14,6 @@ oci.pull(
     name = "python_base",
     image = "index.docker.io/library/python",
     platforms = ["linux/arm64/v8"],
-    tag = "3.13-alpine",
+    tag = "3.13-slim",
 )
 use_repo(oci, "python_base", "python_base_linux_arm64_v8")
