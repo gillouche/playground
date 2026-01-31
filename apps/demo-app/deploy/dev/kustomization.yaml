@@ -6,6 +6,8 @@ resources:
   - ../../infra-check-service/deploy/base
   - infra-check-service-configmap.yaml
   - infra-check-service-ingress.yaml
+  - infra-check-service-rollout.yaml
+  - infra-check-service-servicemonitor.yaml
   - infra-check-credentials.yaml
 
 patches:
