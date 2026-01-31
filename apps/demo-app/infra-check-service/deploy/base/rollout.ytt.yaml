@@ -1,14 +1,21 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: infra-check-service
   labels:
     component: infra-check-service
 spec:
   replicas: 1
+  revisionHistoryLimit: 3
   selector:
     matchLabels:
       component: infra-check-service
+  strategy:
+    canary:
+      steps:
+      - setWeight: 20
+      - pause: {}
+      - setWeight: 100
   template:
     metadata:
       labels:

@@ -1,18 +1,20 @@
 import logging
-import sys
 import os
 import platform
+import sys
 from contextlib import asynccontextmanager
 from typing import Optional
+
 import uvicorn
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from config import load_config
-from clients.postgres import PostgresClient
-from clients.redis import RedisClient
+
 from clients.kafka import KafkaClient
 from clients.mongodb import MongoClient
-
+from clients.postgres import PostgresClient
+from clients.redis import RedisClient
+from config import load_config
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
@@ -76,7 +78,10 @@ async def lifespan(application: FastAPI):
     logger.info("All connections closed")
 
 
+
 app = FastAPI(title="Infra Check Service", lifespan=lifespan)
+
+Instrumentator().instrument(app).expose(app)
 
 
 @app.get("/")
@@ -97,18 +102,18 @@ async def healthz():
 async def ready():
     if not all([postgres_client, redis_client, kafka_client, mongo_client]):
         raise HTTPException(status_code=503, detail="Clients not initialized")
-        
+
     pg_health = await postgres_client.health_check()
     redis_health = await redis_client.health_check()
     kafka_health = await kafka_client.health_check()
     mongo_health = await mongo_client.health_check()
-    
-    if (pg_health.get("status") != "healthy" or 
-        redis_health.get("status") != "healthy" or 
-        kafka_health.get("status") != "healthy" or 
-        mongo_health.get("status") != "healthy"):
+
+    if (pg_health.get("status") != "healthy" or
+            redis_health.get("status") != "healthy" or
+            kafka_health.get("status") != "healthy" or
+            mongo_health.get("status") != "healthy"):
         raise HTTPException(status_code=503, detail="One or more clients are unhealthy")
-        
+
     return {"status": "ready"}
 
 

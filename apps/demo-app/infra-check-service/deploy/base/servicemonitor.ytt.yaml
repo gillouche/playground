@@ -1,0 +1,24 @@
+#@ load("@ytt:data", "data")
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: #@ data.values.component
+  labels:
+    app: #@ data.values.app
+    component: #@ data.values.component
+    environment: #@ data.values.environment
+    release: monitoring
+spec:
+  jobLabel: component
+  selector:
+    matchLabels:
+      app: #@ data.values.app
+      component: #@ data.values.component
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s
+  namespaceSelector:
+    matchNames:
+    - #@ "playground-apps-" + data.values.environment + "-" + data.values.app
