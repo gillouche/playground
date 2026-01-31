@@ -4,9 +4,6 @@ kind: Kustomization
 resources:
   - ../../greeting-service/deploy/base
 
-# metadata:
-#   name: demo-app # Optional: Prefix everything? No, services have their own names.
-
 labels:
   - pairs:
       app: demo-app
