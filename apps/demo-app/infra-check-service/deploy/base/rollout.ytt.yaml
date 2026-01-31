@@ -1,9 +1,13 @@
+#@ load("@ytt:data", "data")
+
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
   name: infra-check-service
   labels:
     component: infra-check-service
+    app: #@ data.values.app
+    environment: #@ data.values.env
 spec:
   replicas: 1
   revisionHistoryLimit: 3
@@ -20,6 +24,8 @@ spec:
     metadata:
       labels:
         component: infra-check-service
+        app: #@ data.values.app
+        environment: #@ data.values.env
     spec:
       securityContext:
         runAsNonRoot: true

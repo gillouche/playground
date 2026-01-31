@@ -4,6 +4,8 @@ metadata:
   name: infra-check-service
   labels:
     component: infra-check-service
+    app: demo-app
+    environment: dev
 spec:
   replicas: 1
   revisionHistoryLimit: 3
@@ -20,6 +22,8 @@ spec:
     metadata:
       labels:
         component: infra-check-service
+        app: demo-app
+        environment: dev
     spec:
       securityContext:
         runAsNonRoot: true
