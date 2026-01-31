@@ -6,6 +6,7 @@ resources:
   - infra-check-service-configmap.yaml
   - greeting-service-ingress.yaml
   - infra-check-service-ingress.yaml
+  - infra-check-credentials.yaml
 
 patches:
   - path: greeting-service-configmap.yaml
