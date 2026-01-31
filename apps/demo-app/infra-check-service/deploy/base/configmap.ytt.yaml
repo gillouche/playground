@@ -1,3 +1,12 @@
+#@ load("@ytt:data", "data")
+
+#@ def get_host(service):
+#@   if data.values.env == "dev":
+#@     return service + ".playground-infra-dev.svc.cluster.local"
+#@   end
+#@   return service
+#@ end
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -5,22 +14,22 @@ metadata:
   labels:
     component: infra-check-service
 data:
-  ENVIRONMENT: base
-  APP: demo-app
-  COMPONENT: infra-check-service
+  ENVIRONMENT: #@ data.values.env
+  APP: #@ data.values.app
+  COMPONENT: #@ data.values.component
   APP_VERSION: "0.0.0"
   GIT_TAG: "HEAD"
   GIT_COMMIT: "unknown"
   LOG_LEVEL: INFO
-  POSTGRES_HOST: postgres
+  POSTGRES_HOST: #@ get_host("postgres")
   POSTGRES_PORT: "5432"
   POSTGRES_DB: playground
   POSTGRES_USER: playground
-  REDIS_HOST: redis
+  REDIS_HOST: #@ get_host("redis")
   REDIS_PORT: "6379"
-  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_BOOTSTRAP_SERVERS: #@ get_host("kafka") + ":9092"
   KAFKA_TOPIC: infra-check
-  MONGODB_HOST: mongodb
+  MONGODB_HOST: #@ get_host("mongodb")
   MONGODB_PORT: "27017"
   MONGODB_DB: playground
   MONGODB_USER: playground

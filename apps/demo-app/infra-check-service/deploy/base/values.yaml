@@ -2,3 +2,4 @@
 ---
 app: demo-app
 component: infra-check-service
+env: sandbox
