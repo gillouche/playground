@@ -7,7 +7,7 @@ metadata:
   labels:
     app: #@ data.values.app
     component: #@ data.values.component
-    environment: #@ data.values.environment
+    environment: #@ data.values.env
     release: monitoring
 spec:
   jobLabel: component
@@ -21,4 +21,4 @@ spec:
     interval: 15s
   namespaceSelector:
     matchNames:
-    - #@ "playground-apps-" + data.values.environment + "-" + data.values.app
+    - #@ "playground-apps-" + data.values.env + "-" + data.values.app

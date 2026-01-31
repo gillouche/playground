@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: infra-check-service
+  labels:
+    app: demo-app
+    component: infra-check-service
+    environment: dev
+    release: monitoring
+spec:
+  jobLabel: component
+  selector:
+    matchLabels:
+      app: demo-app
+      component: infra-check-service
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s
+  namespaceSelector:
+    matchNames:
+    - playground-apps-dev-demo-app
