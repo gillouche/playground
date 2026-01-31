@@ -7,14 +7,14 @@ metadata:
   labels:
     app: demo-app
     component: infra-check-service
-    environment: dev
+    environment: test
 spec:
   ingressClassName: traefik
   tls:
   - hosts:
-    - infra-check-service.demo-app.dev.k3s.gillouche.homelab
+    - infra-check-service.demo-app.test.k3s.gillouche.homelab
   rules:
-  - host: infra-check-service.demo-app.dev.k3s.gillouche.homelab
+  - host: infra-check-service.demo-app.test.k3s.gillouche.homelab
     http:
       paths:
       - path: /

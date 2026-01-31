@@ -3,13 +3,20 @@ kind: Kustomization
 resources:
   - ../base
   - greeting-service-ingress.yaml
+  - ../../infra-check-service/deploy/base
+  - infra-check-service-configmap.yaml
+  - infra-check-service-ingress.yaml
+  - infra-check-credentials.yaml
 
 patches:
   - path: greeting-service-configmap.yaml
+  - path: greeting-service-command-patch.yaml
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
-    newTag: v0.0.3
+    newTag: v0.0.4
+  - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
+    newTag: v0.0.1
 
 labels:
   - pairs:

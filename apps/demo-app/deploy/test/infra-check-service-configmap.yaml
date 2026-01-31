@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: infra-check-service-config
+  labels:
+    component: infra-check-service
+data:
+  ENVIRONMENT: test
+  APP: demo-app
+  COMPONENT: infra-check-service
+  APP_VERSION: v0.0.4
+  GIT_TAG: demo-app/infra-check-service/v0.0.1
+  GIT_COMMIT: 744d4c0abc0b9f82149d64391363743a71761151
+  LOG_LEVEL: INFO
+  POSTGRES_HOST: postgres.playground-infra-test.svc.cluster.local
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: playground
+  POSTGRES_USER: playground
+  REDIS_HOST: redis.playground-infra-test.svc.cluster.local
+  REDIS_PORT: "6379"
+  KAFKA_BOOTSTRAP_SERVERS: kafka.playground-infra-test.svc.cluster.local:9092
+  KAFKA_TOPIC: infra-check
+  MONGODB_HOST: mongodb.playground-infra-test.svc.cluster.local
+  MONGODB_PORT: "27017"
+  MONGODB_DB: playground
+  MONGODB_USER: playground

@@ -72,10 +72,21 @@ def promote_app(target_env, app, version):
             images[current_component] = {}
         
         # Check for indent 4 (attributes)
-        elif current_component and line.startswith("    "):
+        elif current_component and line.startswith("    ") and not line.startswith("      "):
             if ":" in stripped:
                 key, val = stripped.split(":", 1)
-                images[current_component][key.strip()] = val.strip()
+                val = val.strip()
+                if val:
+                    images[current_component][key.strip()] = val
+        
+        # Check for indent 6 (nested attributes, e.g. image.ref)
+        elif current_component and line.startswith("      "):
+            if ":" in stripped:
+                key, val = stripped.split(":", 1)
+                val = val.strip()
+                # We specifically look for 'ref' which comes from 'image' block
+                if key.strip() == "ref":
+                     images[current_component]["image_ref"] = val
 
     if not images:
         print("Warning: No images found in BOM. Skipping updates.")
@@ -138,25 +149,6 @@ def update_configmaps(app_name, env, version, images):
                              updated_line = re.sub(rf"(\s+{key}:).*", rf"\1 {val}", line)
                     new_lines.append(updated_line)
                 
-                # Check if we missed any keys (if they didn't exist in the file)
-                # Since we updated the base ConfigMap to include them, they should be propagated 
-                # via gen_manifests? No, gen_manifests uses kustomize build.
-                # BUT 'promote.py' runs BEFORE gen_manifests.
-                # So we are editing the source files in deploy/dev/.
-                # Wait, if we rely on base configmap, dev/configmap might not have these keys yet?
-                # User should ensure dev configmap has keys? 
-                # Or we append? Appending to YAML via simple splitlines is risky (indentation).
-                # Assumption: keys exist (we added them to base/configmap.yaml, but dev/configmap.yaml was separate file!)
-                
-               # Wait, I previously read `apps/demo-app/deploy/dev/greeting-service-configmap.yaml`. 
-               # It did NOT have the keys. I updated `apps/demo-app/greeting-service/deploy/base/configmap.yaml`.
-               # BUT `apps/demo-app/deploy/dev/` is usually generated? 
-               # No, `apps/demo-app/deploy/dev/kustomization.yaml` has `patches: - path: greeting-service-configmap.yaml`.
-               # This implies `greeting-service-configmap.yaml` in `dev/` is a SOURCE file.
-               
-               # I need to add the keys to `dev/greeting-service-configmap.yaml` as well if I want explicit replacement,
-               # OR I update the code to append if missing.
-               
                 with open(filepath, 'w') as f:
                     f.writelines(new_lines)
 
@@ -171,14 +163,33 @@ def update_kustomization(app_name, env, images):
         content = f.read()
 
     updated = False
+    
+    # Check for images section
+    if "images:" not in content:
+        # naive append if missing, though usually it exists
+        if not content.endswith("\n"): content += "\n"
+        content += "\nimages:\n"
+        updated = True
+
     for comp, data in images.items():
         tag = data.get("tag")
         if not tag: continue
         
-        # Kustomize pattern:
+        # extract repo from image_ref or full_tag or hardcoded assumption
+        # image_ref = "nexus.../name:tag" -> we want "nexus.../name"
+        image_ref = data.get("image_ref")
+        if image_ref and ":" in image_ref:
+            repo_name = image_ref.rsplit(":", 1)[0]
+        else:
+             # Fallback if image_ref parsing failed (should not happen with new parser)
+             print(f"  Warning: No image_ref found for {comp}, cannot add new entry safely.")
+             continue
+
+        # Kustomize pattern to match existing entry
         # - name: nexus.../demo-app/greeting-service
         #   newTag: ...
-        pattern = re.compile(rf"(-\s+name: .*?{comp}.*?\n\s+newTag: ).*")
+        # match strictly on the repo name
+        pattern = re.compile(rf"(-\s+name: {re.escape(repo_name)}\s*\n\s+newTag: ).*")
         
         if pattern.search(content):
             new_content = pattern.sub(rf"\g<1>{tag}", content)
@@ -187,7 +198,17 @@ def update_kustomization(app_name, env, images):
                 updated = True
                 print(f"  Updated {comp} image -> {tag}")
         else:
-            print(f"  Warning: Could not find image entry for {comp} in kustomization.")
+            print(f"  Adding missing image entry for {comp}...")
+            # Append to images section
+            # We assume 'images:' exists (ensured above)
+            # Find the line "images:" and append after it? Or at the end of the block?
+            # Kustomize doesn't strictly require order, but indentation matters.
+            # Safe bet: append to the end of the `images:` list if possible, or just replace `images:` with `images:\n  - name...` 
+            # But regex sub is cleaner if we just find `images:` and insert after.
+            
+            new_entry = f"  - name: {repo_name}\n    newTag: {tag}\n"
+            content = content.replace("images:\n", f"images:\n{new_entry}")
+            updated = True
             
     if updated:
         with open(kustomization_path, 'w') as f:
