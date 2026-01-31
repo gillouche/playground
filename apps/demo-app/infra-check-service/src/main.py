@@ -116,13 +116,15 @@ async def ready():
 async def info():
     return {
         "hostname": os.environ.get("HOSTNAME", platform.node()),
-        "version": os.environ.get("APP_VERSION"),
+        "app_version": os.environ.get("APP_VERSION"),
         "environment": config.environment,
         "app": os.environ.get("APP"),
         "component": os.environ.get("COMPONENT"),
         "node": os.environ.get("NODE_NAME"),
         "pod_ip": os.environ.get("POD_IP"),
         "log_level": config.log_level,
+        "git_tag": os.environ.get("GIT_TAG"),
+        "git_commit": os.environ.get("GIT_COMMIT"),
     }
 
 
