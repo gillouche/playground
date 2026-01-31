@@ -17,6 +17,10 @@ spec:
   - port: http
     path: /metrics
     interval: 15s
+  podTargetLabels:
+  - app
+  - component
+  - environment
   namespaceSelector:
     matchNames:
     - playground-apps-dev-demo-app
