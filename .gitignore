@@ -39,3 +39,6 @@ __pycache__/
 
 # IDE files and folders
 .idea
+
+# secrets
+secrets/
