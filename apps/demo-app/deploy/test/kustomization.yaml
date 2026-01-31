@@ -23,3 +23,6 @@ labels:
       environment: test
     includeSelectors: false
     includeTemplates: true
+
+commonAnnotations:
+  owner: gillouche

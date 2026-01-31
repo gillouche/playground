@@ -16,3 +16,6 @@ labels:
       environment: prod
     includeSelectors: false
     includeTemplates: true
+
+commonAnnotations:
+  owner: gillouche
