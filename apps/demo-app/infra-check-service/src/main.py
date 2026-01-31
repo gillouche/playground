@@ -211,7 +211,7 @@ async def mongodb_health():
 
 
 def main():
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="0.0.0.0", port=8080, loop="asyncio")
 
 
 if __name__ == "__main__":
