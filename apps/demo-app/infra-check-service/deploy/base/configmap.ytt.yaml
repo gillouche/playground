@@ -6,6 +6,9 @@ data:
   ENVIRONMENT: base
   APP: demo-app
   COMPONENT: infra-check-service
+  APP_VERSION: "0.0.0"
+  GIT_TAG: "HEAD"
+  GIT_COMMIT: "unknown"
   LOG_LEVEL: INFO
   POSTGRES_HOST: postgres
   POSTGRES_PORT: "5432"

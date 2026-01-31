@@ -11,9 +11,9 @@ patches:
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
-    newTag: 3ae8cd1
+    newTag: 1ed386b
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
-    newTag: latest
+    newTag: 1ed386b
 
 labels:
   - pairs:

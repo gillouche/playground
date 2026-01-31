@@ -1,0 +1,4 @@
+#@data/values
+---
+app: demo-app
+component: infra-check-service

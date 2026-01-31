@@ -3,11 +3,18 @@ kind: Ingress
 metadata:
   name: infra-check-service
   annotations:
-    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+  labels:
+    app: demo-app
+    component: infra-check-service
+    environment: dev
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - infra-check-service.demo-app.dev.k3s.gillouche.homelab
   rules:
-    - host: infra-check-dev.gillouche.homelab
+    - host: infra-check-service.demo-app.dev.gillouche.homelab
       http:
         paths:
           - path: /
@@ -17,7 +24,3 @@ spec:
                 name: infra-check-service
                 port:
                   number: 8080
-  tls:
-    - hosts:
-        - infra-check-dev.gillouche.homelab
-      secretName: homelab-tls
