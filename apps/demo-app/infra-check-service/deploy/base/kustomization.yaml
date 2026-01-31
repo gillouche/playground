@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
-  - configmap.yaml
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
