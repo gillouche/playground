@@ -44,7 +44,13 @@ async def test_healthz():
 
 
 @pytest.mark.asyncio
-async def test_ready():
+@pytest.mark.asyncio
+async def test_ready(mock_clients):
+    mock_clients["postgres"].health_check = AsyncMock(return_value={"status": "healthy"})
+    mock_clients["redis"].health_check = AsyncMock(return_value={"status": "healthy"})
+    mock_clients["kafka"].health_check = AsyncMock(return_value={"status": "healthy"})
+    mock_clients["mongodb"].health_check = AsyncMock(return_value={"status": "healthy"})
+
     from main import app
 
     transport = ASGITransport(app=app)
