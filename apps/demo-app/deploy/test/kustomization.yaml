@@ -21,6 +21,7 @@ images:
 labels:
   - pairs:
       environment: test
+      app: demo-app
     includeSelectors: false
     includeTemplates: true
 
