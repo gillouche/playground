@@ -6,5 +6,4 @@ application(
     srcs = glob(["src/**/*.py"]),
     unit_tests = glob(["tests/unit/**/*.py"]),
     integration_tests = glob(["tests/integration/**/*.py"]),
-    # Uses default base_image=@python_base (Alpine) and python_platform=musl
 )

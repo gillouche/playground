@@ -13,7 +13,7 @@ def application(
     build_cmd = None,
     image_repository = "",
     base_image = "@python_base_linux_arm64",
-    python_platform = "aarch64-unknown-linux-musl"):
+    python_platform = "aarch64-unknown-linux-gnu"):
     
     defaults = {
         "python": {

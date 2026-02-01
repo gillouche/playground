@@ -12,18 +12,11 @@ use_repo(python, "python_3_12")
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(
     name = "python_base",
-    image = "index.docker.io/library/python",
-    platforms = ["linux/arm64"],
-    digest = "sha256:3b0bcf1de796ace20e3fa12e397a68656b5b2fce91aa15960cf091bfd8a90cd8",
-    # tag = "3.12-alpine",
+    image = "gcr.io/distroless/python3-debian12",
+    platforms = [
+        "linux/amd64",
+        "linux/arm64",
+    ],
+    digest = "sha256:17b27c84c985a53d0cd2adef4f196ca327fa9b6755369be605cf45533b4e700b",
 )
-use_repo(oci, "python_base", "python_base_linux_arm64")
-
-oci.pull(
-    name = "python_base_distroless",
-    image = "index.docker.io/al3xos/python-distroless",
-    platforms = ["linux/arm64"],
-    digest = "sha256:a7b95d17d4d6403f047c61a304430e3d5b46cbd1c6d9020743c4f34670f7a107",
-    # tag = "3.12.12-debian12",
-)
-use_repo(oci, "python_base_distroless", "python_base_distroless_linux_arm64")
+use_repo(oci, "python_base", "python_base_linux_arm64", "python_base_linux_amd64")

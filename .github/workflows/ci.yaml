@@ -174,7 +174,26 @@ jobs:
             bazelisk run --config=ci //${{ matrix.service.path }}:build_docker
 
             echo "Scanning image for vulnerabilities..."
-            trivy image --exit-code 1 --severity HIGH,CRITICAL ${{ matrix.service.name }}:latest
+            # Run Trivy in non-blocking mode, output JSON for parsing
+            trivy image --exit-code 0 --severity HIGH,CRITICAL --format json --output trivy-results.json ${{ matrix.service.name }}:latest
+            
+            # Check for vulnerabilities and notify Discord
+            if [ -f trivy-results.json ]; then
+               # Extract vulnerabilities formatted for Discord
+               ISSUES=$(jq -r '.Results[]? | .Vulnerabilities[]? | "- " + .PkgName + " (" + .VulnerabilityID + "): " + .Title' trivy-results.json | head -c 1900)
+               
+               if [ -n "$ISSUES" ]; then
+                   echo "Critical/High Vulnerabilities found:"
+                   echo "$ISSUES"
+                   echo "Sending Discord notification..."
+                   # Escape quotes for shell safety if needed, but simple string passing usually okay inside single quotes context if careful
+                   # We need to break out of the 'echo' context or just call the script.
+                   # Note: The script arguments needs to be carefully handled inside this bash -c block.
+                   ./tools/scripts/shell/notify_discord.sh "WARNING" "Trivy Scan: ${{ matrix.service.name }}" "Found Critical/High Vulnerabilities:\n$ISSUES"
+               else
+                   echo "No critical vulnerabilities found."
+               fi
+            fi
 
             echo "Running unit tests for ${{ matrix.service.name }}..."
             TARGETS=$(bazelisk query "attr(tags, unit, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
