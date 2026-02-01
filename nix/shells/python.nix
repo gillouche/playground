@@ -4,7 +4,7 @@ let
 in
 pkgs.mkShell {
   packages = base.packages ++ (with pkgs; [
-    python312
+    (python312.withPackages (ps: [ ps.pip ]))
     uv
   ]);
 
