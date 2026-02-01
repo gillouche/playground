@@ -2,7 +2,7 @@
 set -e
 
 # Generic ytt manifest generator for the monorepo
-# Usage: ./ytt_gen.sh [concept] [app] [env]
+# Usage: ./ytt_gen.sh [app] [component] [env]
 
 ROOT_DIR=$(git rev-parse --show-toplevel)
 APPS_DIR="$ROOT_DIR/apps"
@@ -12,17 +12,17 @@ if [ "$#" -eq 0 ]; then
     GENERATE_ALL=true
 fi
 
-generate_app_env() {
-    local concept=$1
-    local app=$2
+generate_component_env() {
+    local app=$1
+    local component=$2
     local env=$3
     
-    local base_dir="$APPS_DIR/$concept/$app/deploy/templates"
-    local output_dir="$APPS_DIR/$concept/deploy/$env"
+    local base_dir="$APPS_DIR/$app/$component/deploy/templates"
+    local output_dir="$APPS_DIR/$app/deploy/$env"
     
     # For sandbox, output to component subdirectory
     if [ "$env" = "sandbox" ]; then
-        output_dir="$APPS_DIR/$concept/deploy/sandbox/$app"
+        output_dir="$APPS_DIR/$app/deploy/sandbox/$component"
     fi
     
     if [ ! -d "$base_dir" ]; then
@@ -32,7 +32,7 @@ generate_app_env() {
     local cmd="ytt"
     
     # Read version info from release BOM using grep/awk (no external tools needed)
-    local bom_file="$ROOT_DIR/releases/$env/$concept.yaml"
+    local bom_file="$ROOT_DIR/releases/$env/$app.yaml"
     local APP_VERSION="unknown"
     local COMPONENT_VERSION="unknown"
     local GIT_COMMIT="unknown"
@@ -75,7 +75,7 @@ generate_app_env() {
             fi
             
             # Check if we're entering the component section (2-space indent + component name + colon)
-            if [[ "$line" =~ ^"  $app:" ]]; then
+            if [[ "$line" =~ ^"  $component:" ]]; then
                 in_component=true
                 in_metadata=false
                 continue
@@ -112,48 +112,81 @@ generate_app_env() {
         fi
     fi
 
+    # Ensure output directory exists [FIX]
+    mkdir -p "$output_dir"
+
     # Find all ytt templates in the app's base deploy directory
     find "$base_dir" -name "*.ytt.yaml" | while read -r template; do
         filename=$(basename "$template" .ytt.yaml)
-        output_file="$output_dir/${app}-${filename}.yaml"
+        output_file="$output_dir/${component}-${filename}.yaml"
         
         echo "Generating $output_file..."
         
         # Run ytt with context
         $cmd -f "$template" \
             -f "$base_dir/values.yaml" \
-            -v component="$app" \
-            -v app="$concept" \
+            -v component="$component" \
+            -v app="$app" \
             -v env="$env" \
             -v git_tag="$GIT_TAG" \
             -v git_commit="$GIT_COMMIT" \
             -v app_version="$APP_VERSION" \
             -v component_version="$COMPONENT_VERSION" \
             > "$output_file"
+
+        # Remove empty files (e.g. conditionally skipped templates)
+        if [ ! -s "$output_file" ] || ! grep -q "[^[:space:]]" "$output_file"; then
+            echo "Removing empty file $output_file"
+            rm "$output_file"
+        fi
     done
 }
 
 if [ "$GENERATE_ALL" = true ]; then
-    # Discover all concepts
-    for concept_dir in "$APPS_DIR"/*/; do
-        concept=$(basename "$concept_dir")
+    # Discover all apps
+    for app_dir in "$APPS_DIR"/*/; do
+        app=$(basename "$app_dir")
         
-        # Discover all apps in this concept
-        for app_dir in "$concept_dir"/*/; do
-            app=$(basename "$app_dir")
+        # Discover all components in this app
+        for component_dir in "$app_dir"/*/; do
+            component=$(basename "$component_dir")
             
-            # Skip the 'deploy' directory at the concept level
-            if [ "$app" == "deploy" ]; then
+            # Skip the 'deploy' directory at the app level
+            if [ "$component" == "deploy" ]; then
                 continue
             fi
             
             # Generate for each environment
             for env in sandbox dev test prod; do
-                generate_app_env "$concept" "$app" "$env"
+                generate_component_env "$app" "$component" "$env"
             done
+        done
+    done
+elif [ "$#" -eq 1 ]; then
+    # Generate for specific app (all components, all envs)
+    app="$1"
+    app_dir="$APPS_DIR/$app"
+    
+    if [ ! -d "$app_dir" ]; then
+        echo "Error: App directory not found: $app_dir"
+        exit 1
+    fi
+
+    # Discover all components in this app
+    for component_dir in "$app_dir"/*/; do
+        component=$(basename "$component_dir")
+        
+        # Skip the 'deploy' directory at the app level
+        if [ "$component" == "deploy" ]; then
+            continue
+        fi
+        
+        # Generate for each environment
+        for env in sandbox dev test prod; do
+            generate_component_env "$app" "$component" "$env"
         done
     done
 else
     # Generate for specific target
-    generate_app_env "$1" "$2" "$3"
+    generate_component_env "$1" "$2" "$3"
 fi

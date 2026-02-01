@@ -70,7 +70,7 @@ spec:
         - name: tmp
           mountPath: /tmp
         #@ end
-        #@ end
+
         command: ["/usr/local/bin/python"]
         args: ["/app/src/main.py"]
         envFrom:
@@ -110,7 +110,7 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 5
           timeoutSeconds: 3
-          timeoutSeconds: 3
+
           failureThreshold: 3
       #@ if data.values.env != "sandbox":
       volumes:

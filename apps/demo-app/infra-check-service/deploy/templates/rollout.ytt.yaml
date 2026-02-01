@@ -70,7 +70,7 @@ spec:
         - name: tmp
           mountPath: /tmp
         #@ end
-        #@ end
+
         command: ["/usr/local/bin/python"]
         args: ["/app/src/main.py"]
         envFrom:

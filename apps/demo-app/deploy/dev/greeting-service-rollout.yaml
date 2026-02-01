@@ -35,8 +35,8 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 2000
+        runAsUser: 65534
+        fsGroup: 65534
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -49,6 +49,15 @@ spec:
       containers:
       - name: greeting-service
         image: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
         command:
         - /usr/local/bin/python
         args:
@@ -91,3 +100,6 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
+      volumes:
+      - name: tmp
+        emptyDir: {}

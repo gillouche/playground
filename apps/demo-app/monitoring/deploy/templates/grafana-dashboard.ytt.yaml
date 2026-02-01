@@ -369,6 +369,7 @@
 #@   }
 #@ end
 
+#@ if data.values.env != "sandbox":
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -377,3 +378,4 @@ metadata:
     grafana_dashboard: "1"
     component: #@ data.values.component
 data: #@ { ("infra-check-service-" + data.values.env + ".json"): json.encode(dashboard()) }
+#@ end

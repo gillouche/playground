@@ -43,6 +43,15 @@ spec:
       - name: infra-check-service
         image: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
         imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
         command:
         - /usr/local/bin/python
         args:
@@ -89,3 +98,6 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
+      volumes:
+      - name: tmp
+        emptyDir: {}

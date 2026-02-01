@@ -1,20 +1,20 @@
 metadata:
   app: demo-app
   version: dev
-  created_at: 2026-02-01T12:40:00.533963+00:00
+  created_at: 2026-02-01T17:44:12.859948+00:00
 
 images:
   greeting-service:
-    tag: fe2837f
-    commit: fe2837fc562766341b1e937375ca194e380685c0
-    full_tag: demo-app/greeting-service/fe2837f
+    tag: 90494a9
+    commit: 90494a994195cf66bc82b1b0d5fb9626640a126f
+    full_tag: demo-app/greeting-service/90494a9
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:fe2837f
-      digest: sha256:81fd285250ada6ed72ab9763adcf164d14ff804a7ed3b49981324990e0c352ca
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:90494a9
+      digest: sha256:2da69b752b8c684397743f522fca5ae52dfe330c2f952c7484d086f9521a911a
   infra-check-service:
-    tag: fe2837f
-    commit: fe2837fc562766341b1e937375ca194e380685c0
-    full_tag: demo-app/infra-check-service/fe2837f
+    tag: 90494a9
+    commit: 90494a994195cf66bc82b1b0d5fb9626640a126f
+    full_tag: demo-app/infra-check-service/90494a9
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:fe2837f
-      digest: sha256:f125474f125736f67b54cdf7ee23d7770de60523fd7665c991b66622caf97856
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:90494a9
+      digest: sha256:ad1de37962a54cdf3a96ca970092dab5aa19f7b6db6057db2a8268282ec7f3c9
