@@ -15,8 +15,8 @@ oci.pull(
     image = "gcr.io/distroless/python3-debian12",
     platforms = [
         "linux/amd64",
-        "linux/arm64",
+        "linux/arm64/v8",
     ],
     digest = "sha256:62214ec8dc220b42d244b471c6da1fe8017fdfeb361c8cf8d2ce254cd39def0c",
 )
-use_repo(oci, "python_base", "python_base_linux_arm64", "python_base_linux_amd64")
+use_repo(oci, "python_base", "python_base_linux_amd64", "python_base_linux_arm64_v8")

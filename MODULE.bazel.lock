@@ -651,21 +651,34 @@
     "@@rules_oci+//oci:extensions.bzl%oci": {
       "general": {
         "bzlTransitiveDigest": "dOnAIBiZmY7QKI2ErFnw2w1Jtz7GJx4e/V4qtE973XQ=",
-        "usagesDigest": "ZzvIYZfBacT8fwfG5kFk4rvujm+Pb0mCnOl/ngdHtkk=",
+        "usagesDigest": "s2hDLoKTDyF08XRm1pO2i74cQqh3ZTpOAdgii/94Qc0=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
         "generatedRepoSpecs": {
-          "python_base_linux_arm64": {
+          "python_base_linux_amd64": {
             "repoRuleId": "@@rules_oci+//oci/private:pull.bzl%oci_pull",
             "attributes": {
               "www_authenticate_challenges": {},
               "scheme": "https",
-              "registry": "index.docker.io",
-              "repository": "library/python",
-              "identifier": "sha256:3b0bcf1de796ace20e3fa12e397a68656b5b2fce91aa15960cf091bfd8a90cd8",
-              "platform": "linux/arm64",
-              "target_name": "python_base_linux_arm64",
+              "registry": "gcr.io",
+              "repository": "distroless/python3-debian12",
+              "identifier": "sha256:62214ec8dc220b42d244b471c6da1fe8017fdfeb361c8cf8d2ce254cd39def0c",
+              "platform": "linux/amd64",
+              "target_name": "python_base_linux_amd64",
+              "bazel_tags": []
+            }
+          },
+          "python_base_linux_arm64_v8": {
+            "repoRuleId": "@@rules_oci+//oci/private:pull.bzl%oci_pull",
+            "attributes": {
+              "www_authenticate_challenges": {},
+              "scheme": "https",
+              "registry": "gcr.io",
+              "repository": "distroless/python3-debian12",
+              "identifier": "sha256:62214ec8dc220b42d244b471c6da1fe8017fdfeb361c8cf8d2ce254cd39def0c",
+              "platform": "linux/arm64/v8",
+              "target_name": "python_base_linux_arm64_v8",
               "bazel_tags": []
             }
           },
@@ -675,42 +688,14 @@
               "target_name": "python_base",
               "www_authenticate_challenges": {},
               "scheme": "https",
-              "registry": "index.docker.io",
-              "repository": "library/python",
-              "identifier": "sha256:3b0bcf1de796ace20e3fa12e397a68656b5b2fce91aa15960cf091bfd8a90cd8",
+              "registry": "gcr.io",
+              "repository": "distroless/python3-debian12",
+              "identifier": "sha256:62214ec8dc220b42d244b471c6da1fe8017fdfeb361c8cf8d2ce254cd39def0c",
               "platforms": {
-                "@@platforms//cpu:arm64": "@python_base_linux_arm64"
+                "@@platforms//cpu:x86_64": "@python_base_linux_amd64",
+                "@@platforms//cpu:arm64": "@python_base_linux_arm64_v8"
               },
               "bzlmod_repository": "python_base",
-              "reproducible": true
-            }
-          },
-          "python_base_distroless_linux_arm64": {
-            "repoRuleId": "@@rules_oci+//oci/private:pull.bzl%oci_pull",
-            "attributes": {
-              "www_authenticate_challenges": {},
-              "scheme": "https",
-              "registry": "index.docker.io",
-              "repository": "al3xos/python-distroless",
-              "identifier": "sha256:a7b95d17d4d6403f047c61a304430e3d5b46cbd1c6d9020743c4f34670f7a107",
-              "platform": "linux/arm64",
-              "target_name": "python_base_distroless_linux_arm64",
-              "bazel_tags": []
-            }
-          },
-          "python_base_distroless": {
-            "repoRuleId": "@@rules_oci+//oci/private:pull.bzl%oci_alias",
-            "attributes": {
-              "target_name": "python_base_distroless",
-              "www_authenticate_challenges": {},
-              "scheme": "https",
-              "registry": "index.docker.io",
-              "repository": "al3xos/python-distroless",
-              "identifier": "sha256:a7b95d17d4d6403f047c61a304430e3d5b46cbd1c6d9020743c4f34670f7a107",
-              "platforms": {
-                "@@platforms//cpu:arm64": "@python_base_distroless_linux_arm64"
-              },
-              "bzlmod_repository": "python_base_distroless",
               "reproducible": true
             }
           },
@@ -831,9 +816,8 @@
         "moduleExtensionMetadata": {
           "explicitRootModuleDirectDeps": [
             "python_base",
-            "python_base_linux_arm64",
-            "python_base_distroless",
-            "python_base_distroless_linux_arm64"
+            "python_base_linux_amd64",
+            "python_base_linux_arm64_v8"
           ],
           "explicitRootModuleDirectDevDeps": [],
           "useAllRepos": "NO",
