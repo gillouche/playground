@@ -30,7 +30,6 @@ async def lifespan(application: FastAPI):
     logger.info(f"App says: {greeting}")
 
     yield
-    # Shutdown logic if needed
 
 
 app = FastAPI(lifespan=lifespan)

@@ -80,7 +80,6 @@ async def lifespan(application: FastAPI):
 
 
 app = FastAPI(title="Infra Check Service", lifespan=lifespan)
-
 Instrumentator().instrument(app).expose(app)
 
 
