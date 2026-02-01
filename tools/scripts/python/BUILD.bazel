@@ -30,6 +30,11 @@ py_binary(
     srcs = ["rollback.py"],
 )
 
+py_binary(
+    name = "generate_matrix",
+    srcs = ["generate_matrix.py"],
+)
+
 # Used by smart_push
 py_binary(
     name = "determine_base_commit",

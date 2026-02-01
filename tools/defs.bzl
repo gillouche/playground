@@ -180,6 +180,12 @@ def application(
             repository = image_repository,
             # No static tags here; they are passed by the wrapper
         )
+
+        oci_push(
+            name = "push_oci",
+            image = ":image",
+            repository = image_repository,
+        )
         
         # Wrapper script to apply dynamic git tags at runtime
         native.sh_binary(
