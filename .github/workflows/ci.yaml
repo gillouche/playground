@@ -180,7 +180,7 @@ jobs:
             # Check for vulnerabilities and notify Discord
             if [ -f trivy-results.json ]; then
                # Extract vulnerabilities formatted for Discord
-               ISSUES=$(jq -r '.Results[]? | .Vulnerabilities[]? | "- " + .PkgName + " (" + .VulnerabilityID + "): " + .Title' trivy-results.json | head -c 1900)
+               ISSUES=$(jq -r '\''if .Results then (.Results[]? | .Vulnerabilities[]? | "- " + .PkgName + " (" + .VulnerabilityID + "): " + .Title) else empty end'\'' trivy-results.json | head -c 1900)
                
                if [ -n "$ISSUES" ]; then
                    echo "Critical/High Vulnerabilities found:"
