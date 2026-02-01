@@ -24,6 +24,7 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       has_changes: ${{ steps.matrix.outputs.has_changes }}
+      formatted_list: ${{ steps.matrix.outputs.formatted_list }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -63,12 +64,16 @@ jobs:
                echo "has_changes=true" >> "$GITHUB_OUTPUT"
             fi
             echo "Generated matrix: $MATRIX"
+
+            # Generate formatted list for notification (escaped newlines for JSON)
+            FORMATTED_LIST=$(echo "$MATRIX" | jq -r 'if length > 0 then (map("- " + .name) | join("\\n")) else "None" end')
+            echo "formatted_list=$FORMATTED_LIST" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Send Start Notification
         if: steps.matrix.outputs.has_changes == 'true'
         run: |
-          ./tools/scripts/shell/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA. Affected services: ${{ steps.matrix.outputs.matrix }}"
+          ./tools/scripts/shell/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA. Affected services:\n${{ steps.matrix.outputs.formatted_list }}"
 
   validate-service:
     name: ${{ matrix.service.name }}
@@ -87,10 +92,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Load SeaweedFS credentials
+      - name: Load Credentials
         run: |
+          # SeaweedFS Cache
           echo "AWS_ACCESS_KEY_ID=$SEAWEEDFS_ACCESS_KEY" >> $GITHUB_ENV
           echo "AWS_SECRET_ACCESS_KEY=$SEAWEEDFS_SECRET_KEY" >> $GITHUB_ENV
+          # Nexus Registry
+          echo "NEXUS_USERNAME=$NEXUS_USERNAME" >> $GITHUB_ENV
+          echo "NEXUS_PASSWORD=$NEXUS_PASSWORD" >> $GITHUB_ENV
 
       - name: Build Image
         run: |
@@ -140,9 +149,6 @@ jobs:
 
       - name: Push Image (Main Only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
         run: |
           # Login to Nexus
           echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
