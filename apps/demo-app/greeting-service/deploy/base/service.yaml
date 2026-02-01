@@ -3,7 +3,8 @@ kind: Service
 metadata:
   name: greeting-service
   labels:
-    app: greeting-service
+    app: demo-app
+    component: greeting-service
 spec:
   type: ClusterIP
   selector:
@@ -12,3 +13,4 @@ spec:
   - port: 80
     targetPort: 8080
     protocol: TCP
+    name: http
