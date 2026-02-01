@@ -17,6 +17,6 @@ oci.pull(
         "linux/amd64",
         "linux/arm64",
     ],
-    digest = "sha256:17b27c84c985a53d0cd2adef4f196ca327fa9b6755369be605cf45533b4e700b",
+    digest = "sha256:62214ec8dc220b42d244b471c6da1fe8017fdfeb361c8cf8d2ce254cd39def0c",
 )
 use_repo(oci, "python_base", "python_base_linux_arm64", "python_base_linux_amd64")
