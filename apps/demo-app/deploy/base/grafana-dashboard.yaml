@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: infra-check-service-dashboard
+  name: demo-app-dashboard
   labels:
     grafana_dashboard: "1"
 data:

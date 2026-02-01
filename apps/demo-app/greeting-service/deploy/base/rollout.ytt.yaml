@@ -1,18 +1,35 @@
-apiVersion: apps/v1
-kind: Deployment
+#@ load("@ytt:data", "data")
+
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
-  name: greeting-service
+  name: #@ data.values.component
   labels:
-    component: greeting-service
+    component: #@ data.values.component
+    app: #@ data.values.app
+    environment: #@ data.values.env
 spec:
   replicas: 1
   selector:
     matchLabels:
-      component: greeting-service
+      component: #@ data.values.component
+  strategy:
+    canary:
+      steps:
+      - setWeight: 20
+      - pause: {}
+      - setWeight: 40
+      - pause: {duration: 10s}
+      - setWeight: 60
+      - pause: {duration: 10s}
+      - setWeight: 80
+      - pause: {duration: 10s}
   template:
     metadata:
       labels:
-        component: greeting-service
+        component: #@ data.values.component
+        app: #@ data.values.app
+        environment: #@ data.values.env
     spec:
       securityContext:
         runAsNonRoot: true
@@ -28,7 +45,7 @@ spec:
                 values:
                 - rpi
       containers:
-      - name: greeting-service
+      - name: #@ data.values.component
         image: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
         command: ["/usr/local/bin/python"]
         args: ["/app/src/main.py"]

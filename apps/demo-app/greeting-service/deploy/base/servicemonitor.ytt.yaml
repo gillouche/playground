@@ -1,0 +1,26 @@
+#@ load("@ytt:data", "data")
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: #@ data.values.component
+  labels:
+    release: prometheus
+    app: #@ data.values.app
+    environment: #@ data.values.env
+spec:
+  selector:
+    matchLabels:
+      component: #@ data.values.component
+  #@ if/end hasattr(data.values, "env"):
+  namespaceSelector:
+    matchNames:
+    - #@ "playground-apps-" + data.values.env + "-" + data.values.app
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s
+  podTargetLabels:
+  - app
+  - component
+  - environment

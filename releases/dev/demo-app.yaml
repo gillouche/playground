@@ -1,5 +1,5 @@
 images:
   greeting-service:
-    tag: 1ed386b
+    tag: 8b2174c
   infra-check-service:
     tag: 9617f93

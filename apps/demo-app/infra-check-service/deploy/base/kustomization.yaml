@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
   - service.yaml
-  - grafana-dashboard.yaml
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service

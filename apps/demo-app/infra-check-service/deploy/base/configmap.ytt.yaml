@@ -1,12 +1,7 @@
 #@ load("@ytt:data", "data")
 
 #@ def get_host(service):
-#@   if data.values.env == "dev":
-#@     return service + ".playground-infra-dev.svc.cluster.local"
-#@   elif data.values.env == "test":
-#@     return service + ".playground-infra-test.svc.cluster.local"
-#@   end
-#@   return service
+#@   return service + ".playground-infra-" + data.values.env + ".svc.cluster.local"
 #@ end
 
 apiVersion: v1
