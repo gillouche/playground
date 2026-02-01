@@ -12,7 +12,6 @@ uv pip install -r "$REQUIREMENTS_FILE" \
     --target tmp/app/site-packages \
     --system \
     --python-version 3.12 \
-    --python-version 3.12 \
     --python-platform aarch64-unknown-linux-gnu \
     --no-build
 
