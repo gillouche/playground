@@ -6,6 +6,6 @@ application(
     srcs = glob(["src/**/*.py"]),
     unit_tests = glob(["tests/unit/**/*.py"]),
     integration_tests = glob(["tests/integration/**/*.py"]),
-    base_image = "@python_base_distroless",
+    base_image = "@python_base_distroless_linux_arm64",
     python_platform = "aarch64-unknown-linux-gnu",
 )

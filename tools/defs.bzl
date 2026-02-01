@@ -12,7 +12,7 @@ def application(
     test_cmd = None,
     build_cmd = None,
     image_repository = "",
-    base_image = "@python_base",
+    base_image = "@python_base_linux_arm64",
     python_platform = "aarch64-unknown-linux-musl"):
     
     defaults = {
@@ -165,7 +165,7 @@ def application(
         
         oci_image(
             name = "image",
-            base = "@python_base_linux_arm64",
+            base = base_image,
             tars = [
                 ":deps_layer",
                 ":app_layer_tar"
