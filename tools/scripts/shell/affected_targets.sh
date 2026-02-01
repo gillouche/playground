@@ -131,8 +131,8 @@ echo "Relevant changed files for Bazel query: $FILES_LIST" >&2
 echo "Querying Bazel for affected targets..." >&2
 
 # Build targets: all targets that depend on changed files
-# Build targets: all targets that depend on changed files, EXCLUDING shell scripts
-BUILD_QUERY="rdeps(//..., set($FILES_LIST)) except kind(sh_binary, //...) except kind(sh_test, //...)"
+# Build targets: all targets that depend on changed files, EXCLUDING shell scripts and tools
+BUILD_QUERY="rdeps(//..., set($FILES_LIST)) except kind(sh_binary, //...) except kind(sh_test, //...) except //tools/..."
 BUILD_TARGETS=$(bazelisk query --keep_going "$BUILD_QUERY" 2>/dev/null | tr '\n' ' ' || echo "")
 
 # Unit test targets: affected targets with 'unit' tag
