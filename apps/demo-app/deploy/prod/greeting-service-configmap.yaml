@@ -11,6 +11,6 @@ data:
   APP: demo-app
   COMPONENT: greeting-service
   LOG_LEVEL: INFO
-  APP_VERSION: v0.0.3
-  GIT_TAG: demo-app/greeting-service/v0.0.3
-  GIT_COMMIT: 3ae8cd157163b358a4fc37d8c7f36a083b62ceb5
+  APP_VERSION: v0.0.6
+  GIT_TAG: demo-app/greeting-service/v0.0.4
+  GIT_COMMIT: 1ed386bfbb421c8e74a383b7768ab07471b014f6

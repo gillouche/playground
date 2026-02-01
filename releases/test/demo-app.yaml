@@ -1,16 +1,16 @@
 metadata:
   app: demo-app
-  version: v0.0.5
-  created_at: 2026-01-31T22:16:31.770223+00:00
+  version: v0.0.6
+  created_at: 2026-02-01T09:31:47.390826+00:00
 
 images:
   infra-check-service:
-    tag: v0.0.2
-    commit: daa9719a78ee3705766722b32a0d1f71354ec69b
-    full_tag: demo-app/infra-check-service/v0.0.2
+    tag: v0.0.3
+    commit: 9617f93843e2cab132765e33b18d98af35c0ca1c
+    full_tag: demo-app/infra-check-service/v0.0.3
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:v0.0.2
-      digest: sha256:49c5494beee5e0962480b7296eb63d7303d05c57d91a7c9806e6c6513869dcac
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:v0.0.3
+      digest: sha256:ac2f7e30d0749ccd1ce6490d7369ecee63ad767da956bf402c9b6514ad51cec7
   greeting-service:
     tag: v0.0.4
     commit: 1ed386bfbb421c8e74a383b7768ab07471b014f6

@@ -8,8 +8,10 @@ patches:
   - path: greeting-service-configmap.yaml
 
 images:
-  - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
+  - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
     newTag: v0.0.3
+  - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
+    newTag: v0.0.4
 
 labels:
   - pairs:

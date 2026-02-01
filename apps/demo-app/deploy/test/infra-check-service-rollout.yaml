@@ -1,18 +1,29 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
-  name: greeting-service
+  name: infra-check-service
   labels:
-    component: greeting-service
+    component: infra-check-service
+    app: demo-app
+    environment: test
 spec:
   replicas: 1
+  revisionHistoryLimit: 3
   selector:
     matchLabels:
-      component: greeting-service
+      component: infra-check-service
+  strategy:
+    canary:
+      steps:
+      - setWeight: 20
+      - pause: {}
+      - setWeight: 100
   template:
     metadata:
       labels:
-        component: greeting-service
+        component: infra-check-service
+        app: demo-app
+        environment: test
     spec:
       securityContext:
         runAsNonRoot: true
@@ -28,14 +39,21 @@ spec:
                 values:
                 - rpi
       containers:
-      - name: greeting-service
-        image: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
-        command: ["/usr/local/bin/python"]
-        args: ["/app/src/main.py"]
+      - name: infra-check-service
+        image: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
+        imagePullPolicy: IfNotPresent
+        command:
+        - /usr/local/bin/python
+        args:
+        - /app/src/main.py
         envFrom:
         - configMapRef:
-            name: greeting-service-config
+            name: infra-check-service-config
+        - secretRef:
+            name: infra-check-credentials
         env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
         - name: NODE_NAME
           valueFrom:
             fieldRef:
@@ -49,11 +67,11 @@ spec:
           name: http
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "100m"
+            memory: 256Mi
+            cpu: 100m
           limits:
-            memory: "512Mi"
-            cpu: "200m"
+            memory: 1Gi
+            cpu: 500m
         livenessProbe:
           httpGet:
             path: /healthz
