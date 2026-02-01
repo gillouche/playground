@@ -3,9 +3,13 @@ kind: Kustomization
 resources:
   - ../base
   - greeting-service-ingress.yaml
+  - greeting-service-rollout.yaml
+  - greeting-service-servicemonitor.yaml
   - ../../infra-check-service/deploy/base
   - infra-check-service-configmap.yaml
   - infra-check-service-ingress.yaml
+  - infra-check-service-rollout.yaml
+  - infra-check-service-servicemonitor.yaml
   - infra-check-credentials.yaml
   - monitoring-grafana-dashboard.yaml
 
