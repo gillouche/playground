@@ -11,6 +11,6 @@ data:
   APP: demo-app
   COMPONENT: greeting-service
   LOG_LEVEL: DEBUG
-  APP_VERSION: unknown
-  GIT_TAG: unknown
-  GIT_COMMIT: unknown
+  APP_VERSION: dfae21b26594e5b130d2b3ebc0cfc07a7872529d
+  GIT_TAG: dfae21b26594e5b130d2b3ebc0cfc07a7872529d
+  GIT_COMMIT: dfae21b26594e5b130d2b3ebc0cfc07a7872529d
