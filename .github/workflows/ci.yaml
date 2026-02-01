@@ -230,7 +230,7 @@ jobs:
           '
 
       - name: Push Image (Main Only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.IS_FORK != 'true'
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main' && env.IS_FORK != 'true') || (github.event_name == 'workflow_dispatch')
         run: |
           # Login to Nexus
           echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
