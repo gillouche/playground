@@ -26,7 +26,7 @@
           # Base shell: Common tools (git, ytt, etc)
           base = pkgs.mkShell (import ./shells/base.nix { inherit pkgs; });
           
-          # Python shell: Python 3.13 + uv
+          # Python shell: Python 3.12 + uv
           python = import ./shells/python.nix { inherit pkgs; };
           
           # Rust shell: Latest stable + cargo

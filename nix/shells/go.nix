@@ -4,7 +4,7 @@ let
 in
 pkgs.mkShell {
   packages = base.packages ++ (with pkgs; [
-    go_1_24
+    go
   ]);
 
   shellHook = base.shellHook + ''
