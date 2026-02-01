@@ -104,7 +104,11 @@ jobs:
       - name: Build Image
         run: |
           echo "Building image for ${{ matrix.service.name }}..."
-          nix develop ./nix#ci --command bazelisk build --config=ci //${{ matrix.service.path }}:image
+          nix develop ./nix#ci --command bazelisk run --config=ci //${{ matrix.service.path }}:build_docker
+
+      - name: Scan Image for Vulnerabilities
+        run: |
+          nix develop ./nix#ci --command trivy image --exit-code 1 --severity HIGH,CRITICAL ${{ matrix.service.name }}:latest
 
       - name: Unit Tests
         run: |

@@ -12,11 +12,16 @@ import datetime
 
 NEXUS_URL = "https://nexus.gillouche.homelab"
 
-def create_ssl_context(insecure=True):
-    ctx = ssl.create_default_context()
-    if insecure:
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
+def create_ssl_context(ca_cert=None):
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.verify_mode = ssl.CERT_REQUIRED
+    ctx.check_hostname = True
+    
+    if ca_cert:
+        ctx.load_verify_locations(cafile=ca_cert)
+    else:
+        ctx.load_default_certs()
+        
     return ctx
 
 def get_latest_reachable_tag(app, component):
@@ -124,7 +129,20 @@ def freeze_app(app, version):
         "images": {}
     }
     
-    ssl_ctx = create_ssl_context()
+    # Resolving CA Cert
+    ca_cert = None
+    
+    # 1. Check workspace ca-bundle.pem
+    if workspace:
+        repo_ca = os.path.join(workspace, "ca-bundle.pem")
+        if os.path.exists(repo_ca):
+            ca_cert = repo_ca
+            
+    # 2. Check env var
+    if not ca_cert:
+        ca_cert = os.environ.get("SSL_CERT_FILE")
+
+    ssl_ctx = create_ssl_context(ca_cert)
     
     errors = []
     
