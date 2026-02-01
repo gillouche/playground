@@ -85,27 +85,116 @@ def read_bom(app):
             components[match.group(1)] = match.group(2)
     return components
 
-def update_bom(app, component, tag):
+def update_bom(app, component, tag, commit, ssl_context):
+    """
+    Update Dev BOM with full structure matching freeze.py / promote.py.
+    Structure:
+      metadata:
+        app: ...
+        version: dev
+        created_at: ...
+      images:
+        component:
+          tag: ...
+          commit: ...
+          full_tag: ...
+          image:
+            ref: ...
+            digest: ...
+    """
+    import datetime
+    
     bom_path = f"releases/dev/{app}.yaml"
+    
+    # Query Nexus for image digest
+    ref = f"nexus.gillouche.homelab/docker-hosted/{app}/{component}:{tag}"
+    digest = "unknown"
+    
+    try:
+        manifest_url = f"{NEXUS_URL}/v2/docker-hosted/{app}/{component}/manifests/{tag}"
+        headers = {"Accept": "application/vnd.docker.distribution.manifest.v2+json"}
+        req = urllib.request.Request(manifest_url, headers=headers)
+        with urllib.request.urlopen(req, context=ssl_context) as response:
+            digest = response.headers.get("docker-content-digest", "unknown")
+    except Exception as e:
+        print(f"  Warning: Could not get digest for {component}:{tag} - {e}")
+    
+    # Read existing BOM or create new
+    images = {}
+    metadata = {
+        "app": app,
+        "version": "dev",
+        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+    }
+    
     if os.path.exists(bom_path):
         with open(bom_path, 'r') as f:
             content = f.read()
-    else:
-        content = ""
+        
+        # Parse existing images section
+        lines = content.splitlines()
+        in_images = False
+        current_comp = None
+        
+        for line in lines:
+            stripped = line.strip()
+            if stripped == "images:":
+                in_images = True
+                continue
+            if not in_images:
+                continue
+            
+            # Component level (2 space indent)
+            if line.startswith("  ") and not line.startswith("    ") and line.strip().endswith(":"):
+                current_comp = stripped[:-1]
+                images[current_comp] = {}
+            # Attribute level (4 space indent)
+            elif current_comp and line.startswith("    ") and not line.startswith("      "):
+                if ":" in stripped:
+                    key, val = stripped.split(":", 1)
+                    images[current_comp][key.strip()] = val.strip()
+            # Nested level (6 space indent, e.g. image.ref)
+            elif current_comp and line.startswith("      "):
+                if ":" in stripped:
+                    key, val = stripped.split(":", 1)
+                    if key.strip() == "ref":
+                        images[current_comp]["image_ref"] = val.strip()
+                    elif key.strip() == "digest":
+                        images[current_comp]["image_digest"] = val.strip()
     
-    if "images:" not in content:
-        content = "images:\n" + content.lstrip()
+    # Update the specific component
+    full_tag = f"{app}/{component}/{tag}" if not tag.startswith(f"{app}/") else tag
+    images[component] = {
+        "tag": tag,
+        "commit": commit,
+        "full_tag": full_tag,
+        "image_ref": ref,
+        "image_digest": digest
+    }
     
-    pattern = re.compile(rf"(\s+{component}:.*\n\s+tag: ).*")
-    if pattern.search(content):
-        content = pattern.sub(rf"\g<1>{tag}", content)
-    else:
-        if not content.endswith("\n"): content += "\n"
-        content += f"  {component}:\n"
-        content += f"    tag: {tag}\n"
+    # Write full BOM
+    output_lines = []
+    output_lines.append("metadata:")
+    output_lines.append(f"  app: {metadata['app']}")
+    output_lines.append(f"  version: {metadata['version']}")
+    output_lines.append(f"  created_at: {metadata['created_at']}")
+    output_lines.append("")
+    output_lines.append("images:")
     
+    for comp, data in images.items():
+        output_lines.append(f"  {comp}:")
+        output_lines.append(f"    tag: {data.get('tag', 'unknown')}")
+        output_lines.append(f"    commit: {data.get('commit', 'unknown')}")
+        output_lines.append(f"    full_tag: {data.get('full_tag', 'unknown')}")
+        output_lines.append(f"    image:")
+        output_lines.append(f"      ref: {data.get('image_ref', 'unknown')}")
+        output_lines.append(f"      digest: {data.get('image_digest', 'unknown')}")
+    
+    output_content = "\n".join(output_lines) + "\n"
+    
+    os.makedirs(os.path.dirname(bom_path), exist_ok=True)
     with open(bom_path, 'w') as f:
-        f.write(content)
+        f.write(output_content)
 
 def update_kustomization(app, component, tag):
     kustomization_path = f"apps/{app}/deploy/dev/kustomization.yaml"
@@ -145,7 +234,8 @@ def update_configmap(app, component, tag, commit):
         lines = f.readlines()
     
     replacements = {
-        "APP_VERSION": tag,
+        "APP_VERSION": "dev",
+        "COMPONENT_VERSION": tag,
         "GIT_TAG": tag,
         "GIT_COMMIT": commit,
         "APP": app,
@@ -207,7 +297,7 @@ def sync_dev(app, component=None, ssl_context=None):
         
         commit_sha = get_git_commit(latest_tag)
         
-        update_bom(app, comp_name, latest_tag)
+        update_bom(app, comp_name, latest_tag, commit_sha, ssl_context)
         update_kustomization(app, comp_name, latest_tag)
         
         # Defer configmap update until AFTER gen_manifests

@@ -14,9 +14,10 @@ data:
   ENVIRONMENT: #@ data.values.env
   APP: #@ data.values.app
   COMPONENT: #@ data.values.component
-  APP_VERSION: "0.0.0"
-  GIT_TAG: "HEAD"
-  GIT_COMMIT: "unknown"
+  APP_VERSION: #@ data.values.app_version
+  COMPONENT_VERSION: #@ data.values.component_version
+  GIT_TAG: #@ data.values.git_tag
+  GIT_COMMIT: #@ data.values.git_commit
   LOG_LEVEL: INFO
   POSTGRES_HOST: #@ get_host("postgres")
   POSTGRES_PORT: "5432"

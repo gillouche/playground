@@ -2,4 +2,8 @@
 ---
 app: demo-app
 component: infra-check-service
-env: sandbox
+env: "dev"
+git_tag: "unknown"
+git_commit: "unknown"
+app_version: "unknown"
+component_version: "unknown"

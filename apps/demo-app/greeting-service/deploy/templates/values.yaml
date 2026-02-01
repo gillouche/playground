@@ -3,3 +3,7 @@
 component: "greeting-service"
 app: "demo-app"
 env: "dev"
+git_tag: "unknown"
+git_commit: "unknown"
+app_version: "unknown"
+component_version: "unknown"

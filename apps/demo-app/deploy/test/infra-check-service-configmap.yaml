@@ -9,6 +9,7 @@ data:
   APP: demo-app
   COMPONENT: infra-check-service
   APP_VERSION: v0.0.7
+  COMPONENT_VERSION: v0.0.4
   GIT_TAG: demo-app/infra-check-service/v0.0.4
   GIT_COMMIT: fe2837fc562766341b1e937375ca194e380685c0
   LOG_LEVEL: INFO

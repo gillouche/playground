@@ -18,6 +18,7 @@ data:
   #@ else:
   LOG_LEVEL: "INFO"
   #@ end
-  APP_VERSION: "unknown"
-  GIT_TAG: "unknown"
-  GIT_COMMIT: "unknown"
+  APP_VERSION: #@ data.values.app_version
+  COMPONENT_VERSION: #@ data.values.component_version
+  GIT_TAG: #@ data.values.git_tag
+  GIT_COMMIT: #@ data.values.git_commit

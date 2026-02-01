@@ -1,5 +1,20 @@
+metadata:
+  app: demo-app
+  version: dev
+  created_at: 2026-02-01T12:40:00.533963+00:00
+
 images:
   greeting-service:
     tag: fe2837f
+    commit: fe2837fc562766341b1e937375ca194e380685c0
+    full_tag: demo-app/greeting-service/fe2837f
+    image:
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:fe2837f
+      digest: sha256:81fd285250ada6ed72ab9763adcf164d14ff804a7ed3b49981324990e0c352ca
   infra-check-service:
     tag: fe2837f
+    commit: fe2837fc562766341b1e937375ca194e380685c0
+    full_tag: demo-app/infra-check-service/fe2837f
+    image:
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:fe2837f
+      digest: sha256:f125474f125736f67b54cdf7ee23d7770de60523fd7665c991b66622caf97856
