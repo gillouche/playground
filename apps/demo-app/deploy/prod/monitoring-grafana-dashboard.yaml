@@ -411,8 +411,8 @@ data:
         ]
       },
       "timezone": "",
-      "title": "FastAPI Service Dashboard",
-      "uid": "fastapi-service-dashboard",
+      "title": #@ "FastAPI Service Dashboard (" + data.values.env + ")",
+      "uid": #@ "fastapi-service-dashboard-" + data.values.env,
       "version": 1,
       "weekStart": ""
     }
