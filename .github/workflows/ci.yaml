@@ -7,6 +7,12 @@ on:
       - '**'
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: 'Force build all services'
+        required: false
+        default: 'true'
 
 permissions:
   contents: read
@@ -70,7 +76,20 @@ jobs:
           INTEGRATION_TARGETS=$(echo "$OUTPUT" | grep "^AFFECTED_INTEGRATION_TARGETS=" | cut -d= -f2-)
 
           # Combine all targets to find all affected services
-          ALL_TARGETS="$BUILD_TARGETS $UNIT_TARGETS $LINT_TARGETS $INTEGRATION_TARGETS"
+          # Check for force_all input
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_all }}" == "true" ]]; then
+            echo "Forcing build of all services..."
+            # Query all application targets (heuristic: all targets under apps/ having build tags or similar)
+            # Actually, using bazelisk query to find all 'application' rule targets would be best, but we don't have that rule easily queryable by name.
+            # Fallback: Query all targets under apps/ that have a 'push_oci' or 'build_docker' target?
+            # Let's assume //apps/... is sufficient, but we need to filter to just the service roots.
+            # generate_matrix.py expects targets like //apps/demo-app/greeting-service:something
+            
+            # Simple approach: query all targets in apps
+            ALL_TARGETS=$(nix develop ./nix#ci --command bazelisk query "kind(rule, //apps/...)")
+          else
+             ALL_TARGETS="$BUILD_TARGETS $UNIT_TARGETS $LINT_TARGETS $INTEGRATION_TARGETS"
+          fi
 
           if [ -z "$(echo $ALL_TARGETS | tr -d ' ')" ]; then
             echo "No affected targets found."
