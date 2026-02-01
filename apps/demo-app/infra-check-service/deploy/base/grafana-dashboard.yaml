@@ -114,7 +114,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "rate(http_request_duration_seconds_count{app=\"${app}\", component=\"${service}\", environment=\"${environment}\"}[1m])",
+              "expr": "sum(rate(http_requests_total{app=~\"${app}\", component=~\"${service}\", environment=~\"${environment}\"}[1m]))",
               "legendFormat": "Total RPS",
               "range": true,
               "refId": "A"
@@ -193,7 +193,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (status) (rate(http_request_duration_seconds_count{app=\"${app}\", component=\"${service}\", environment=\"${environment}\"}[1m]))",
+              "expr": "sum by (status) (rate(http_requests_total{app=~\"${app}\", component=~\"${service}\", environment=~\"${environment}\"}[1m]))",
               "legendFormat": "{{status}}",
               "range": true,
               "refId": "A"
@@ -272,7 +272,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{app=\"${app}\", component=\"${service}\", environment=\"${environment}\"}[1m])))",
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{app=~\"${app}\", component=~\"${service}\", environment=~\"${environment}\"}[1m])))",
               "legendFormat": "P99 Latency",
               "range": true,
               "refId": "A"
@@ -283,7 +283,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{app=\"${app}\", component=\"${service}\", environment=\"${environment}\"}[1m])))",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{app=~\"${app}\", component=~\"${service}\", environment=~\"${environment}\"}[1m])))",
               "legendFormat": "P95 Latency",
               "range": true,
               "refId": "B"
@@ -392,7 +392,7 @@ data:
         ]
       },
       "time": {
-        "from": "now-15m",
+        "from": "now-5m",
         "to": "now"
       },
       "timepicker": {
