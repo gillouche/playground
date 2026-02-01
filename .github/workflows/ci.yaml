@@ -65,6 +65,11 @@ jobs:
             echo "Generated matrix: $MATRIX"
           fi
 
+      - name: Send Start Notification
+        if: steps.matrix.outputs.has_changes == 'true'
+        run: |
+          ./tools/scripts/shell/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA. Affected services: ${{ steps.matrix.outputs.matrix }}"
+
   validate-service:
     name: ${{ matrix.service.name }}
     needs: analyze
@@ -86,10 +91,6 @@ jobs:
         run: |
           echo "AWS_ACCESS_KEY_ID=$SEAWEEDFS_ACCESS_KEY" >> $GITHUB_ENV
           echo "AWS_SECRET_ACCESS_KEY=$SEAWEEDFS_SECRET_KEY" >> $GITHUB_ENV
-
-      - name: Send Start Notification
-        run: |
-          ./tools/scripts/shell/notify_discord.sh START "${{ matrix.service.name }}" "Pipeline started for commit $GITHUB_SHA"
 
       - name: Build Image
         run: |
@@ -148,12 +149,59 @@ jobs:
           echo "Pushing image for ${{ matrix.service.name }}..."
           nix develop ./nix#ci --command bazelisk run //${{ matrix.service.path }}:push_oci -- --tag latest --tag $GITHUB_SHA
 
-      - name: Send Success Notification
-        if: success()
-        run: |
-          ./tools/scripts/shell/notify_discord.sh SUCCESS "${{ matrix.service.name }}" "Pipeline completed successfully."
-
-      - name: Send Failure Notification
+      - name: Report Failure
         if: failure()
         run: |
-          ./tools/scripts/shell/notify_discord.sh FAILURE "${{ matrix.service.name }}" "Pipeline failed."
+          echo "${{ matrix.service.name }}" > failure-${{ matrix.service.name }}.txt
+        
+      - name: Upload Failure Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-${{ matrix.service.name }}
+          path: failure-${{ matrix.service.name }}.txt
+          retention-days: 1
+
+  notify-end:
+    name: Notify End
+    needs: [analyze, validate-service]
+    if: always()
+    runs-on: playground-runner
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Download Failure Artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: failure-*
+          path: failures
+          merge-multiple: true
+
+      - name: Send completion notification
+        run: |
+          # Check if build was skipped entirely (analyze determined no changes)
+          if [ "${{ needs.analyze.outputs.has_changes }}" == "false" ]; then
+             echo "No changes detected, skipping notification."
+             exit 0
+          fi
+
+          # Check for failures
+          if [ -d "failures" ] && [ "$(ls -A failures)" ]; then
+             FAILED_SERVICES=$(cat failures/* | tr '\n' ', ' | sed 's/, $//')
+             STATUS="FAILURE"
+             MSG="Build failed for the following services: $FAILED_SERVICES"
+          elif [ "${{ needs.validate-service.result }}" == "cancelled" ]; then
+             STATUS="FAILURE"
+             MSG="Build cancelled."
+          elif [ "${{ needs.validate-service.result }}" == "failure" ]; then
+             # Fallback if result is failure but no artifacts (e.g. infrastructure fail)
+             STATUS="FAILURE"
+             MSG="Build failed (Infrastructure or Setup error)."
+          else
+             STATUS="SUCCESS"
+             MSG="Pipeline completed successfully for all services."
+          fi
+
+          ./tools/scripts/shell/notify_discord.sh "$STATUS" "CI Pipeline" "$MSG"
