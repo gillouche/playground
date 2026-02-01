@@ -4,6 +4,7 @@ metadata:
   name: demo-app-dashboard
   labels:
     grafana_dashboard: "1"
+    component: monitoring
 data:
   infra-check-service.json: |
     {
