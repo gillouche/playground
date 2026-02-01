@@ -59,7 +59,7 @@ spec:
         - name: tmp
           mountPath: /tmp
         command:
-        - /usr/local/bin/python
+        - /usr/bin/python3
         args:
         - /app/src/main.py
         envFrom:

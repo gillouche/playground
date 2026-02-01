@@ -1,0 +1,10 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: greeting-service
+spec:
+  template:
+    spec:
+      containers:
+      - name: greeting-service
+        command: ["/usr/local/bin/python"]

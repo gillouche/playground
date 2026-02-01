@@ -71,7 +71,7 @@ spec:
           mountPath: /tmp
         #@ end
 
-        command: ["/usr/local/bin/python"]
+        command: ["/usr/bin/python3"]
         args: ["/app/src/main.py"]
         envFrom:
         - configMapRef:

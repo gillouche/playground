@@ -1,0 +1,10 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: infra-check-service
+spec:
+  template:
+    spec:
+      containers:
+      - name: infra-check-service
+        command: ["/usr/local/bin/python"]
