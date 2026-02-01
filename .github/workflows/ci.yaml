@@ -32,6 +32,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+      
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
       - name: Determine affected services
         id: matrix
         run: |
@@ -92,6 +98,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+      
+      - name: Setup Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
       - name: Load Credentials
         run: |
           # SeaweedFS Cache
@@ -101,58 +113,53 @@ jobs:
           echo "NEXUS_USERNAME=$NEXUS_USERNAME" >> $GITHUB_ENV
           echo "NEXUS_PASSWORD=$NEXUS_PASSWORD" >> $GITHUB_ENV
 
-      - name: Build Image
+      - name: Build, Test, and Lint
         run: |
-          echo "Building image for ${{ matrix.service.name }}..."
-          nix develop ./nix#ci --command bazelisk run --config=ci //${{ matrix.service.path }}:build_docker
+          nix develop ./nix#ci --command bash -c '
+            set -e
 
-      - name: Scan Image for Vulnerabilities
-        run: |
-          nix develop ./nix#ci --command trivy image --exit-code 1 --severity HIGH,CRITICAL ${{ matrix.service.name }}:latest
+            echo "Building image for ${{ matrix.service.name }}..."
+            bazelisk run --config=ci //${{ matrix.service.path }}:build_docker
 
-      - name: Unit Tests
-        run: |
-          echo "Running unit tests for ${{ matrix.service.name }}..."
-          # Find unit test targets under the service path
-          # Filter output to only include lines starting with // to avoid capturing Nix shell logs
-          TARGETS=$(nix develop ./nix#ci --command bazelisk query "attr(tags, unit, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
-          if [ -n "$TARGETS" ]; then
-            for target in $TARGETS; do
-              echo ">>> Running $target"
-              nix develop ./nix#ci --command bazelisk run "$target"
-            done
-          else
-             echo "No unit tests found."
-          fi
+            echo "Scanning image for vulnerabilities..."
+            trivy image --exit-code 1 --severity HIGH,CRITICAL ${{ matrix.service.name }}:latest
 
-      - name: Lint
-        run: |
-          echo "Running lint for ${{ matrix.service.name }}..."
-          TARGETS=$(nix develop ./nix#ci --command bazelisk query "attr(tags, lint, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
-          if [ -n "$TARGETS" ]; then
-            for target in $TARGETS; do
-              echo ">>> Running $target"
-              nix develop ./nix#ci --command bazelisk run "$target"
-            done
-          else
-             echo "No lint targets found."
-          fi
+            echo "Running unit tests for ${{ matrix.service.name }}..."
+            TARGETS=$(bazelisk query "attr(tags, unit, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
+            if [ -n "$TARGETS" ]; then
+              for target in $TARGETS; do
+                echo ">>> Running $target"
+                bazelisk run "$target"
+              done
+            else
+               echo "No unit tests found."
+            fi
 
-      - name: Integration Tests
-        run: |
-          echo "Running integration tests for ${{ matrix.service.name }}..."
-          TARGETS=$(nix develop ./nix#ci --command bazelisk query "attr(tags, integration, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
-          if [ -n "$TARGETS" ]; then
-            for target in $TARGETS; do
-              echo ">>> Running $target"
-              nix develop ./nix#ci --command bazelisk run "$target"
-            done
-          else
-             echo "No integration tests found."
-          fi
+            echo "Running lint for ${{ matrix.service.name }}..."
+            TARGETS=$(bazelisk query "attr(tags, lint, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
+            if [ -n "$TARGETS" ]; then
+              for target in $TARGETS; do
+                echo ">>> Running $target"
+                bazelisk run "$target"
+              done
+            else
+               echo "No lint targets found."
+            fi
+
+            echo "Running integration tests for ${{ matrix.service.name }}..."
+            TARGETS=$(bazelisk query "attr(tags, integration, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
+            if [ -n "$TARGETS" ]; then
+              for target in $TARGETS; do
+                echo ">>> Running $target"
+                bazelisk run "$target"
+              done
+            else
+               echo "No integration tests found."
+            fi
+          '
 
       - name: Push Image (Main Only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.IS_FORK != 'true'
         run: |
           # Login to Nexus
           echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
