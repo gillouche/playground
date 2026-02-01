@@ -101,7 +101,8 @@ jobs:
         run: |
           echo "Running unit tests for ${{ matrix.service.name }}..."
           # Find unit test targets under the service path
-          TARGETS=$(nix develop ./nix#ci --command bazelisk query "attr(tags, unit, //${{ matrix.service.path }}/...)" 2>/dev/null || true)
+          # Filter output to only include lines starting with // to avoid capturing Nix shell logs
+          TARGETS=$(nix develop ./nix#ci --command bazelisk query "attr(tags, unit, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
           if [ -n "$TARGETS" ]; then
             for target in $TARGETS; do
               echo ">>> Running $target"
@@ -114,7 +115,7 @@ jobs:
       - name: Lint
         run: |
           echo "Running lint for ${{ matrix.service.name }}..."
-          TARGETS=$(nix develop ./nix#ci --command bazelisk query "attr(tags, lint, //${{ matrix.service.path }}/...)" 2>/dev/null || true)
+          TARGETS=$(nix develop ./nix#ci --command bazelisk query "attr(tags, lint, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
           if [ -n "$TARGETS" ]; then
             for target in $TARGETS; do
               echo ">>> Running $target"
@@ -127,7 +128,7 @@ jobs:
       - name: Integration Tests
         run: |
           echo "Running integration tests for ${{ matrix.service.name }}..."
-          TARGETS=$(nix develop ./nix#ci --command bazelisk query "attr(tags, integration, //${{ matrix.service.path }}/...)" 2>/dev/null || true)
+          TARGETS=$(nix develop ./nix#ci --command bazelisk query "attr(tags, integration, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
           if [ -n "$TARGETS" ]; then
             for target in $TARGETS; do
               echo ">>> Running $target"
