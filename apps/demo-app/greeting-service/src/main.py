@@ -35,6 +35,7 @@ async def lifespan(application: FastAPI):
 app = FastAPI(lifespan=lifespan)
 Instrumentator().instrument(app).expose(app)
 
+
 @app.get("/")
 async def root(name: str | None = None):
     subject = sanitize(name)

@@ -91,7 +91,6 @@ async def root():
         "endpoints": ["/postgres", "/redis", "/kafka", "/mongodb"]
     }
 
-
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
