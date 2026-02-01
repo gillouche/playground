@@ -4,7 +4,9 @@ bazel_dep(name = "rules_pkg", version = "1.2.0")
 bazel_dep(name = "platforms", version = "1.0.0")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(
     python_version = "3.12",
+)
 use_repo(python, "python_3_12")
 
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
