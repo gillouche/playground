@@ -153,8 +153,9 @@ jobs:
           # Login to Nexus
           echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
           
-          echo "Pushing image for ${{ matrix.service.name }}..."
-          nix develop ./nix#ci --command bazelisk run //${{ matrix.service.path }}:push_oci -- --tag latest --tag $GITHUB_SHA
+          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+          echo "Pushing image for ${{ matrix.service.name }} with tag $SHORT_SHA..."
+          nix develop ./nix#ci --command bazelisk run //${{ matrix.service.path }}:push_oci -- --tag latest --tag $SHORT_SHA
 
       - name: Report Failure
         if: failure()
