@@ -5,10 +5,12 @@ kind: ServiceMonitor
 metadata:
   name: #@ data.values.component
   labels:
-    release: prometheus
+    release: monitoring
     app: #@ data.values.app
+    component: #@ data.values.component
     environment: #@ data.values.env
 spec:
+  jobLabel: component
   selector:
     matchLabels:
       component: #@ data.values.component

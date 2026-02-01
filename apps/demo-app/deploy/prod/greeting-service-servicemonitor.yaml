@@ -3,10 +3,12 @@ kind: ServiceMonitor
 metadata:
   name: greeting-service
   labels:
-    release: prometheus
+    release: monitoring
     app: demo-app
+    component: greeting-service
     environment: prod
 spec:
+  jobLabel: component
   selector:
     matchLabels:
       component: greeting-service
