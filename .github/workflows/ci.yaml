@@ -53,7 +53,8 @@ jobs:
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
             echo "Generating matrix from targets..."
-            echo "$ALL_TARGETS" | nix develop ./nix#ci --command bazelisk run //tools/scripts/python:generate_matrix > matrix.json
+            # nix develop prints setup logs to stdout, so we must filter for the JSON line (starts with [)
+            echo "$ALL_TARGETS" | nix develop ./nix#ci --command bazelisk run //tools/scripts/python:generate_matrix | grep "^\\[" > matrix.json
             MATRIX=$(cat matrix.json)
             echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
             if [ "$MATRIX" == "[]" ]; then
