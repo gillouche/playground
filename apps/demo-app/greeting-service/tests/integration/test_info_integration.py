@@ -11,7 +11,7 @@ def test_info_endpoint_defaults():
     
     # Keys should exist
     assert "hostname" in data
-    assert "version" in data
+    assert "app_version" in data
     assert "environment" in data
     assert "node" in data
     assert "log_level" in data
