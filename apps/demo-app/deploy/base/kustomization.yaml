@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - ../../greeting-service/deploy/base
   - allow-ingress-networkpolicy.yaml
+  - grafana-dashboard.yaml
 
 labels:
   - pairs:
