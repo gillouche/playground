@@ -45,5 +45,12 @@
           default = self.devShells.${system}.bazel;
         }
       );
+      
+      packages = forAllSystems (system:
+        {
+          ci = self.devShells.${system}.ci;
+          default = self.devShells.${system}.ci;
+        }
+      );
     };
 }
