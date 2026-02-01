@@ -1,76 +1,36 @@
-#@ load("@ytt:data", "data")
-
-#@ if data.values.env == "sandbox":
 apiVersion: apps/v1
 kind: Deployment
-#@ else:
-apiVersion: argoproj.io/v1alpha1
-kind: Rollout
-#@ end
 metadata:
   name: infra-check-service
   labels:
     component: infra-check-service
-    app: #@ data.values.app
-    environment: #@ data.values.env
+    app: demo-app
+    environment: sandbox
 spec:
   replicas: 1
-  #@ if data.values.env != "sandbox":
-  revisionHistoryLimit: 3
-  #@ end
   selector:
     matchLabels:
       component: infra-check-service
-  #@ if data.values.env != "sandbox":
-  strategy:
-    canary:
-      steps:
-      - setWeight: 20
-      - pause: {duration: 30s}
-      - setWeight: 100
-  #@ end
   template:
     metadata:
       labels:
         component: infra-check-service
-        app: #@ data.values.app
-        environment: #@ data.values.env
+        app: demo-app
+        environment: sandbox
     spec:
-      #@ if data.values.env != "sandbox":
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 2000
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: topology.kubernetes.io/node-group
-                operator: In
-                values:
-                - rpi
-      #@ end
       containers:
       - name: infra-check-service
         image: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
-        #@ if data.values.env == "sandbox":
         imagePullPolicy: Never
-        #@ else:
-        imagePullPolicy: IfNotPresent
-        #@ end
-        command: ["/usr/local/bin/python"]
-        args: ["/app/src/main.py"]
+        command:
+        - /usr/local/bin/python
+        args:
+        - /app/src/main.py
         envFrom:
         - configMapRef:
             name: infra-check-service-config
-        #@ if data.values.env != "sandbox":
-        - secretRef:
-            name: infra-check-credentials
-        #@ else:
         - secretRef:
             name: infra-check-secrets
-        #@ end
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
@@ -87,11 +47,11 @@ spec:
           name: http
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "100m"
+            memory: 256Mi
+            cpu: 100m
           limits:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: 1Gi
+            cpu: 500m
         livenessProbe:
           httpGet:
             path: /healthz

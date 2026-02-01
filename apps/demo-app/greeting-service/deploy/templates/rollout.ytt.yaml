@@ -1,7 +1,12 @@
 #@ load("@ytt:data", "data")
 
+#@ if data.values.env == "sandbox":
+apiVersion: apps/v1
+kind: Deployment
+#@ else:
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
+#@ end
 metadata:
   name: #@ data.values.component
   labels:
@@ -13,6 +18,7 @@ spec:
   selector:
     matchLabels:
       component: #@ data.values.component
+  #@ if data.values.env != "sandbox":
   strategy:
     canary:
       steps:
@@ -24,6 +30,7 @@ spec:
       - pause: {duration: 10s}
       - setWeight: 80
       - pause: {duration: 10s}
+  #@ end
   template:
     metadata:
       labels:
@@ -31,6 +38,7 @@ spec:
         app: #@ data.values.app
         environment: #@ data.values.env
     spec:
+      #@ if data.values.env != "sandbox":
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -44,9 +52,13 @@ spec:
                 operator: In
                 values:
                 - rpi
+      #@ end
       containers:
       - name: #@ data.values.component
         image: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
+        #@ if data.values.env == "sandbox":
+        imagePullPolicy: Never
+        #@ end
         command: ["/usr/local/bin/python"]
         args: ["/app/src/main.py"]
         envFrom:

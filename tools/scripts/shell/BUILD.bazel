@@ -3,6 +3,7 @@ package(default_visibility = ["//visibility:public"])
 exports_files([
     "run_command.sh",
     "deploy_minikube.sh",
+    "deploy_sandbox_all.sh",
     "sandbox_workflow.sh",
     "smart_push.sh",
     "ytt_gen.sh",

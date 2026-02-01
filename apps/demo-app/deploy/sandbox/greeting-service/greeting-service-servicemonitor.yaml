@@ -1,0 +1,25 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: greeting-service
+  labels:
+    release: monitoring
+    app: demo-app
+    component: greeting-service
+    environment: sandbox
+spec:
+  jobLabel: component
+  selector:
+    matchLabels:
+      component: greeting-service
+  namespaceSelector:
+    matchNames:
+    - playground-apps-sandbox-demo-app
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s
+  podTargetLabels:
+  - app
+  - component
+  - environment

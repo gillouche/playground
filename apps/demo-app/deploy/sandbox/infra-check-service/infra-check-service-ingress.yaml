@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: infra-check-service
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+  labels:
+    app: demo-app
+    component: infra-check-service
+    environment: sandbox
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - infra-check-service.demo-app.sandbox.k3s.gillouche.homelab
+  rules:
+  - host: infra-check-service.demo-app.sandbox.k3s.gillouche.homelab
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: infra-check-service
+            port:
+              number: 8080

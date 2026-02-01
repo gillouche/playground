@@ -238,3 +238,10 @@ def application(
             args = [package_dir, "echo 'Not implemented yet'"], 
         )
 
+
+def deploy_sandbox_all(name, app, components = []):
+    native.sh_binary(
+        name = name,
+        srcs = ["//tools/scripts/shell:deploy_sandbox_all.sh"],
+        args = [app],
+    )

@@ -20,6 +20,11 @@ generate_app_env() {
     local base_dir="$APPS_DIR/$concept/$app/deploy/templates"
     local output_dir="$APPS_DIR/$concept/deploy/$env"
     
+    # For sandbox, output to component subdirectory
+    if [ "$env" = "sandbox" ]; then
+        output_dir="$APPS_DIR/$concept/deploy/sandbox/$app"
+    fi
+    
     if [ ! -d "$base_dir" ]; then
         return
     fi
@@ -143,7 +148,7 @@ if [ "$GENERATE_ALL" = true ]; then
             fi
             
             # Generate for each environment
-            for env in dev test prod; do
+            for env in sandbox dev test prod; do
                 generate_app_env "$concept" "$app" "$env"
             done
         done

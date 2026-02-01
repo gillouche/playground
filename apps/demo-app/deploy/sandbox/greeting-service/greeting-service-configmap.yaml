@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: greeting-service-config
+  labels:
+    app: demo-app
+    component: greeting-service
+    environment: sandbox
+data:
+  ENVIRONMENT: sandbox
+  APP: demo-app
+  COMPONENT: greeting-service
+  LOG_LEVEL: INFO
+  APP_VERSION: sandbox
+  COMPONENT_VERSION: latest
+  GIT_TAG: local/greeting-service/latest
+  GIT_COMMIT: local
