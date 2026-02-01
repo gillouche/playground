@@ -376,5 +376,4 @@ metadata:
   labels:
     grafana_dashboard: "1"
     component: #@ data.values.component
-data:
-  infra-check-service.json: #@ json.encode(dashboard())
+data: #@ { ("infra-check-service-" + data.values.env + ".json"): json.encode(dashboard()) }
