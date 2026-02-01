@@ -7,6 +7,7 @@ resources:
   - infra-check-service-configmap.yaml
   - infra-check-service-ingress.yaml
   - infra-check-credentials.yaml
+  - monitoring-grafana-dashboard.yaml
 
 patches:
   - path: greeting-service-configmap.yaml

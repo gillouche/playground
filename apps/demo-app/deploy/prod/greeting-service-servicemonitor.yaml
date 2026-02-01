@@ -1,0 +1,23 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: greeting-service
+  labels:
+    release: prometheus
+    app: demo-app
+    environment: prod
+spec:
+  selector:
+    matchLabels:
+      component: greeting-service
+  namespaceSelector:
+    matchNames:
+    - playground-apps-prod-demo-app
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s
+  podTargetLabels:
+  - app
+  - component
+  - environment

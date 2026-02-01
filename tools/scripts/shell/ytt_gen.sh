@@ -17,7 +17,7 @@ generate_app_env() {
     local app=$2
     local env=$3
     
-    local base_dir="$APPS_DIR/$concept/$app/deploy/base"
+    local base_dir="$APPS_DIR/$concept/$app/deploy/templates"
     local output_dir="$APPS_DIR/$concept/deploy/$env"
     
     if [ ! -d "$base_dir" ]; then

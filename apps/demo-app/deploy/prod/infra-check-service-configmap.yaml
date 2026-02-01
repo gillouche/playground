@@ -8,19 +8,19 @@ data:
   ENVIRONMENT: prod
   APP: demo-app
   COMPONENT: infra-check-service
-  APP_VERSION: v0.0.6
-  GIT_TAG: demo-app/infra-check-service/v0.0.3
-  GIT_COMMIT: 9617f93843e2cab132765e33b18d98af35c0ca1c
+  APP_VERSION: 0.0.0
+  GIT_TAG: HEAD
+  GIT_COMMIT: unknown
   LOG_LEVEL: INFO
-  POSTGRES_HOST: postgres
+  POSTGRES_HOST: postgres.playground-infra-prod.svc.cluster.local
   POSTGRES_PORT: "5432"
   POSTGRES_DB: playground
   POSTGRES_USER: playground
-  REDIS_HOST: redis
+  REDIS_HOST: redis.playground-infra-prod.svc.cluster.local
   REDIS_PORT: "6379"
-  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  KAFKA_BOOTSTRAP_SERVERS: kafka.playground-infra-prod.svc.cluster.local:9092
   KAFKA_TOPIC: infra-check
-  MONGODB_HOST: mongodb
+  MONGODB_HOST: mongodb.playground-infra-prod.svc.cluster.local
   MONGODB_PORT: "27017"
   MONGODB_DB: playground
   MONGODB_USER: playground
