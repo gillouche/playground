@@ -19,9 +19,9 @@ patches:
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
-    newTag: dfae21b26594e5b130d2b3ebc0cfc07a7872529d
+    newTag: fe2837f
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
-    newTag: dfae21b26594e5b130d2b3ebc0cfc07a7872529d
+    newTag: fe2837f
 
 labels:
   - pairs:

@@ -1,5 +1,5 @@
 images:
   greeting-service:
-    tag: dfae21b26594e5b130d2b3ebc0cfc07a7872529d
+    tag: fe2837f
   infra-check-service:
-    tag: dfae21b26594e5b130d2b3ebc0cfc07a7872529d
+    tag: fe2837f
