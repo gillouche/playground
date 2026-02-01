@@ -13,7 +13,7 @@ def application(
     build_cmd = None,
     image_repository = "",
     base_image = "@python_base_linux_arm64_v8",
-    python_platform = "manylinux2014_aarch64"):
+    python_platform = "manylinux_2_28_aarch64"):
     
     defaults = {
         "python": {
