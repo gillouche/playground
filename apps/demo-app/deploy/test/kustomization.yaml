@@ -14,9 +14,9 @@ patches:
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
-    newTag: v0.0.4
+    newTag: v0.0.6
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
-    newTag: v0.0.3
+    newTag: v0.0.4
 
 labels:
   - pairs:
