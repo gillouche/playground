@@ -4,16 +4,14 @@ bazel_dep(name = "rules_pkg", version = "1.2.0")
 bazel_dep(name = "platforms", version = "1.0.0")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
-python.toolchain(
-    python_version = "3.13",
-)
-use_repo(python, "python_3_13")
+    python_version = "3.12",
+use_repo(python, "python_3_12")
 
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(
     name = "python_base",
     image = "index.docker.io/library/python",
     platforms = ["linux/arm64/v8"],
-    tag = "3.13-slim",
+    tag = "3.12-slim",
 )
 use_repo(oci, "python_base", "python_base_linux_arm64_v8")
