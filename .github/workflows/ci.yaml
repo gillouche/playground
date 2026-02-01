@@ -32,7 +32,7 @@ jobs:
     env:
       PLAYGROUND_ROOT: ${{ github.workspace }}
     outputs:
-      has_changes: ${{ steps.affected.outputs.has_changes }}
+      has_code_changes: ${{ steps.affected.outputs.has_code_changes }}
 
     steps:
       - name: Abort immediately if fork detected
@@ -90,25 +90,25 @@ jobs:
 
           # Determine if we have any work to do
           if [ -z "$BUILD_TARGETS" ] && [ -z "$UNIT_TARGETS" ] && [ -z "$LINT_TARGETS" ] && [ -z "$INTEGRATION_TARGETS" ]; then
-            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "has_code_changes=false" >> "$GITHUB_OUTPUT"
             echo "No affected targets found - will skip build/test/lint steps"
           else
-            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            echo "has_code_changes=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Send start notification
-        if: steps.affected.outputs.has_changes == 'true'
+        if: steps.affected.outputs.has_code_changes == 'true'
         run: |
           ./tools/scripts/shell/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA"
 
       - name: Build
-        if: steps.affected.outputs.has_changes == 'true' && steps.affected.outputs.build_targets != ''
+        if: steps.affected.outputs.has_code_changes == 'true' && steps.affected.outputs.build_targets != ''
         run: |
           echo "Building affected targets..."
           nix develop ./nix#ci --command bazelisk build --config=ci ${{ steps.affected.outputs.build_targets }}
 
       - name: Unit Tests & Coverage
-        if: steps.affected.outputs.has_changes == 'true' && steps.affected.outputs.unit_targets != ''
+        if: steps.affected.outputs.has_code_changes == 'true' && steps.affected.outputs.unit_targets != ''
         run: |
           echo "Running affected unit tests..."
           for target in ${{ steps.affected.outputs.unit_targets }}; do
@@ -117,7 +117,7 @@ jobs:
           done
 
       - name: Lint
-        if: steps.affected.outputs.has_changes == 'true' && steps.affected.outputs.lint_targets != ''
+        if: steps.affected.outputs.has_code_changes == 'true' && steps.affected.outputs.lint_targets != ''
         run: |
           echo "Running affected lint targets..."
           for target in ${{ steps.affected.outputs.lint_targets }}; do
@@ -126,7 +126,7 @@ jobs:
           done
 
       - name: Integration Tests & Coverage
-        if: steps.affected.outputs.has_changes == 'true' && steps.affected.outputs.integration_targets != ''
+        if: steps.affected.outputs.has_code_changes == 'true' && steps.affected.outputs.integration_targets != ''
         run: |
           echo "Running affected integration tests..."
           for target in ${{ steps.affected.outputs.integration_targets }}; do
@@ -139,7 +139,8 @@ jobs:
     needs: build-and-test
     if: >
       github.event_name == 'push' &&
-      github.ref == 'refs/heads/main'
+      github.ref == 'refs/heads/main' &&
+      needs.build-and-test.outputs.has_code_changes == 'true'
     runs-on: playground-runner
     timeout-minutes: 20
     permissions:
@@ -212,7 +213,7 @@ jobs:
             STATUS="SUCCESS"
             if [ "$IMAGE_PUSHED" == "true" ] && [ -n "$IMAGE_TAG" ]; then
               MSG="Build successful. Image pushed: $IMAGE_TAG"
-            elif [ "${{ needs.build-and-test.outputs.has_changes }}" == "false" ]; then
+            elif [ "${{ needs.build-and-test.outputs.has_code_changes }}" == "false" ]; then
               echo "No changes detected, skipping end notification."
               exit 0
             else

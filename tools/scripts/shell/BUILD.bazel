@@ -25,6 +25,7 @@ sh_binary(
 sh_binary(
     name = "gen_manifests",
     srcs = ["ytt_gen.sh"],
+    tags = ["no-cache"],
 )
 
 sh_binary(

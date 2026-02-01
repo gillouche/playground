@@ -1,4 +1,373 @@
 #@ load("@ytt:data", "data")
+#@ load("@ytt:json", "json")
+
+#@ def dashboard():
+#@   env = data.values.env
+#@   app = data.values.app
+#@   return {
+#@     "annotations": {
+#@       "list": [
+#@         {
+#@           "builtIn": 1,
+#@           "datasource": {
+#@             "type": "grafana",
+#@             "uid": "-- Grafana --"
+#@           },
+#@           "enable": True,
+#@           "hide": True,
+#@           "iconColor": "rgba(0, 211, 255, 1)",
+#@           "name": "Annotations & Alerts",
+#@           "target": {
+#@             "limit": 100,
+#@             "matchAny": False,
+#@             "tags": [],
+#@             "type": "dashboard"
+#@           },
+#@           "type": "dashboard"
+#@         }
+#@       ]
+#@     },
+#@     "editable": True,
+#@     "fiscalYearStartMonth": 0,
+#@     "graphTooltip": 0,
+#@     "links": [],
+#@     "liveNow": False,
+#@     "panels": [
+#@       {
+#@         "datasource": {
+#@           "type": "prometheus",
+#@           "uid": "${datasource}"
+#@         },
+#@         "fieldConfig": {
+#@           "defaults": {
+#@             "color": {
+#@               "mode": "palette-classic"
+#@             },
+#@             "custom": {
+#@               "axisCenteredZero": False,
+#@               "axisColorMode": "text",
+#@               "axisLabel": "",
+#@               "axisPlacement": "auto",
+#@               "barAlignment": 0,
+#@               "drawStyle": "line",
+#@               "fillOpacity": 10,
+#@               "gradientMode": "none",
+#@               "hideFrom": {
+#@                 "legend": False,
+#@                 "tooltip": False,
+#@                 "viz": False
+#@               },
+#@               "lineInterpolation": "linear",
+#@               "lineWidth": 1,
+#@               "pointSize": 5,
+#@               "scaleDistribution": {
+#@                 "type": "linear"
+#@               },
+#@               "showPoints": "auto",
+#@               "spanNulls": False,
+#@               "stacking": {
+#@                 "group": "A",
+#@                 "mode": "none"
+#@               },
+#@               "thresholdsStyle": {
+#@                 "mode": "off"
+#@               }
+#@             },
+#@             "mappings": [],
+#@             "thresholds": {
+#@               "mode": "absolute",
+#@               "steps": [
+#@                 {
+#@                   "color": "green",
+#@                   "value": None
+#@                 }
+#@               ]
+#@             }
+#@           },
+#@           "overrides": []
+#@         },
+#@         "gridPos": {
+#@           "h": 8,
+#@           "w": 12,
+#@           "x": 0,
+#@           "y": 0
+#@         },
+#@         "id": 1,
+#@         "options": {
+#@           "legend": {
+#@             "calcs": [],
+#@             "displayMode": "list",
+#@             "placement": "bottom",
+#@             "showLegend": True
+#@           },
+#@           "tooltip": {
+#@             "mode": "single",
+#@             "sort": "none"
+#@           }
+#@         },
+#@         "targets": [
+#@           {
+#@             "datasource": {
+#@               "type": "prometheus",
+#@               "uid": "${datasource}"
+#@             },
+#@             "editorMode": "code",
+#@             "expr": "sum(rate(http_requests_total{app=\"" + app + "\", component=~\"${service}\", environment=\"" + env + "\"}[1m]))",
+#@             "legendFormat": "Total RPS",
+#@             "range": True,
+#@             "refId": "A"
+#@           }
+#@         ],
+#@         "title": "Requests Per Second (Total)",
+#@         "type": "timeseries"
+#@       },
+#@       {
+#@         "datasource": {
+#@           "type": "prometheus",
+#@           "uid": "${datasource}"
+#@         },
+#@         "fieldConfig": {
+#@           "defaults": {
+#@             "color": {
+#@               "mode": "palette-classic"
+#@             },
+#@             "custom": {
+#@               "axisCenteredZero": False,
+#@               "axisColorMode": "text",
+#@               "axisLabel": "",
+#@               "axisPlacement": "auto",
+#@               "drawStyle": "line",
+#@               "fillOpacity": 10,
+#@               "gradientMode": "none",
+#@               "lineInterpolation": "linear",
+#@               "lineWidth": 1,
+#@               "pointSize": 5,
+#@               "showPoints": "auto",
+#@               "spanNulls": False,
+#@               "stacking": {
+#@                 "group": "A",
+#@                 "mode": "none"
+#@               },
+#@               "thresholdsStyle": {
+#@                 "mode": "off"
+#@               }
+#@             },
+#@             "mappings": [],
+#@             "thresholds": {
+#@               "mode": "absolute",
+#@               "steps": [
+#@                 {
+#@                   "color": "green",
+#@                   "value": None
+#@                 }
+#@               ]
+#@             }
+#@           },
+#@           "overrides": []
+#@         },
+#@         "gridPos": {
+#@           "h": 8,
+#@           "w": 12,
+#@           "x": 12,
+#@           "y": 0
+#@         },
+#@         "id": 2,
+#@         "options": {
+#@           "legend": {
+#@             "calcs": [],
+#@             "displayMode": "list",
+#@             "placement": "bottom",
+#@             "showLegend": True
+#@           },
+#@           "tooltip": {
+#@             "mode": "single",
+#@             "sort": "none"
+#@           }
+#@         },
+#@         "targets": [
+#@           {
+#@             "datasource": {
+#@               "type": "prometheus",
+#@               "uid": "${datasource}"
+#@             },
+#@             "editorMode": "code",
+#@             "expr": "sum by (status) (rate(http_requests_total{app=\"" + app + "\", component=~\"${service}\", environment=\"" + env + "\"}[1m]))",
+#@             "legendFormat": "{{status}}",
+#@             "range": True,
+#@             "refId": "A"
+#@           }
+#@         ],
+#@         "title": "RPS by Status Code",
+#@         "type": "timeseries"
+#@       },
+#@       {
+#@         "datasource": {
+#@           "type": "prometheus",
+#@           "uid": "${datasource}"
+#@         },
+#@         "fieldConfig": {
+#@           "defaults": {
+#@             "color": {
+#@               "mode": "palette-classic"
+#@             },
+#@             "custom": {
+#@               "axisCenteredZero": False,
+#@               "axisColorMode": "text",
+#@               "axisLabel": "Seconds",
+#@               "axisPlacement": "auto",
+#@               "drawStyle": "line",
+#@               "fillOpacity": 10,
+#@               "gradientMode": "none",
+#@               "lineInterpolation": "linear",
+#@               "lineWidth": 1,
+#@               "pointSize": 5,
+#@               "showPoints": "auto",
+#@               "spanNulls": False,
+#@               "stacking": {
+#@                 "group": "A",
+#@                 "mode": "none"
+#@               },
+#@               "thresholdsStyle": {
+#@                 "mode": "off"
+#@               }
+#@             },
+#@             "mappings": [],
+#@             "thresholds": {
+#@               "mode": "absolute",
+#@               "steps": [
+#@                 {
+#@                   "color": "green",
+#@                   "value": None
+#@                 }
+#@               ]
+#@             }
+#@           },
+#@           "overrides": []
+#@         },
+#@         "gridPos": {
+#@           "h": 8,
+#@           "w": 24,
+#@           "x": 0,
+#@           "y": 8
+#@         },
+#@         "id": 3,
+#@         "options": {
+#@           "legend": {
+#@             "calcs": [],
+#@             "displayMode": "list",
+#@             "placement": "bottom",
+#@             "showLegend": True
+#@           },
+#@           "tooltip": {
+#@             "mode": "single",
+#@             "sort": "none"
+#@           }
+#@         },
+#@         "targets": [
+#@           {
+#@             "datasource": {
+#@               "type": "prometheus",
+#@               "uid": "${datasource}"
+#@             },
+#@             "editorMode": "code",
+#@             "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{app=\"" + app + "\", component=~\"${service}\", environment=\"" + env + "\"}[1m])))",
+#@             "legendFormat": "P99 Latency",
+#@             "range": True,
+#@             "refId": "A"
+#@           },
+#@           {
+#@             "datasource": {
+#@               "type": "prometheus",
+#@               "uid": "${datasource}"
+#@             },
+#@             "editorMode": "code",
+#@             "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{app=\"" + app + "\", component=~\"${service}\", environment=\"" + env + "\"}[1m])))",
+#@             "legendFormat": "P95 Latency",
+#@             "range": True,
+#@             "refId": "B"
+#@           }
+#@         ],
+#@         "title": "Request Latency",
+#@         "type": "timeseries"
+#@       }
+#@     ],
+#@     "refresh": "5s",
+#@     "schemaVersion": 38,
+#@     "style": "dark",
+#@     "tags": [
+#@       "fastapi",
+#@       "prometheus"
+#@     ],
+#@     "templating": {
+#@       "list": [
+#@         {
+#@           "current": {
+#@             "selected": False,
+#@             "text": "Prometheus",
+#@             "value": "Prometheus"
+#@           },
+#@           "hide": 2,
+#@           "includeAll": False,
+#@           "label": "Datasource",
+#@           "multi": False,
+#@           "name": "datasource",
+#@           "options": [],
+#@           "query": "prometheus",
+#@           "refresh": 1,
+#@           "regex": "",
+#@           "skipUrlSync": False,
+#@           "type": "datasource"
+#@         },
+#@         {
+#@           "current": {
+#@             "selected": False,
+#@             "text": "infra-check-service",
+#@             "value": "infra-check-service"
+#@           },
+#@           "definition": "label_values(http_requests_total{app=\"" + app + "\", environment=\"" + env + "\"}, component)",
+#@           "hide": 0,
+#@           "includeAll": False,
+#@           "label": "Service",
+#@           "multi": False,
+#@           "name": "service",
+#@           "options": [],
+#@           "query": {
+#@             "query": "label_values(http_requests_total{app=\"" + app + "\", environment=\"" + env + "\"}, component)",
+#@             "refId": "StandardVariableQuery"
+#@           },
+#@           "refresh": 1,
+#@           "regex": "",
+#@           "skipUrlSync": False,
+#@           "sort": 1,
+#@           "type": "query"
+#@         }
+#@       ]
+#@     },
+#@     "time": {
+#@       "from": "now-5m",
+#@       "to": "now"
+#@     },
+#@     "timepicker": {
+#@       "refresh_intervals": [
+#@         "5s",
+#@         "10s",
+#@         "30s",
+#@         "1m",
+#@         "5m",
+#@         "15m",
+#@         "30m",
+#@         "1h",
+#@         "2h",
+#@         "1d"
+#@       ]
+#@     },
+#@     "timezone": "",
+#@     "title": "demo-app dashboard - " + env,
+#@     "uid": "fastapi-service-dashboard-" + env,
+#@     "version": 1,
+#@     "weekStart": ""
+#@   }
+#@ end
 
 apiVersion: v1
 kind: ConfigMap
@@ -8,367 +377,4 @@ metadata:
     grafana_dashboard: "1"
     component: #@ data.values.component
 data:
-  infra-check-service.json: |
-    {
-      "annotations": {
-        "list": [
-          {
-            "builtIn": 1,
-            "datasource": {
-              "type": "grafana",
-              "uid": "-- Grafana --"
-            },
-            "enable": true,
-            "hide": true,
-            "iconColor": "rgba(0, 211, 255, 1)",
-            "name": "Annotations & Alerts",
-            "target": {
-              "limit": 100,
-              "matchAny": false,
-              "tags": [],
-              "type": "dashboard"
-            },
-            "type": "dashboard"
-          }
-        ]
-      },
-      "editable": true,
-      "fiscalYearStartMonth": 0,
-      "graphTooltip": 0,
-      "links": [],
-      "liveNow": false,
-      "panels": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 0
-          },
-          "id": 1,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "editorMode": "code",
-              "expr": #@ "sum(rate(http_requests_total{app=\"" + data.values.app + "\", component=~\"${service}\", environment=\"" + data.values.env + "\"}[1m]))",
-              "legendFormat": "Total RPS",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Requests Per Second (Total)",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 0
-          },
-          "id": 2,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "editorMode": "code",
-              "expr": #@ "sum by (status) (rate(http_requests_total{app=\"" + data.values.app + "\", component=~\"${service}\", environment=\"" + data.values.env + "\"}[1m]))",
-              "legendFormat": "{{status}}",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "RPS by Status Code",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "Seconds",
-                "axisPlacement": "auto",
-                "drawStyle": "line",
-                "fillOpacity": 10,
-                "gradientMode": "none",
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 8
-          },
-          "id": 3,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "editorMode": "code",
-              "expr": #@ "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{app=\"" + data.values.app + "\", component=~\"${service}\", environment=\"" + data.values.env + "\"}[1m])))",
-              "legendFormat": "P99 Latency",
-              "range": true,
-              "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "editorMode": "code",
-              "expr": #@ "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{app=\"" + data.values.app + "\", component=~\"${service}\", environment=\"" + data.values.env + "\"}[1m])))",
-              "legendFormat": "P95 Latency",
-              "range": true,
-              "refId": "B"
-            }
-          ],
-          "title": "Request Latency",
-          "type": "timeseries"
-        }
-      ],
-      "refresh": "5s",
-      "schemaVersion": 38,
-      "style": "dark",
-      "tags": [
-        "fastapi",
-        "prometheus"
-      ],
-      "templating": {
-        "list": [
-          {
-            "current": {
-              "selected": false,
-              "text": "Prometheus",
-              "value": "Prometheus"
-            },
-            "hide": 2,
-            "includeAll": false,
-            "label": "Datasource",
-            "multi": false,
-            "name": "datasource",
-            "options": [],
-            "query": "prometheus",
-            "refresh": 1,
-            "regex": "",
-            "skipUrlSync": false,
-            "type": "datasource"
-          },
-          {
-            "current": {
-              "selected": false,
-              "text": "infra-check-service",
-              "value": "infra-check-service"
-            },
-            "definition": #@ "label_values(http_requests_total{app=\"" + data.values.app + "\", environment=\"" + data.values.env + "\"}, component)",
-            "hide": 0,
-            "includeAll": false,
-            "label": "Service",
-            "multi": false,
-            "name": "service",
-            "options": [],
-            "query": {
-              "query": #@ "label_values(http_requests_total{app=\"" + data.values.app + "\", environment=\"" + data.values.env + "\"}, component)",
-              "refId": "StandardVariableQuery"
-            },
-            "refresh": 1,
-            "regex": "",
-            "skipUrlSync": false,
-            "sort": 1,
-            "type": "query"
-          }
-        ]
-      },
-      "time": {
-        "from": "now-5m",
-        "to": "now"
-      },
-      "timepicker": {
-        "refresh_intervals": [
-          "5s",
-          "10s",
-          "30s",
-          "1m",
-          "5m",
-          "15m",
-          "30m",
-          "1h",
-          "2h",
-          "1d"
-        ]
-      },
-      "timezone": "",
-      "title": #@ "demo-app dashboard - " + data.values.env,
-      "uid": #@ "fastapi-service-dashboard-" + data.values.env,
-      "version": 1,
-      "weekStart": ""
-    }
+  infra-check-service.json: #@ json.encode(dashboard())
