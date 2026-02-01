@@ -651,7 +651,7 @@
     "@@rules_oci+//oci:extensions.bzl%oci": {
       "general": {
         "bzlTransitiveDigest": "dOnAIBiZmY7QKI2ErFnw2w1Jtz7GJx4e/V4qtE973XQ=",
-        "usagesDigest": "EF00ilApS/AJiqbmHi6Lk+goQS9JFie3hmc+1Syw3Os=",
+        "usagesDigest": "RqvuFlNszDlvcOhv0G9VIxswqL8nVq8bYvjtagGir3A=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -663,7 +663,7 @@
               "scheme": "https",
               "registry": "index.docker.io",
               "repository": "library/python",
-              "identifier": "3.12-slim",
+              "identifier": "sha256:7baba4d626b357f4b641f242a8d32f5d0e7bfc12926d54e72411eb8738325003",
               "platform": "linux/arm64/v8",
               "target_name": "python_base_linux_arm64_v8",
               "bazel_tags": []
@@ -677,7 +677,7 @@
               "scheme": "https",
               "registry": "index.docker.io",
               "repository": "library/python",
-              "identifier": "3.12-slim",
+              "identifier": "sha256:7baba4d626b357f4b641f242a8d32f5d0e7bfc12926d54e72411eb8738325003",
               "platforms": {
                 "@@platforms//cpu:arm64": "@python_base_linux_arm64_v8"
               },

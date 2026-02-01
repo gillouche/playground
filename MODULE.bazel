@@ -14,7 +14,7 @@ oci.pull(
     name = "python_base",
     image = "index.docker.io/library/python",
     platforms = ["linux/arm64/v8"],
-    digest = "sha256:d237c0210168cc90e5338e5ff67ff8d863d5c593f0811f8af4a8af2d01d59900",
-    # tag = "3.12-slim",
+    digest = "sha256:7baba4d626b357f4b641f242a8d32f5d0e7bfc12926d54e72411eb8738325003",
+    # tag = "3.12-slim-bookworm",
 )
 use_repo(oci, "python_base", "python_base_linux_arm64_v8")
