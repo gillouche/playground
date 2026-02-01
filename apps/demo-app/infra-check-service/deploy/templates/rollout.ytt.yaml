@@ -59,6 +59,18 @@ spec:
         #@ else:
         imagePullPolicy: IfNotPresent
         #@ end
+        #@ if data.values.env != "sandbox":
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        #@ end
+        #@ end
         command: ["/usr/local/bin/python"]
         args: ["/app/src/main.py"]
         envFrom:
@@ -108,3 +120,8 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
+      #@ if data.values.env != "sandbox":
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      #@ end

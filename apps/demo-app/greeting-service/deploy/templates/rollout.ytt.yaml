@@ -41,8 +41,8 @@ spec:
       #@ if data.values.env != "sandbox":
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 2000
+        runAsUser: 65534
+        fsGroup: 65534
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -58,6 +58,18 @@ spec:
         image: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
         #@ if data.values.env == "sandbox":
         imagePullPolicy: Never
+        #@ end
+        #@ if data.values.env != "sandbox":
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        #@ end
         #@ end
         command: ["/usr/local/bin/python"]
         args: ["/app/src/main.py"]
@@ -98,4 +110,10 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 5
           timeoutSeconds: 3
+          timeoutSeconds: 3
           failureThreshold: 3
+      #@ if data.values.env != "sandbox":
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      #@ end

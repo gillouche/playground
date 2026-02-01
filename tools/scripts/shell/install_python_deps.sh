@@ -3,6 +3,7 @@ set -euo pipefail
 
 REQUIREMENTS_FILE="$1"
 OUTPUT_TAR="$2"
+PLATFORM="$3"
 
 # Create temporary directory for installation
 mkdir -p tmp/app/site-packages
@@ -12,7 +13,7 @@ uv pip install -r "$REQUIREMENTS_FILE" \
     --target tmp/app/site-packages \
     --system \
     --python-version 3.12 \
-    --python-platform aarch64-unknown-linux-gnu \
+    --python-platform "$PLATFORM" \
     --no-build
 
 # Set deterministic timestamps and ownership for reproducibility

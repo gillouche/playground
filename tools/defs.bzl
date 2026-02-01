@@ -12,7 +12,8 @@ def application(
     test_cmd = None,
     build_cmd = None,
     image_repository = "",
-    base_image = "@python_base"):
+    base_image = "@python_base",
+    python_platform = "aarch64-unknown-linux-musl"):
     
     defaults = {
         "python": {
@@ -145,7 +146,7 @@ def application(
                 "//tools/scripts/shell:install_python_deps.sh",
             ],
             outs = ["deps.tar"],
-            cmd = "bash $(location //tools/scripts/shell:install_python_deps.sh) $(location requirements.txt) $@",
+            cmd = "bash $(location //tools/scripts/shell:install_python_deps.sh) $(location requirements.txt) $@ " + python_platform,
         )
 
         # 3. Wrap the tarball (mainly to be a valid target for oci_image provided tars)
@@ -164,7 +165,7 @@ def application(
         
         oci_image(
             name = "image",
-            base = "@python_base_linux_arm64_v8",
+            base = "@python_base_linux_arm64",
             tars = [
                 ":deps_layer",
                 ":app_layer_tar"
