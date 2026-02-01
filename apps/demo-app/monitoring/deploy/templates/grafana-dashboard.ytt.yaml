@@ -117,7 +117,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum(rate(http_requests_total{app=~\"${app}\", component=~\"${service}\", environment=~\"${environment}\"}[1m]))",
+              "expr": #@ "sum(rate(http_requests_total{app=\"" + data.values.app + "\", component=~\"${service}\", environment=\"" + data.values.env + "\"}[1m]))",
               "legendFormat": "Total RPS",
               "range": true,
               "refId": "A"
@@ -196,7 +196,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "sum by (status) (rate(http_requests_total{app=~\"${app}\", component=~\"${service}\", environment=~\"${environment}\"}[1m]))",
+              "expr": #@ "sum by (status) (rate(http_requests_total{app=\"" + data.values.app + "\", component=~\"${service}\", environment=\"" + data.values.env + "\"}[1m]))",
               "legendFormat": "{{status}}",
               "range": true,
               "refId": "A"
@@ -275,7 +275,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{app=~\"${app}\", component=~\"${service}\", environment=~\"${environment}\"}[1m])))",
+              "expr": #@ "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{app=\"" + data.values.app + "\", component=~\"${service}\", environment=\"" + data.values.env + "\"}[1m])))",
               "legendFormat": "P99 Latency",
               "range": true,
               "refId": "A"
@@ -286,7 +286,7 @@ data:
                 "uid": "${datasource}"
               },
               "editorMode": "code",
-              "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{app=~\"${app}\", component=~\"${service}\", environment=~\"${environment}\"}[1m])))",
+              "expr": #@ "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{app=\"" + data.values.app + "\", component=~\"${service}\", environment=\"" + data.values.env + "\"}[1m])))",
               "legendFormat": "P95 Latency",
               "range": true,
               "refId": "B"
@@ -311,7 +311,7 @@ data:
               "text": "Prometheus",
               "value": "Prometheus"
             },
-            "hide": 0,
+            "hide": 2,
             "includeAll": false,
             "label": "Datasource",
             "multi": false,
@@ -326,56 +326,10 @@ data:
           {
             "current": {
               "selected": false,
-              "text": "dev",
-              "value": "dev"
-            },
-            "definition": "label_values(environment)",
-            "hide": 0,
-            "includeAll": false,
-            "label": "Environment",
-            "multi": false,
-            "name": "environment",
-            "options": [],
-            "query": {
-              "query": "label_values(environment)",
-              "refId": "StandardVariableQuery"
-            },
-            "refresh": 1,
-            "regex": "",
-            "skipUrlSync": false,
-            "sort": 1,
-            "type": "query"
-          },
-          {
-            "current": {
-              "selected": false,
-              "text": "demo-app",
-              "value": "demo-app"
-            },
-            "definition": "label_values(app)",
-            "hide": 0,
-            "includeAll": false,
-            "label": "Application",
-            "multi": false,
-            "name": "app",
-            "options": [],
-            "query": {
-              "query": "label_values(app)",
-              "refId": "StandardVariableQuery"
-            },
-            "refresh": 1,
-            "regex": "",
-            "skipUrlSync": false,
-            "sort": 1,
-            "type": "query"
-          },
-          {
-            "current": {
-              "selected": false,
               "text": "infra-check-service",
               "value": "infra-check-service"
             },
-            "definition": "label_values(component)",
+            "definition": #@ "label_values(http_requests_total{app=\"" + data.values.app + "\", environment=\"" + data.values.env + "\"}, component)",
             "hide": 0,
             "includeAll": false,
             "label": "Service",
@@ -383,7 +337,7 @@ data:
             "name": "service",
             "options": [],
             "query": {
-              "query": "label_values(component)",
+              "query": #@ "label_values(http_requests_total{app=\"" + data.values.app + "\", environment=\"" + data.values.env + "\"}, component)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 1,
