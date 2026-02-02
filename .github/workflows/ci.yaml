@@ -56,6 +56,13 @@ jobs:
           sudo mkdir -p /root/.aws
           sudo cp ~/.aws/credentials /root/.aws/credentials
           sudo cp ~/.aws/config /root/.aws/config
+          
+          # Add default profile for general AWS SDK usage
+          echo "[default]" >> ~/.aws/credentials
+          echo "aws_access_key_id=$NIX_ACCESS_KEY_ID" >> ~/.aws/credentials
+          echo "aws_secret_access_key=$NIX_SECRET_ACCESS_KEY" >> ~/.aws/credentials
+          echo "[profile default]" >> ~/.aws/config
+          echo "region=us-east-1" >> ~/.aws/config
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
@@ -71,7 +78,7 @@ jobs:
           echo "Determining affected targets..."
           # Capture stderr to log, stdout to variable (but bazel outputs to stderr mostly)
           # We need to capture the AFFECTED_* lines
-          OUTPUT=$(nix develop ./nix#ci --command bazelisk run //tools:affected_targets 2>&1 | tee /dev/stderr)
+          OUTPUT=$(nix develop ./nix#ci --command bazel run //tools:affected_targets 2>&1 | tee /dev/stderr)
 
           BUILD_TARGETS=$(echo "$OUTPUT" | grep "^AFFECTED_BUILD_TARGETS=" | cut -d= -f2-)
           UNIT_TARGETS=$(echo "$OUTPUT" | grep "^AFFECTED_UNIT_TARGETS=" | cut -d= -f2-)
@@ -89,7 +96,7 @@ jobs:
             # generate_matrix.py expects targets like //apps/demo-app/greeting-service:something
             
             # Simple approach: query all targets in apps
-            ALL_TARGETS=$(nix develop ./nix#ci --command bazelisk query "kind(rule, //apps/...)")
+            ALL_TARGETS=$(nix develop ./nix#ci --command bazel query "kind(rule, //apps/...)")
           else
              ALL_TARGETS="$BUILD_TARGETS $UNIT_TARGETS $LINT_TARGETS $INTEGRATION_TARGETS"
           fi
@@ -101,7 +108,7 @@ jobs:
           else
             echo "Generating matrix from targets..."
             # nix develop prints setup logs to stdout, so we must filter for the JSON line (starts with [)
-            echo "$ALL_TARGETS" | nix develop ./nix#ci --command bazelisk run //tools/scripts/python:generate_matrix | grep "^\\[" > matrix.json
+            echo "$ALL_TARGETS" | nix develop ./nix#ci --command bazel run //tools/scripts/python:generate_matrix | grep "^\\[" > matrix.json
             MATRIX=$(cat matrix.json)
             echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
             if [ "$MATRIX" == "[]" ]; then
@@ -156,6 +163,13 @@ jobs:
           sudo mkdir -p /root/.aws
           sudo cp ~/.aws/credentials /root/.aws/credentials
           sudo cp ~/.aws/config /root/.aws/config
+          
+          # Add default profile for general AWS SDK usage
+          echo "[default]" >> ~/.aws/credentials
+          echo "aws_access_key_id=$NIX_ACCESS_KEY_ID" >> ~/.aws/credentials
+          echo "aws_secret_access_key=$NIX_SECRET_ACCESS_KEY" >> ~/.aws/credentials
+          echo "[profile default]" >> ~/.aws/config
+          echo "region=us-east-1" >> ~/.aws/config
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
@@ -177,7 +191,7 @@ jobs:
             set -e
 
             echo "Building image for ${{ matrix.service.name }}..."
-            bazelisk run --config=ci //${{ matrix.service.path }}:build_docker
+            bazel run --config=ci //${{ matrix.service.path }}:build_docker
 
             echo "Scanning image for vulnerabilities..."
             # Run Trivy in non-blocking mode, output JSON for parsing
@@ -202,33 +216,33 @@ jobs:
             fi
 
             echo "Running unit tests for ${{ matrix.service.name }}..."
-            TARGETS=$(bazelisk query "attr(tags, unit, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
+            TARGETS=$(bazel query "attr(tags, unit, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
             if [ -n "$TARGETS" ]; then
               for target in $TARGETS; do
                 echo ">>> Running $target"
-                bazelisk run "$target"
+                bazel run "$target"
               done
             else
                echo "No unit tests found."
             fi
 
             echo "Running lint for ${{ matrix.service.name }}..."
-            TARGETS=$(bazelisk query "attr(tags, lint, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
+            TARGETS=$(bazel query "attr(tags, lint, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
             if [ -n "$TARGETS" ]; then
               for target in $TARGETS; do
                 echo ">>> Running $target"
-                bazelisk run "$target"
+                bazel run "$target"
               done
             else
                echo "No lint targets found."
             fi
 
             echo "Running integration tests for ${{ matrix.service.name }}..."
-            TARGETS=$(bazelisk query "attr(tags, integration, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
+            TARGETS=$(bazel query "attr(tags, integration, //${{ matrix.service.path }}/...)" 2>/dev/null | grep "^//" || true)
             if [ -n "$TARGETS" ]; then
               for target in $TARGETS; do
                 echo ">>> Running $target"
-                bazelisk run "$target"
+                bazel run "$target"
               done
             else
                echo "No integration tests found."
@@ -243,10 +257,12 @@ jobs:
           
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
           echo "Pushing image for ${{ matrix.service.name }} with tag $SHORT_SHA..."
-          nix develop ./nix#ci --command bazelisk run //${{ matrix.service.path }}:push_oci -- --tag latest --tag $SHORT_SHA
+          nix develop ./nix#ci --command bazel run //${{ matrix.service.path }}:push_oci -- --tag latest --tag $SHORT_SHA
           
           echo "Pushing build artifacts to Nix Cache..."
           # Copy current closure to S3 cache
+          export AWS_ACCESS_KEY_ID=${{ secrets.NIX_ACCESS_KEY_ID }}
+          export AWS_SECRET_ACCESS_KEY=${{ secrets.NIX_SECRET_ACCESS_KEY }}
           nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http&profile=nix" ./nix#ci
 
       - name: Report Failure

@@ -4,12 +4,12 @@ let
 in
 pkgs.mkShell {
   packages = base.packages ++ (with pkgs; [
-    bazelisk
+    bazel_8
   ]);
 
   shellHook = base.shellHook + ''
-    echo "Bazelisk $(bazelisk --version)"
+    echo "Bazel $(bazel --version)"
     echo ""
-    echo "Use 'bazelisk' commands for builds"
+    echo "Use 'bazel' commands for builds"
   '';
 }
