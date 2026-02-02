@@ -42,3 +42,8 @@ __pycache__/
 
 # secrets
 secrets/
+
+# CI Temporary Artifacts
+matrix.json
+trivy-results.json
+failure-*.txt
