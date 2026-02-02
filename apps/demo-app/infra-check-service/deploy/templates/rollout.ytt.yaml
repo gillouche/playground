@@ -71,8 +71,7 @@ spec:
           mountPath: /tmp
         #@ end
 
-        command: ["/usr/bin/python3"]
-        args: ["/app/src/main.py"]
+
         envFrom:
         - configMapRef:
             name: infra-check-service-config

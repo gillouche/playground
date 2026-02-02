@@ -58,10 +58,6 @@ spec:
         volumeMounts:
         - name: tmp
           mountPath: /tmp
-        command:
-        - /usr/bin/python3
-        args:
-        - /app/src/main.py
         envFrom:
         - configMapRef:
             name: greeting-service-config
