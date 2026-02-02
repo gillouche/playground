@@ -39,6 +39,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup AWS Profile for Nix
+        env:
+          NIX_ACCESS_KEY_ID: ${{ secrets.NIX_ACCESS_KEY_ID }}
+          NIX_SECRET_ACCESS_KEY: ${{ secrets.NIX_SECRET_ACCESS_KEY }}
         run: |
           # Create credentials for Runner User (for nix copy)
           mkdir -p ~/.aws
@@ -136,6 +139,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup AWS Profile for Nix
+        env:
+          NIX_ACCESS_KEY_ID: ${{ secrets.NIX_ACCESS_KEY_ID }}
+          NIX_SECRET_ACCESS_KEY: ${{ secrets.NIX_SECRET_ACCESS_KEY }}
         run: |
           # Create credentials for Runner User (for nix copy)
           mkdir -p ~/.aws
