@@ -15,18 +15,7 @@ resources:
 
 patches:
   - path: greeting-service-configmap.yaml
-  - path: greeting-service-python-path-patch.yaml
-    target:
-      group: argoproj.io
-      version: v1alpha1
-      kind: Rollout
-      name: greeting-service
-  - path: infra-check-service-python-path-patch.yaml
-    target:
-      group: argoproj.io
-      version: v1alpha1
-      kind: Rollout
-      name: infra-check-service
+
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
