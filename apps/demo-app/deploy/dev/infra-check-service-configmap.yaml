@@ -9,9 +9,9 @@ data:
   APP: demo-app
   COMPONENT: infra-check-service
   APP_VERSION: dev
-  COMPONENT_VERSION: 629fcdb
-  GIT_TAG: 629fcdb
-  GIT_COMMIT: 629fcdb4e0337e3c8da0e228fd53f672ef9d6b7f
+  COMPONENT_VERSION: 7b200e3
+  GIT_TAG: 7b200e3
+  GIT_COMMIT: 7b200e3d901a7bac5eea74ac6f3fd7d5a276114c
   LOG_LEVEL: INFO
   POSTGRES_HOST: postgres.playground-infra-dev.svc.cluster.local
   POSTGRES_PORT: "5432"
