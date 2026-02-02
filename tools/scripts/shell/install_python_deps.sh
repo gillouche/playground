@@ -3,7 +3,7 @@ set -euo pipefail
 
 REQUIREMENTS_FILE="$1"
 OUTPUT_TAR="$2"
-PLATFORM="$3"
+
 
 # Create temporary directory for installation
 mkdir -p tmp/app/site-packages
