@@ -12,7 +12,7 @@ def application(
     test_cmd = None,
     build_cmd = None,
     image_repository = "",
-    base_image = "@python_base_linux_arm64_v8"):
+    base_image = "@python_base"):
     
     defaults = {
         "python": {
