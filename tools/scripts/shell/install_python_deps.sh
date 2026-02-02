@@ -9,12 +9,13 @@ PLATFORM="$3"
 mkdir -p tmp/app/site-packages
 
 # Install dependencies
-python3 -m pip install -r "$REQUIREMENTS_FILE" \
+# Install dependencies
+uv pip install -r "$REQUIREMENTS_FILE" \
     --target tmp/app/site-packages \
-    --platform "$PLATFORM" \
-    --only-binary=:all: \
+    --system \
     --python-version 3.12 \
-    --no-deps
+    --python-platform aarch64-unknown-linux-gnu \
+    --no-build
 
 # Set deterministic timestamps and ownership for reproducibility
 find tmp/app -exec touch -t 197001010000 {} +
