@@ -12,31 +12,33 @@ def application(
     test_cmd = None,
     build_cmd = None,
     image_repository = "",
-    base_image = "@python_base_linux_arm64_v8"):
+    base_image = "@python_base_linux_arm64_v8",
+    coverage_threshold = 80,
+    visibility = ["//visibility:public"]):
     
     defaults = {
         "python": {
             "lint": "uv sync --group dev && uv run ruff check .",
             "test": "uv sync --group dev && uv run pytest",
-            "coverage": "uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80",
+            "coverage": "uv sync --group dev && uv run pytest --cov=. --cov-fail-under={}".format(coverage_threshold),
             "build": "uv sync",
         },
         "rust": {
             "lint": "cargo clippy",
             "test": "cargo test",
-            "coverage": "cargo tarpaulin --fail-under 80",
+            "coverage": "cargo tarpaulin --fail-under {}".format(coverage_threshold),
             "build": "cargo build --release",
         },
         "go": {
             "lint": "golangci-lint run",
             "test": "go test ./...",
-            "coverage": "$BUILD_WORKSPACE_DIRECTORY/tools/scripts/check_go_coverage.sh .",
+            "coverage": "$BUILD_WORKSPACE_DIRECTORY/tools/scripts/check_go_coverage.sh . {}".format(coverage_threshold),
             "build": "go build -o bin/app",
         },
         "typescript": {
             "lint": "npm run lint",
             "test": "npm test",
-            "coverage": "npm run coverage",
+            "coverage": "npm run coverage -- --coverage-threshold {}".format(coverage_threshold),
             "build": "npm run build",
         },
     }
@@ -68,6 +70,7 @@ def application(
         args = [package_dir, lint_cmd],
         data = srcs + unit_tests + integration_tests,
         tags = ["lint"],
+        visibility = visibility,
     )
     
     # Unit Test Target
@@ -79,7 +82,7 @@ def application(
         if language == "python":
             ssl_init = "if [ -f \"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\" ]; then export SSL_CERT_FILE=\"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\"; fi && "
             unit_cmd = ssl_init + "unset VIRTUAL_ENV && uv sync --group dev && uv run pytest tests/unit"
-            unit_cov_cmd = ssl_init + "unset VIRTUAL_ENV && uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80 tests/unit"
+            unit_cov_cmd = ssl_init + "unset VIRTUAL_ENV && uv sync --group dev && uv run pytest --cov=. --cov-fail-under={} tests/unit".format(coverage_threshold)
             
         native.sh_binary(
             name = "unit_test",
@@ -87,6 +90,7 @@ def application(
             args = [package_dir, unit_cov_cmd],
             data = unit_tests + srcs,
             tags = ["test", "unit"],
+            visibility = visibility,
         )
         
     # Integration Test Target
@@ -98,7 +102,7 @@ def application(
         if language == "python":
             ssl_init = "if [ -f \"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\" ]; then export SSL_CERT_FILE=\"$$BUILD_WORKSPACE_DIRECTORY/ca-bundle.pem\"; fi && "
             int_cmd = ssl_init + "unset VIRTUAL_ENV && uv sync --group dev && uv run pytest tests/integration"
-            int_cov_cmd = ssl_init + "unset VIRTUAL_ENV && uv sync --group dev && uv run pytest --cov=. --cov-fail-under=80 tests/integration"
+            int_cov_cmd = ssl_init + "unset VIRTUAL_ENV && uv sync --group dev && uv run pytest --cov=. --cov-fail-under={} tests/integration".format(coverage_threshold)
             
         native.sh_binary(
             name = "integration_test",
@@ -106,6 +110,7 @@ def application(
             args = [package_dir, int_cov_cmd],
             data = integration_tests + srcs,
             tags = ["test", "integration"],
+            visibility = visibility,
         )
     
     # Build target
@@ -113,6 +118,7 @@ def application(
         name = "build",
         srcs = ["//tools/scripts/shell:run_command.sh"],
         args = [package_dir, build_cmd],
+        visibility = visibility,
     )
     
     # Infer repository and concept from package path
@@ -172,6 +178,12 @@ def application(
             env = {
                  "PYTHONPATH": "/app/src:/app/site-packages",
             },
+            labels = {
+                "org.opencontainers.image.source": "https://github.com/gillouche/playground",
+                "org.opencontainers.image.title": name,
+                "org.opencontainers.image.description": "{} container image".format(name),
+            },
+            visibility = visibility,
         )
         
         oci_push(
@@ -179,27 +191,31 @@ def application(
             image = ":image",
             repository = image_repository,
             # No static tags here; they are passed by the wrapper
+            visibility = ["//visibility:private"],
         )
 
         oci_push(
             name = "push_oci",
             image = ":image",
             repository = image_repository,
+            visibility = visibility,
         )
-        
+
         # Wrapper script to apply dynamic git tags at runtime
         native.sh_binary(
             name = "push_image",
             srcs = ["//tools/scripts/shell:smart_push.sh"],
             data = [":_push_image_oci", "//tools/scripts/python:determine_base_commit"],
             args = ["$(location :_push_image_oci)"],
+            visibility = visibility,
         )
-        
+
         # Load image into local docker daemon
         oci_load(
             name = "build_docker",
             image = ":image",
             repo_tags = ["{}:latest".format(name)],
+            visibility = visibility,
         )
 
         # Sandbox deployment target for minikube
@@ -208,34 +224,39 @@ def application(
             srcs = ["//tools/scripts/shell:deploy_minikube.sh"],
             args = [package_dir, image_repository, name],
             data = native.glob(["deploy/**/*"], allow_empty=True),
+            visibility = ["//visibility:private"],
         )
-        
+
         # Combined sandbox target: load image + deploy to minikube
         native.sh_binary(
             name = "deploy_sandbox",
             srcs = ["//tools/scripts/shell:sandbox_workflow.sh"],
             args = [name, "//" + package_dir + ":_deploy_minikube", package_dir],
+            visibility = visibility,
         )
 
         # Dev Deployment
         native.sh_binary(
             name = "deploy_dev",
             srcs = ["//tools/scripts/shell:run_command.sh"],
-            args = [package_dir, "bazel run //tools:sync_dev -- --app " + concept + " --component " + name], 
+            args = [package_dir, "bazel run //tools:sync_dev -- --app " + concept + " --component " + name],
+            visibility = visibility,
         )
 
         # Test Deployment
         native.sh_binary(
             name = "deploy_test",
             srcs = ["//tools/scripts/shell:run_command.sh"],
-            args = [package_dir, "echo 'Not implemented yet'"], 
+            args = [package_dir, "echo 'Not implemented yet'"],
+            visibility = visibility,
         )
 
         # Prod Deployment
         native.sh_binary(
             name = "deploy_prod",
             srcs = ["//tools/scripts/shell:run_command.sh"],
-            args = [package_dir, "echo 'Not implemented yet'"], 
+            args = [package_dir, "echo 'Not implemented yet'"],
+            visibility = visibility,
         )
 
 
