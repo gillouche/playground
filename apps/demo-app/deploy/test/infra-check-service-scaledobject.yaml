@@ -1,0 +1,24 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: infra-check-service
+  labels:
+    component: infra-check-service
+    app: demo-app
+    environment: test
+spec:
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: infra-check-service
+  minReplicaCount: 1
+  maxReplicaCount: 5
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://kube-prometheus-stack-prometheus.monitoring:9090
+      metricName: http_requests_per_second
+      query: sum(rate(http_requests_total{component="infra-check-service"}[2m]))
+      threshold: "100"

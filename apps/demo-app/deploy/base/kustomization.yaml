@@ -4,6 +4,8 @@ kind: Kustomization
 resources:
   - ../../greeting-service/deploy/base
   - allow-ingress-networkpolicy.yaml
+  - analysis-template.yaml
+  - pdb.yaml
 
 labels:
   - pairs:
