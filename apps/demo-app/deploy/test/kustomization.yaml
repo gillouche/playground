@@ -17,6 +17,7 @@ patches:
   - path: greeting-service-configmap.yaml
 
 
+
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
     newTag: v0.0.6

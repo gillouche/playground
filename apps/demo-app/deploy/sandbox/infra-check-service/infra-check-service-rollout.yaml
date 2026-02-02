@@ -22,6 +22,10 @@ spec:
       - name: infra-check-service
         image: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
         imagePullPolicy: Never
+        command:
+        - /usr/local/bin/python
+        args:
+        - /app/src/main.py
         envFrom:
         - configMapRef:
             name: infra-check-service-config
