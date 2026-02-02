@@ -331,7 +331,7 @@ def sync_dev(app, component=None, ssl_context=None):
         for comp in components_to_regen:
             print(f"  Regenerating {comp} for dev...")
             # Run gen_manifests for concept=app, component=comp, env=dev
-            ret = os.system(f"bazelisk run //tools:gen_manifests -- {app} {comp} dev")
+            ret = os.system(f"bazel run //tools:gen_manifests -- {app} {comp} dev")
             if ret != 0:
                 print(f"Error generating manifests for {comp}.")
         

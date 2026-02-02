@@ -25,7 +25,7 @@ pkgs.mkShell {
 
   shellHook = ''
     echo "🛠️  CI Shell Activated (Composed)"
-    echo "Bazel: $(bazelisk --version)"
+    echo "Bazel: $(bazel --version)"
     echo "Python: $(python --version)"
     echo "UV: $(uv --version)"
     echo "Go: $(go version)"

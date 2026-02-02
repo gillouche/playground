@@ -10,7 +10,7 @@ fi
 
 echo "Promoting to Test..."
 # Forward all arguments (like --concept, --app, --tag)
-bazelisk run //tools:promote_test -- "$@"
+bazel run //tools:promote_test -- "$@"
 
 echo "Creating Release Snapshot..."
-bazelisk run //tools:release_test -- "$@"
+bazel run //tools:release_test -- "$@"

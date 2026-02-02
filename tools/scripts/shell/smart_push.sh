@@ -60,7 +60,7 @@ echo "Changed files: $FILES_LIST"
 QUERY="kind(oci_push, rdeps(//..., set($FILES_LIST)) union siblings(set($FILES_LIST)))"
 
 echo "Querying Bazel for affected targets..."
-TARGETS=$(bazelisk query --keep_going "$QUERY" 2>/dev/null || true)
+TARGETS=$(bazel query --keep_going "$QUERY" 2>/dev/null || true)
 
 if [ -z "$TARGETS" ]; then
     echo "No OCI push targets affected by these changes."
@@ -76,7 +76,7 @@ echo "Pushing images with tags: latest, $GIT_SHA"
 
 for target in $TARGETS; do
     echo "Pushing $target..."
-    bazelisk run "$target" -- --tag latest --tag "$GIT_SHA"
+    bazel run "$target" -- --tag latest --tag "$GIT_SHA"
 done
 
 echo "SMART_PUSH_RESULT: image_pushed=true image_tag=$GIT_SHA"

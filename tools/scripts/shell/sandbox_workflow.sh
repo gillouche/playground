@@ -10,7 +10,7 @@ cd "$BUILD_WORKSPACE_DIRECTORY"
 echo "Building OCI image via Bazel (oci_load)..."
 # Use the same build process as prod (via oci_load / build_docker)
 # This ensures local sandbox matches production exactly
-bazelisk run "//$PACKAGE:build_docker"
+bazel run "//$PACKAGE:build_docker"
 
 # The image is now loaded as ${IMAGE_TARGET}:latest in local Docker
 echo "Loading image to minikube..."
@@ -27,4 +27,4 @@ else
 fi
 
 echo "Deploying to minikube..."
-bazelisk run "$DEPLOY_TARGET"
+bazel run "$DEPLOY_TARGET"

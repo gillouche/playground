@@ -221,7 +221,7 @@ def application(
         native.sh_binary(
             name = "deploy_dev",
             srcs = ["//tools/scripts/shell:run_command.sh"],
-            args = [package_dir, "bazelisk run //tools:sync_dev -- --app " + concept + " --component " + name], 
+            args = [package_dir, "bazel run //tools:sync_dev -- --app " + concept + " --component " + name], 
         )
 
         # Test Deployment

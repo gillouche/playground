@@ -96,10 +96,10 @@ done
 if [ "$FULL_REBUILD" = true ]; then
     echo "AFFECTED_FULL_REBUILD=true"
     # For full rebuild, query all targets
-    BUILD_TARGETS=$(bazelisk query '//...' 2>/dev/null | tr '\n' ' ')
-    UNIT_TARGETS=$(bazelisk query 'attr(tags, unit, //...)' 2>/dev/null | tr '\n' ' ')
-    LINT_TARGETS=$(bazelisk query 'attr(tags, lint, //...)' 2>/dev/null | tr '\n' ' ')
-    INTEGRATION_TARGETS=$(bazelisk query 'attr(tags, integration, //...)' 2>/dev/null | tr '\n' ' ')
+    BUILD_TARGETS=$(bazel query '//...' 2>/dev/null | tr '\n' ' ')
+    UNIT_TARGETS=$(bazel query 'attr(tags, unit, //...)' 2>/dev/null | tr '\n' ' ')
+    LINT_TARGETS=$(bazel query 'attr(tags, lint, //...)' 2>/dev/null | tr '\n' ' ')
+    INTEGRATION_TARGETS=$(bazel query 'attr(tags, integration, //...)' 2>/dev/null | tr '\n' ' ')
 
     echo "AFFECTED_BUILD_TARGETS=$BUILD_TARGETS"
     echo "AFFECTED_UNIT_TARGETS=$UNIT_TARGETS"
@@ -133,19 +133,19 @@ echo "Querying Bazel for affected targets..." >&2
 # Build targets: all targets that depend on changed files
 # Build targets: all targets that depend on changed files, EXCLUDING shell scripts and tools
 BUILD_QUERY="rdeps(//..., set($FILES_LIST)) except kind(sh_binary, //...) except kind(sh_test, //...) except //tools/..."
-BUILD_TARGETS=$(bazelisk query --keep_going "$BUILD_QUERY" 2>/dev/null | tr '\n' ' ' || echo "")
+BUILD_TARGETS=$(bazel query --keep_going "$BUILD_QUERY" 2>/dev/null | tr '\n' ' ' || echo "")
 
 # Unit test targets: affected targets with 'unit' tag
 UNIT_QUERY="attr(tags, unit, rdeps(//..., set($FILES_LIST)))"
-UNIT_TARGETS=$(bazelisk query --keep_going "$UNIT_QUERY" 2>/dev/null | tr '\n' ' ' || echo "")
+UNIT_TARGETS=$(bazel query --keep_going "$UNIT_QUERY" 2>/dev/null | tr '\n' ' ' || echo "")
 
 # Lint targets: affected targets with 'lint' tag
 LINT_QUERY="attr(tags, lint, rdeps(//..., set($FILES_LIST)))"
-LINT_TARGETS=$(bazelisk query --keep_going "$LINT_QUERY" 2>/dev/null | tr '\n' ' ' || echo "")
+LINT_TARGETS=$(bazel query --keep_going "$LINT_QUERY" 2>/dev/null | tr '\n' ' ' || echo "")
 
 # Integration test targets: affected targets with 'integration' tag
 INTEGRATION_QUERY="attr(tags, integration, rdeps(//..., set($FILES_LIST)))"
-INTEGRATION_TARGETS=$(bazelisk query --keep_going "$INTEGRATION_QUERY" 2>/dev/null | tr '\n' ' ' || echo "")
+INTEGRATION_TARGETS=$(bazel query --keep_going "$INTEGRATION_QUERY" 2>/dev/null | tr '\n' ' ' || echo "")
 
 echo "Found affected targets:" >&2
 echo "  Build: $(echo "$BUILD_TARGETS" | wc -w | tr -d ' ') targets" >&2

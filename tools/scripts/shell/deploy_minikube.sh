@@ -31,7 +31,7 @@ if [ -d "$SANDBOX_DIR" ]; then
   kubectl apply -k "$SANDBOX_DIR" -n "$NAMESPACE"
 else
   echo "Error: Sandbox directory not found at $SANDBOX_DIR"
-  echo "Run 'bazelisk run //tools:gen_manifests -- $APP_NAME $COMPONENT_NAME sandbox' first"
+  echo "Run 'bazel run //tools:gen_manifests -- $APP_NAME $COMPONENT_NAME sandbox' first"
   exit 1
 fi
 

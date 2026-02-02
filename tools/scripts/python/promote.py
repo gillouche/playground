@@ -98,7 +98,7 @@ def promote_app(target_env, app, version):
         
         for comp in images.keys():
              print(f"  Regenerating {comp} for {target_env}...")
-             ret = os.system(f"bazelisk run //tools:gen_manifests -- {app} {comp} {target_env}")
+             ret = os.system(f"bazel run //tools:gen_manifests -- {app} {comp} {target_env}")
              if ret != 0:
                  print(f"Error generating manifests for {comp}.")
                  sys.exit(1)

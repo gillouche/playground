@@ -10,7 +10,7 @@ fi
 
 echo "Promoting to Prod..."
 # Forward all arguments
-bazelisk run //tools:promote_prod -- "$@"
+bazel run //tools:promote_prod -- "$@"
 
 echo "Creating Release Snapshot..."
-bazelisk run //tools:release_prod -- "$@"
+bazel run //tools:release_prod -- "$@"
