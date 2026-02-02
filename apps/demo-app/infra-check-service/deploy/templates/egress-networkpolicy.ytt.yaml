@@ -1,0 +1,41 @@
+#@ load("@ytt:data", "data")
+
+#@ if data.values.env != "sandbox":
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: allow-egress-infra-dns
+  spec:
+    podSelector: {}
+    policyTypes:
+    - Egress
+    egress:
+      #! Allow DNS resolution
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: kube-system
+        ports:
+          - protocol: UDP
+            port: 53
+          - protocol: TCP
+            port: 53
+      #! Allow access to infrastructure namespace (PostgreSQL, Redis, Kafka, MongoDB)
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                app.kubernetes.io/part-of: playground-infra
+                environment: #@ data.values.env
+        ports:
+          - protocol: TCP
+            port: 5432   #! PostgreSQL
+          - protocol: TCP
+            port: 6379   #! Redis
+          - protocol: TCP
+            port: 9092   #! Kafka
+          - protocol: TCP
+            port: 27017  #! MongoDB
+      #! Allow pod-to-pod within same namespace
+      - to:
+          - podSelector: {}
+#@ end

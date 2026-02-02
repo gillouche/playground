@@ -12,7 +12,7 @@ spec:
       failureLimit: 3
       provider:
         prometheus:
-          address: http://kube-prometheus-stack-prometheus.monitoring:9090
+          address: http://monitoring-kube-prometheus-prometheus.monitoring:9090
           query: |
             sum(rate(http_requests_total{status=~"2..",component="{{args.service}}"}[2m]))
             /
@@ -32,7 +32,7 @@ spec:
       failureLimit: 3
       provider:
         prometheus:
-          address: http://kube-prometheus-stack-prometheus.monitoring:9090
+          address: http://monitoring-kube-prometheus-prometheus.monitoring:9090
           query: |
             sum(rate(http_requests_total{status=~"5..",component="{{args.service}}"}[2m]))
             /

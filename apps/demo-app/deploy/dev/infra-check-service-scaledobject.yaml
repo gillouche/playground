@@ -18,7 +18,7 @@ spec:
   triggers:
   - type: prometheus
     metadata:
-      serverAddress: http://kube-prometheus-stack-prometheus.monitoring:9090
+      serverAddress: http://monitoring-kube-prometheus-prometheus.monitoring:9090
       metricName: http_requests_per_second
       query: sum(rate(http_requests_total{component="infra-check-service"}[2m]))
       threshold: "100"
