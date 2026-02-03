@@ -32,8 +32,15 @@ spec:
           capabilities:
             drop:
             - ALL
-      nodeSelector:
-        node-group: rpi
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/node-group
+                operator: In
+                values:
+                - rpi
       securityContext:
         runAsNonRoot: true
         seccompProfile:

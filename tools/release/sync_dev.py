@@ -262,7 +262,8 @@ def sync_dev(app, component=None, ssl_context=None):
         current_tag = current_bom.get(comp_name)
         
         if current_tag == latest_tag:
-            pass
+             print(f"  Skipped (already at {latest_tag})")
+             continue
         
         print(f"  Updating {current_tag or 'N/A'} -> {latest_tag}")
         
