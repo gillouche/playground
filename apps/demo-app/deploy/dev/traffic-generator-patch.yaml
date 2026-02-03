@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-generator-service
+spec:
+  replicas: 2
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: traffic-generator-service-scaler
+spec:
+  triggers:
+  - type: cron
+    metadata:
+      timezone: UTC
+      start: "15 * * * *"
+      end: "30 * * * *"
+      desiredReplicas: "5"

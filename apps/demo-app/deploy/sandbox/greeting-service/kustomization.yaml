@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - ../../../greeting-service/deploy/base
   - greeting-service-rollout.yaml
 
 patches:

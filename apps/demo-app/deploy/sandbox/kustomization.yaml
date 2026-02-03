@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - greeting-service
   - infra-check-service
+  - traffic-generator-service

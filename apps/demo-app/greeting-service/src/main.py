@@ -8,6 +8,13 @@ import uvicorn
 from fastapi import FastAPI
 from lib import get_greeting, sanitize
 
+# OpenTelemetry Imports
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
@@ -15,6 +22,24 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger("demo-app")
+
+def setup_opentelemetry(app: FastAPI):
+    if os.environ.get("ENABLE_TRACING", "true").lower() == "true":
+        resource = Resource(attributes={
+            "service.name": "greeting-service",
+            "service.namespace": os.environ.get("NAMESPACE", "default"),
+            "deployment.environment": os.environ.get("ENVIRONMENT", "unknown")
+        })
+
+        trace.set_tracer_provider(TracerProvider(resource=resource))
+        tracer_provider = trace.get_tracer_provider()
+
+        otlp_exporter = OTLPSpanExporter(endpoint=os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://tempo.monitoring.svc.cluster.local:4317"))
+        span_processor = BatchSpanProcessor(otlp_exporter)
+        tracer_provider.add_span_processor(span_processor)
+
+        FastAPIInstrumentor.instrument_app(app, tracer_provider=tracer_provider)
+        logger.info("OpenTelemetry instrumentation enabled.")
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
@@ -34,6 +59,7 @@ async def lifespan(application: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 Instrumentator().instrument(app).expose(app)
+setup_opentelemetry(app)
 
 
 @app.get("/")

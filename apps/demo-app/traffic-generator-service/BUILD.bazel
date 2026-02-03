@@ -1,0 +1,8 @@
+load("//tools:defs.bzl", "application")
+
+application(
+    name = "traffic-generator-service",
+    language = "python",
+    srcs = glob(["src/**/*.py"]),
+    coverage_threshold = 0,
+)

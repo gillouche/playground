@@ -3,14 +3,18 @@ kind: Kustomization
 patches:
   - path: greeting-service-configmap.yaml
   - path: infra-check-service-configmap.yaml
+  - path: traffic-generator-patch.yaml
+  - path: traffic-generator-service-configmap.yaml
 
 resources:
   - ../base
+  - ../rollouts-base
   - ../../greeting-service/deploy/base
   - greeting-service-ingress.yaml
   - greeting-service-rollout.yaml
   - greeting-service-servicemonitor.yaml
   - greeting-service-scaledobject.yaml
+  - ../../traffic-generator-service/deploy/with-hpa
   - ../../infra-check-service/deploy/base
   - infra-check-service-egress-networkpolicy.yaml
   - infra-check-service-configmap.yaml

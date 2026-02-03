@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traffic-generator-service-config
+  labels:
+    component: traffic-generator-service
+data:
+  TARGET_URL: "http://greeting-service"
+  CONCURRENCY: "10"
+  LOG_LEVEL: "INFO"

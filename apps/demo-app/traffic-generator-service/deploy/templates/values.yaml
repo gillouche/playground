@@ -1,0 +1,14 @@
+#@data/values
+---
+component: traffic-generator-service
+app: demo-app
+env: local
+git_tag: unknown
+git_commit: unknown
+app_version: unknown
+component_version: unknown
+log_level: INFO
+target_url: http://greeting-service
+concurrency: "10"
+otel_exporter_otlp_endpoint: http://tempo.monitoring.svc.cluster.local:4317
+enable_tracing: "true"

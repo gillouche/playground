@@ -1,10 +1,9 @@
 #@ load("@ytt:data", "data")
 
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: #@ data.values.component + "-config"
+  name: traffic-generator-service-config
   labels:
     app: #@ data.values.app
     component: #@ data.values.component
@@ -13,15 +12,12 @@ data:
   ENVIRONMENT: #@ data.values.env
   APP: #@ data.values.app
   COMPONENT: #@ data.values.component
-  #@ if data.values.env == "dev":
-  LOG_LEVEL: "DEBUG"
-  #@ else:
-  LOG_LEVEL: "INFO"
-  #@ end
-  #@ if data.values.env == "sandbox":
-  ENABLE_TRACING: "false"
-  #@ end
+  LOG_LEVEL: #@ data.values.log_level
   APP_VERSION: #@ data.values.app_version
   COMPONENT_VERSION: #@ data.values.component_version
   GIT_TAG: #@ data.values.git_tag
   GIT_COMMIT: #@ data.values.git_commit
+  TARGET_URL: #@ data.values.target_url
+  CONCURRENCY: #@ data.values.concurrency
+  OTEL_EXPORTER_OTLP_ENDPOINT: #@ data.values.otel_exporter_otlp_endpoint
+  ENABLE_TRACING: #@ data.values.enable_tracing

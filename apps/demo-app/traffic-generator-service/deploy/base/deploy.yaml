@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-generator-service
+  labels:
+    app: traffic-generator-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traffic-generator-service
+  template:
+    metadata:
+      labels:
+        app: traffic-generator-service
+    spec:
+      containers:
+      - name: traffic-generator-service
+        image: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:latest
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: traffic-generator-service-config
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traffic-generator-service
+  labels:
+    app: traffic-generator-service
+spec:
+  selector:
+    app: traffic-generator-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

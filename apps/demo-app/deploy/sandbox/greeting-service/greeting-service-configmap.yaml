@@ -11,6 +11,7 @@ data:
   APP: demo-app
   COMPONENT: greeting-service
   LOG_LEVEL: INFO
+  ENABLE_TRACING: "false"
   APP_VERSION: sandbox
   COMPONENT_VERSION: latest
   GIT_TAG: local/greeting-service/latest

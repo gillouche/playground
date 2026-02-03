@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
   - allow-ingress-network-policy.yaml
-  - analysis-template.yaml
   - pdb.yaml
 
 labels:

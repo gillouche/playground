@@ -1,0 +1,20 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: traffic-generator-service-scaler
+  labels:
+    app: traffic-generator-service
+spec:
+  scaleTargetRef:
+    name: traffic-generator-service
+    kind: Deployment
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  triggers:
+  - type: cron
+    metadata:
+      timezone: UTC
+      # Default schedule (will be patched by overlays)
+      start: "0 * * * *"
+      end: "15 * * * *"
+      desiredReplicas: "5"
