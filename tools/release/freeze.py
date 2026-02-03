@@ -10,6 +10,13 @@ import ssl
 import sys
 import datetime
 
+# Import validation utilities
+from validation import (
+    validate_version,
+    validate_app_exists,
+    list_available_components,
+)
+
 NEXUS_URL = "https://nexus.gillouche.homelab"
 
 def create_ssl_context(ca_cert=None):
@@ -221,8 +228,13 @@ def main():
     parser = argparse.ArgumentParser(description="Freeze App Release")
     parser.add_argument("--app", required=True, help="App name")
     parser.add_argument("--version", required=True, help="Release version (e.g. v1.0.0)")
-    
+
     args = parser.parse_args()
+
+    # Validate inputs before proceeding
+    validate_version(args.version)
+    validate_app_exists(args.app)
+
     freeze_app(args.app, args.version)
 
 if __name__ == "__main__":

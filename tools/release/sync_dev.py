@@ -9,6 +9,12 @@ import urllib.error
 import ssl
 import yaml
 
+# Import validation utilities
+from validation import (
+    validate_app_exists,
+    validate_component_exists,
+)
+
 # CONSTANTS
 NEXUS_URL = "https://nexus.gillouche.homelab"
 
@@ -317,10 +323,15 @@ def main():
     parser.add_argument("--component", help="Optional: Specific component to sync.")
     parser.add_argument("--ca-cert", help="Path to CA certificate bundle for Nexus")
     args = parser.parse_args()
-    
+
+    # Validate inputs before proceeding
+    validate_app_exists(args.app)
+    if args.component:
+        validate_component_exists(args.app, args.component)
+
     workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
     ca_cert = args.ca_cert
-    
+
     if not ca_cert and workspace_dir:
         repo_ca = os.path.join(workspace_dir, "ca-bundle.pem")
         if os.path.exists(repo_ca):
@@ -328,7 +339,7 @@ def main():
 
     if not ca_cert:
         ca_cert = os.environ.get("SSL_CERT_FILE")
-    
+
     ssl_context = create_ssl_context(ca_cert)
     sync_dev(args.app, args.component, ssl_context)
 

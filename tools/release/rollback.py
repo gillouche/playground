@@ -8,6 +8,14 @@ import subprocess
 import sys
 import yaml
 
+# Import validation utilities
+from validation import (
+    validate_version,
+    validate_app_exists,
+    validate_frozen_version_exists,
+    validate_environment,
+)
+
 
 def parse_bom_images(path):
     """Parse BOM to extract component:tag pairs."""
@@ -55,24 +63,9 @@ def update_kustomization(app_name, env, images):
 
 def rollback(env, app, version):
     """Rollback environment to specific version."""
-    if env not in ["test", "prod"]:
-        print(f"Error: --env must be 'test' or 'prod', got '{env}'")
-        sys.exit(1)
-    
     archived_bom = f"releases/versions/{app}/{version}.yaml"
     head_bom = f"releases/{env}/{app}.yaml"
-    
-    if not os.path.exists(archived_bom):
-        print(f"Error: Archived BOM not found: {archived_bom}")
-        print(f"Available versions:")
-        # List available versions in central store
-        versions_dir = f"releases/versions/{app}"
-        if os.path.exists(versions_dir):
-            for f in os.listdir(versions_dir):
-                if f.endswith(".yaml"):
-                    print(f"  - {f.replace('.yaml', '')}")
-        sys.exit(1)
-    
+
     print(f"Rolling back {app} in {env} to {version}...")
     
     # Copy archived BOM to HEAD
@@ -96,12 +89,18 @@ def main():
     parser.add_argument("--env", required=True, choices=["test", "prod"], help="Environment to rollback (test/prod)")
     parser.add_argument("--app", required=True, help="App name (e.g. demo-app)")
     parser.add_argument("--version", required=True, help="Version to rollback to (e.g., v1.0.0)")
-    
+
     args = parser.parse_args()
-    
+
     workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
     if workspace_dir:
         os.chdir(workspace_dir)
+
+    # Validate inputs before proceeding
+    validate_version(args.version)
+    validate_app_exists(args.app)
+    validate_environment(args.env, allowed=["test", "prod"])
+    validate_frozen_version_exists(args.app, args.version)
 
     rollback(args.env, args.app, args.version)
 

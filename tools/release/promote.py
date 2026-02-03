@@ -8,6 +8,14 @@ import subprocess
 import sys
 import yaml
 
+# Import validation utilities
+from validation import (
+    validate_version,
+    validate_app_exists,
+    validate_frozen_version_exists,
+    validate_environment,
+)
+
 
 def run_command(cmd, check=True):
     """Run a command using subprocess and return the result."""
@@ -61,13 +69,7 @@ def promote_app(target_env, app, version, commit=False):
 
     print(f"Promoting {app} {version} to {target_env} (Source: {source_bom})...")
 
-    # 1. Validate Source
-    if not os.path.exists(source_bom):
-        print(f"Error: Source BOM {source_bom} does not exist.")
-        print(f"Tip: Run //tools:freeze --app {app} --version {version} first.")
-        sys.exit(1)
-
-    # 2. Update Target Latest BOM
+    # Update Target Latest BOM
     os.makedirs(os.path.dirname(target_bom_latest), exist_ok=True)
     if os.path.exists(target_bom_latest):
         print(f"Updating existing {target_bom_latest}")
@@ -257,6 +259,12 @@ def main():
     workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY")
     if workspace_dir:
         os.chdir(workspace_dir)
+
+    # Validate inputs before proceeding
+    validate_version(args.version)
+    validate_app_exists(args.app)
+    validate_environment(args.target, allowed=["test", "prod"])
+    validate_frozen_version_exists(args.app, args.version)
 
     promote_app(args.target, args.app, args.version, commit=args.commit)
 
