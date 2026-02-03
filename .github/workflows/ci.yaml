@@ -105,7 +105,7 @@ jobs:
           else
             echo "Generating matrix from targets..."
             # nix develop prints setup logs to stdout, so we must filter for the JSON line (starts with [)
-            echo "$ALL_TARGETS" | nix develop ./nix#ci --command bazel run //tools/scripts/python:generate_matrix | grep "^\\[" > matrix.json
+            echo "$ALL_TARGETS" | nix develop ./nix#ci --command bazel run //tools/ci:generate_matrix | grep "^\\[" > matrix.json
             MATRIX=$(cat matrix.json)
             echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
             if [ "$MATRIX" == "[]" ]; then
@@ -123,7 +123,7 @@ jobs:
       - name: Send Start Notification
         if: steps.matrix.outputs.has_changes == 'true'
         run: |
-          ./tools/scripts/shell/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA. Affected services:\n${{ steps.matrix.outputs.formatted_list }}"
+          ./tools/ci/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA. Affected services:\n${{ steps.matrix.outputs.formatted_list }}"
 
   validate-service:
     name: ${{ matrix.service.name }}
@@ -203,7 +203,7 @@ jobs:
                    # Escape quotes for shell safety if needed, but simple string passing usually okay inside single quotes context if careful
                    # We need to break out of the 'echo' context or just call the script.
                    # Note: The script arguments needs to be carefully handled inside this bash -c block.
-                   ./tools/scripts/shell/notify_discord.sh "WARNING" "Trivy Scan: ${{ matrix.service.name }}" "Found Critical/High Vulnerabilities:\n$ISSUES"
+                   ./tools/ci/notify_discord.sh "WARNING" "Trivy Scan: ${{ matrix.service.name }}" "Found Critical/High Vulnerabilities:\n$ISSUES"
                else
                    echo "No critical vulnerabilities found."
                fi
@@ -314,4 +314,4 @@ jobs:
              MSG="Pipeline completed successfully for all services."
           fi
 
-          ./tools/scripts/shell/notify_discord.sh "$STATUS" "CI Pipeline" "$MSG"
+          ./tools/ci/notify_discord.sh "$STATUS" "CI Pipeline" "$MSG"

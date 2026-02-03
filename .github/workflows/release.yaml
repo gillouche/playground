@@ -104,4 +104,4 @@ jobs:
           if [ "$STATUS" != "success" ]; then
              MSG="Release failed for $RELEASE_TAG"
           fi
-          ./tools/scripts/shell/notify_discord.sh "${STATUS^^}" "Release Component" "$MSG"
+          ./tools/ci/notify_discord.sh "${STATUS^^}" "Release Component" "$MSG"

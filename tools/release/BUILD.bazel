@@ -1,0 +1,36 @@
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "freeze.py",
+    "promote.py",
+    "rollback.py",
+    "sync_dev.py",
+])
+
+# Shell wrappers that use system Python (from Nix shell with pyyaml)
+sh_binary(
+    name = "freeze",
+    srcs = ["freeze.sh"],
+    data = ["freeze.py"],
+)
+
+sh_binary(
+    name = "promote",
+    srcs = ["promote.sh"],
+    data = ["promote.py"],
+)
+
+sh_binary(
+    name = "rollback",
+    srcs = ["rollback.sh"],
+    data = ["rollback.py"],
+)
+
+sh_binary(
+    name = "sync_dev",
+    srcs = ["sync_dev.sh"],
+    data = [
+        "sync_dev.py",
+        "//:ca-bundle.pem",
+    ],
+)

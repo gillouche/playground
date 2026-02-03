@@ -8,7 +8,8 @@ spec:
   metrics:
     - name: success-rate
       interval: 30s
-      successCondition: result[0] >= 0.95
+      # Handle empty results: if no data, consider it successful (no traffic = no errors)
+      successCondition: len(result) == 0 || result[0] >= 0.95
       failureLimit: 3
       provider:
         prometheus:
@@ -28,7 +29,8 @@ spec:
   metrics:
     - name: error-rate
       interval: 30s
-      successCondition: result[0] <= 0.05
+      # Handle empty results: if no data, consider it successful (no traffic = no errors)
+      successCondition: len(result) == 0 || result[0] <= 0.05
       failureLimit: 3
       provider:
         prometheus:

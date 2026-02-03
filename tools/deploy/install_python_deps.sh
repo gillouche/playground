@@ -9,7 +9,6 @@ OUTPUT_TAR="$2"
 mkdir -p tmp/app/site-packages
 
 # Install dependencies
-# Install dependencies
 uv pip install -r "$REQUIREMENTS_FILE" \
     --target tmp/app/site-packages \
     --system \

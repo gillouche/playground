@@ -2,39 +2,42 @@ exports_files([
     "defs.bzl",
 ])
 
+# Release tools
 alias(
     name = "freeze",
-    actual = "//tools/scripts/shell:freeze",
+    actual = "//tools/release:freeze",
 )
 
 alias(
     name = "promote",
-    actual = "//tools/scripts/shell:promote",
-)
-
-alias(
-    name = "sync_dev",
-    actual = "//tools/scripts/shell:sync_dev",
+    actual = "//tools/release:promote",
 )
 
 alias(
     name = "rollback",
-    actual = "//tools/scripts/shell:rollback",
+    actual = "//tools/release:rollback",
 )
 
+alias(
+    name = "sync_dev",
+    actual = "//tools/release:sync_dev",
+)
+
+# Deploy tools
 alias(
     name = "gen_manifests",
-    actual = "//tools/scripts/shell:gen_manifests",
+    actual = "//tools/deploy:gen_manifests",
 )
 
+# CI tools
 alias(
     name = "smart_push",
-    actual = "//tools/scripts/shell:smart_push",
+    actual = "//tools/ci:smart_push",
 )
 
 alias(
     name = "affected_targets",
-    actual = "//tools/scripts/shell:affected_targets",
+    actual = "//tools/ci:affected_targets",
 )
 
 

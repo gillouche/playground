@@ -1,0 +1,48 @@
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "ytt_gen.sh",
+    "deploy_minikube.sh",
+    "deploy_prod.sh",
+    "deploy_test.sh",
+    "deploy_sandbox_all.sh",
+    "sandbox_workflow.sh",
+    "package_app.py",
+    "install_python_deps.sh",
+])
+
+sh_binary(
+    name = "gen_manifests",
+    srcs = ["ytt_gen.sh"],
+    tags = ["no-cache"],
+)
+
+sh_binary(
+    name = "deploy_minikube",
+    srcs = ["deploy_minikube.sh"],
+)
+
+sh_binary(
+    name = "deploy_prod",
+    srcs = ["deploy_prod.sh"],
+)
+
+sh_binary(
+    name = "deploy_test",
+    srcs = ["deploy_test.sh"],
+)
+
+sh_binary(
+    name = "deploy_sandbox_all",
+    srcs = ["deploy_sandbox_all.sh"],
+)
+
+sh_binary(
+    name = "sandbox_workflow",
+    srcs = ["sandbox_workflow.sh"],
+)
+
+py_binary(
+    name = "package_app",
+    srcs = ["package_app.py"],
+)

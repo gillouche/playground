@@ -32,7 +32,7 @@ def application(
         "go": {
             "lint": "golangci-lint run",
             "test": "go test ./...",
-            "coverage": "$BUILD_WORKSPACE_DIRECTORY/tools/scripts/check_go_coverage.sh . {}".format(coverage_threshold),
+            "coverage": "$BUILD_WORKSPACE_DIRECTORY/tools/ci/check_go_coverage.sh . {}".format(coverage_threshold),
             "build": "go build -o bin/app",
         },
         "typescript": {
@@ -66,7 +66,7 @@ def application(
     # Lint target
     native.sh_binary(
         name = "lint",
-        srcs = ["//tools/scripts/shell:run_command.sh"],
+        srcs = ["//tools/dev:run_command.sh"],
         args = [package_dir, lint_cmd],
         data = srcs + unit_tests + integration_tests,
         tags = ["lint"],
@@ -86,7 +86,7 @@ def application(
             
         native.sh_binary(
             name = "unit_test",
-            srcs = ["//tools/scripts/shell:run_command.sh"],
+            srcs = ["//tools/dev:run_command.sh"],
             args = [package_dir, unit_cov_cmd],
             data = unit_tests + srcs,
             tags = ["test", "unit"],
@@ -106,7 +106,7 @@ def application(
             
         native.sh_binary(
             name = "integration_test",
-            srcs = ["//tools/scripts/shell:run_command.sh"],
+            srcs = ["//tools/dev:run_command.sh"],
             args = [package_dir, int_cov_cmd],
             data = integration_tests + srcs,
             tags = ["test", "integration"],
@@ -116,7 +116,7 @@ def application(
     # Build target
     native.sh_binary(
         name = "build",
-        srcs = ["//tools/scripts/shell:run_command.sh"],
+        srcs = ["//tools/dev:run_command.sh"],
         args = [package_dir, build_cmd],
         visibility = visibility,
     )
@@ -148,10 +148,10 @@ def application(
             name = "install_deps",
             srcs = [
                 "requirements.txt",
-                "//tools/scripts/shell:install_python_deps.sh",
+                "//tools/deploy:install_python_deps.sh",
             ],
             outs = ["deps.tar"],
-            cmd = "bash $(location //tools/scripts/shell:install_python_deps.sh) $(location requirements.txt) $@",
+            cmd = "bash $(location //tools/deploy:install_python_deps.sh) $(location requirements.txt) $@",
         )
 
         # 3. Wrap the tarball (mainly to be a valid target for oci_image provided tars)
@@ -163,9 +163,9 @@ def application(
         # Manual tar packing to ensure correct structure (src/... -> /app/src/...)
         native.genrule(
             name = "app_layer_tar",
-            srcs = srcs + ["//tools/scripts/python:package_app.py"],
+            srcs = srcs + ["//tools/deploy:package_app.py"],
             outs = ["app_layer.tar"],
-            cmd = "python3 $(location //tools/scripts/python:package_app.py) $@ $(SRCS)",
+            cmd = "python3 $(location //tools/deploy:package_app.py) $@ $(SRCS)",
         )
         
         oci_image(
@@ -204,8 +204,8 @@ def application(
         # Wrapper script to apply dynamic git tags at runtime
         native.sh_binary(
             name = "push_image",
-            srcs = ["//tools/scripts/shell:smart_push.sh"],
-            data = [":_push_image_oci", "//tools/scripts/python:determine_base_commit"],
+            srcs = ["//tools/ci:smart_push.sh"],
+            data = [":_push_image_oci", "//tools/ci:determine_base_commit"],
             args = ["$(location :_push_image_oci)"],
             visibility = visibility,
         )
@@ -221,7 +221,7 @@ def application(
         # Sandbox deployment target for minikube
         native.sh_binary(
             name = "_deploy_minikube",
-            srcs = ["//tools/scripts/shell:deploy_minikube.sh"],
+            srcs = ["//tools/deploy:deploy_minikube.sh"],
             args = [package_dir, image_repository, name],
             data = native.glob(["deploy/**/*"], allow_empty=True),
             visibility = ["//visibility:private"],
@@ -230,7 +230,7 @@ def application(
         # Combined sandbox target: load image + deploy to minikube
         native.sh_binary(
             name = "deploy_sandbox",
-            srcs = ["//tools/scripts/shell:sandbox_workflow.sh"],
+            srcs = ["//tools/deploy:sandbox_workflow.sh"],
             args = [name, "//" + package_dir + ":_deploy_minikube", package_dir],
             visibility = visibility,
         )
@@ -238,7 +238,7 @@ def application(
         # Dev Deployment
         native.sh_binary(
             name = "deploy_dev",
-            srcs = ["//tools/scripts/shell:run_command.sh"],
+            srcs = ["//tools/dev:run_command.sh"],
             args = [package_dir, "bazel run //tools:sync_dev -- --app " + concept + " --component " + name],
             visibility = visibility,
         )
@@ -246,7 +246,7 @@ def application(
         # Test Deployment
         native.sh_binary(
             name = "deploy_test",
-            srcs = ["//tools/scripts/shell:run_command.sh"],
+            srcs = ["//tools/dev:run_command.sh"],
             args = [package_dir, "echo 'Not implemented yet'"],
             visibility = visibility,
         )
@@ -254,7 +254,7 @@ def application(
         # Prod Deployment
         native.sh_binary(
             name = "deploy_prod",
-            srcs = ["//tools/scripts/shell:run_command.sh"],
+            srcs = ["//tools/dev:run_command.sh"],
             args = [package_dir, "echo 'Not implemented yet'"],
             visibility = visibility,
         )
@@ -263,6 +263,6 @@ def application(
 def deploy_sandbox_all(name, app, components = []):
     native.sh_binary(
         name = name,
-        srcs = ["//tools/scripts/shell:deploy_sandbox_all.sh"],
+        srcs = ["//tools/deploy:deploy_sandbox_all.sh"],
         args = [app],
     )

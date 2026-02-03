@@ -1,0 +1,10 @@
+package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "run_command.sh",
+])
+
+sh_binary(
+    name = "run_command",
+    srcs = ["run_command.sh"],
+)
