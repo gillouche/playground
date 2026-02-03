@@ -230,18 +230,19 @@ def sync_dev(app, component=None, ssl_context=None):
     """Sync Dev environment with Nexus latest."""
     current_bom = read_bom(app)
     
-    components_to_sync = [component] if component else list(current_bom.keys())
-    
-    if not components_to_sync and not component:
+    components_to_sync = list(current_bom.keys()) if not component else [component]
+
+    if not component:
+        # Auto-discover from filesystem and merge
         app_dir = f"apps/{app}"
         if os.path.exists(app_dir):
-            components_to_sync = []
             for d in os.listdir(app_dir):
                 full_path = os.path.join(app_dir, d)
                 if os.path.isdir(full_path) and d != "deploy":
                     if os.path.exists(os.path.join(full_path, "src")) or \
                        os.path.exists(os.path.join(full_path, "BUILD.bazel")):
-                        components_to_sync.append(d)
+                        if d not in components_to_sync:
+                             components_to_sync.append(d)
     
     if not components_to_sync:
         print(f"No components found for app '{app}'. Please specify --component or check BOM.")
