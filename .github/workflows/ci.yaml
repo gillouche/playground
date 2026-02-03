@@ -40,7 +40,15 @@ jobs:
 
       - name: Setup AWS Profile for Nix
         run: |
+          if [ -z "$NIX_ACCESS_KEY_ID" ]; then
+            echo "Error: NIX_ACCESS_KEY_ID is missing or empty!"
+            exit 1
+          else
+             echo "NIX_ACCESS_KEY_ID is set (length: ${#NIX_ACCESS_KEY_ID})"
+          fi
+          
           # Create credentials for Runner User (for nix copy)
+
           mkdir -p ~/.aws
           echo "[nix]" > ~/.aws/credentials
           echo "aws_access_key_id=$NIX_ACCESS_KEY_ID" >> ~/.aws/credentials

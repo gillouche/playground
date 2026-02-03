@@ -13,5 +13,7 @@ pkgs.mkShell {
     echo "uv version -> $(uv --version)"
     echo ""
     echo "Run 'uv sync --all-extras' to install project dependencies"
+
+    export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH
   '';
 }
