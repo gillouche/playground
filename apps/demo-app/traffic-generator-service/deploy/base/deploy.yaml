@@ -3,16 +3,16 @@ kind: Deployment
 metadata:
   name: traffic-generator-service
   labels:
-    app: traffic-generator-service
+    component: traffic-generator-service
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: traffic-generator-service
+      component: traffic-generator-service
   template:
     metadata:
       labels:
-        app: traffic-generator-service
+        component: traffic-generator-service
     spec:
       containers:
       - name: traffic-generator-service
@@ -34,10 +34,10 @@ kind: Service
 metadata:
   name: traffic-generator-service
   labels:
-    app: traffic-generator-service
+    component: traffic-generator-service
 spec:
   selector:
-    app: traffic-generator-service
+    component: traffic-generator-service
   ports:
     - protocol: TCP
       port: 80

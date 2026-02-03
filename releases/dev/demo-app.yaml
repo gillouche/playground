@@ -1,7 +1,7 @@
 metadata:
   app: demo-app
   version: dev
-  created_at: '2026-02-03T23:01:19.228206+00:00'
+  created_at: '2026-02-03T23:05:29.144099+00:00'
 images:
   greeting-service:
     tag: 86eda1b
