@@ -4,22 +4,22 @@ exports_files([
 
 alias(
     name = "freeze",
-    actual = "//tools/scripts/python:freeze",
+    actual = "//tools/scripts/shell:freeze",
 )
 
 alias(
     name = "promote",
-    actual = "//tools/scripts/python:promote",
+    actual = "//tools/scripts/shell:promote",
 )
 
 alias(
     name = "sync_dev",
-    actual = "//tools/scripts/python:sync_dev",
+    actual = "//tools/scripts/shell:sync_dev",
 )
 
 alias(
     name = "rollback",
-    actual = "//tools/scripts/python:rollback",
+    actual = "//tools/scripts/shell:rollback",
 )
 
 alias(

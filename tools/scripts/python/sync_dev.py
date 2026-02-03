@@ -7,53 +7,56 @@ import json
 import urllib.request
 import urllib.error
 import ssl
+import yaml
 
 # CONSTANTS
 NEXUS_URL = "https://nexus.gillouche.homelab"
 
 # HELPER FUNCTIONS
 
+
 def create_ssl_context(ca_cert=None):
     if ca_cert:
         print(f"DEBUG: Using CA cert: {ca_cert}")
     else:
         print("DEBUG: Using system default CA certs")
-    
+
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.verify_mode = ssl.CERT_REQUIRED
     ctx.check_hostname = True
-    
+
     if ca_cert:
         ctx.load_verify_locations(cafile=ca_cert)
     else:
         ctx.load_default_certs()
-        
+
     return ctx
+
 
 def query_nexus_latest(app, component, ssl_context=None):
     """Query Nexus for the latest tag and extract git-{sha}."""
     manifest_url = f"{NEXUS_URL}/v2/docker-hosted/{app}/{component}/manifests/latest"
     headers = {"Accept": "application/vnd.docker.distribution.manifest.v2+json"}
-    
+
     try:
         req = urllib.request.Request(manifest_url, headers=headers)
         with urllib.request.urlopen(req, context=ssl_context) as response:
             latest_digest = response.headers.get("docker-content-digest")
-            
+
         if not latest_digest:
             print(f"Warning: Could not get digest for {app}/{component}:latest")
             return None
-        
+
         tags_url = f"{NEXUS_URL}/v2/docker-hosted/{app}/{component}/tags/list"
         with urllib.request.urlopen(tags_url, context=ssl_context) as tags_response:
-             tags_data = json.loads(tags_response.read().decode('utf-8'))
-        
+            tags_data = json.loads(tags_response.read().decode('utf-8'))
+
         all_tags = [t for t in tags_data.get("tags", []) if t != "latest" and not t.startswith("git-")]
-        
+
         if not all_tags:
             print(f"Warning: No tags found for {component}")
             return None
-        
+
         for tag in all_tags:
             tag_manifest_url = f"{NEXUS_URL}/v2/docker-hosted/{app}/{component}/manifests/{tag}"
             tag_req = urllib.request.Request(tag_manifest_url, headers=headers)
@@ -67,22 +70,27 @@ def query_nexus_latest(app, component, ssl_context=None):
 
         print(f"Warning: Could not correlate :latest digest ({latest_digest}) to any other tag for {component}")
         return all_tags[0] if all_tags else None
-        
+
     except urllib.error.URLError as e:
         print(f"Error querying Nexus for {app}/{component}: {e}")
         return None
 
+
 def read_bom(app):
+    """Read BOM using YAML library."""
     bom_path = f"releases/dev/{app}.yaml"
     if not os.path.exists(bom_path):
         return {}
-    
-    components = {}
+
     with open(bom_path, 'r') as f:
-        content = f.read()
-        pattern = re.compile(r"  (\S+):\s*\n\s+tag: (\S+)")
-        for match in pattern.finditer(content):
-            components[match.group(1)] = match.group(2)
+        bom = yaml.safe_load(f)
+
+    components = {}
+    images = bom.get('images', {}) if bom else {}
+    for component, data in images.items():
+        if isinstance(data, dict) and 'tag' in data:
+            components[component] = data['tag']
+
     return components
 
 def update_bom(app, component, tag, commit, ssl_context):
@@ -103,13 +111,13 @@ def update_bom(app, component, tag, commit, ssl_context):
             digest: ...
     """
     import datetime
-    
+
     bom_path = f"releases/dev/{app}.yaml"
-    
+
     # Query Nexus for image digest
     ref = f"nexus.gillouche.homelab/docker-hosted/{app}/{component}:{tag}"
     digest = "unknown"
-    
+
     try:
         manifest_url = f"{NEXUS_URL}/v2/docker-hosted/{app}/{component}/manifests/{tag}"
         headers = {"Accept": "application/vnd.docker.distribution.manifest.v2+json"}
@@ -118,83 +126,39 @@ def update_bom(app, component, tag, commit, ssl_context):
             digest = response.headers.get("docker-content-digest", "unknown")
     except Exception as e:
         print(f"  Warning: Could not get digest for {component}:{tag} - {e}")
-    
+
     # Read existing BOM or create new
-    images = {}
-    metadata = {
-        "app": app,
-        "version": "dev",
-        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+    bom = {
+        "metadata": {
+            "app": app,
+            "version": "dev",
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+        },
+        "images": {}
     }
-    
+
     if os.path.exists(bom_path):
         with open(bom_path, 'r') as f:
-            content = f.read()
-        
-        # Parse existing images section
-        lines = content.splitlines()
-        in_images = False
-        current_comp = None
-        
-        for line in lines:
-            stripped = line.strip()
-            if stripped == "images:":
-                in_images = True
-                continue
-            if not in_images:
-                continue
-            
-            # Component level (2 space indent)
-            if line.startswith("  ") and not line.startswith("    ") and line.strip().endswith(":"):
-                current_comp = stripped[:-1]
-                images[current_comp] = {}
-            # Attribute level (4 space indent)
-            elif current_comp and line.startswith("    ") and not line.startswith("      "):
-                if ":" in stripped:
-                    key, val = stripped.split(":", 1)
-                    images[current_comp][key.strip()] = val.strip()
-            # Nested level (6 space indent, e.g. image.ref)
-            elif current_comp and line.startswith("      "):
-                if ":" in stripped:
-                    key, val = stripped.split(":", 1)
-                    if key.strip() == "ref":
-                        images[current_comp]["image_ref"] = val.strip()
-                    elif key.strip() == "digest":
-                        images[current_comp]["image_digest"] = val.strip()
-    
+            existing_bom = yaml.safe_load(f)
+        if existing_bom and 'images' in existing_bom:
+            bom['images'] = existing_bom['images']
+
     # Update the specific component
     full_tag = f"{app}/{component}/{tag}" if not tag.startswith(f"{app}/") else tag
-    images[component] = {
+    bom['images'][component] = {
         "tag": tag,
         "commit": commit,
         "full_tag": full_tag,
-        "image_ref": ref,
-        "image_digest": digest
+        "image": {
+            "ref": ref,
+            "digest": digest
+        }
     }
-    
-    # Write full BOM
-    output_lines = []
-    output_lines.append("metadata:")
-    output_lines.append(f"  app: {metadata['app']}")
-    output_lines.append(f"  version: {metadata['version']}")
-    output_lines.append(f"  created_at: {metadata['created_at']}")
-    output_lines.append("")
-    output_lines.append("images:")
-    
-    for comp, data in images.items():
-        output_lines.append(f"  {comp}:")
-        output_lines.append(f"    tag: {data.get('tag', 'unknown')}")
-        output_lines.append(f"    commit: {data.get('commit', 'unknown')}")
-        output_lines.append(f"    full_tag: {data.get('full_tag', 'unknown')}")
-        output_lines.append(f"    image:")
-        output_lines.append(f"      ref: {data.get('image_ref', 'unknown')}")
-        output_lines.append(f"      digest: {data.get('image_digest', 'unknown')}")
-    
-    output_content = "\n".join(output_lines) + "\n"
-    
+
+    # Write BOM
     os.makedirs(os.path.dirname(bom_path), exist_ok=True)
     with open(bom_path, 'w') as f:
-        f.write(output_content)
+        yaml.dump(bom, f, default_flow_style=False, sort_keys=False)
 
 def update_kustomization(app, component, tag):
     kustomization_path = f"apps/{app}/deploy/dev/kustomization.yaml"

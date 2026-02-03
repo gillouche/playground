@@ -4,18 +4,22 @@ import argparse
 import os
 import re
 import shutil
+import subprocess
 import sys
+import yaml
+
 
 def parse_bom_images(path):
     """Parse BOM to extract component:tag pairs."""
     with open(path, 'r') as f:
-        content = f.read()
-    
+        bom = yaml.safe_load(f)
+
     components = {}
-    pattern = re.compile(r"  (\S+):\s*\n\s+tag: (\S+)")
-    for match in pattern.finditer(content):
-        components[match.group(1)] = match.group(2)
-    
+    images = bom.get('images', {})
+    for component, data in images.items():
+        if isinstance(data, dict) and 'tag' in data:
+            components[component] = data['tag']
+
     return components
 
 def update_kustomization(app_name, env, images):
@@ -85,7 +89,7 @@ def rollback(env, app, version):
         print(f"  - {comp}: {tag}")
 
     print("Regenerating manifests...")
-    os.system("bazel run //tools:gen_manifests")
+    subprocess.run(["bazel", "run", "//tools:gen_manifests"], capture_output=False)
 
 def main():
     parser = argparse.ArgumentParser(description="Rollback Test or Prod environment to archived version")

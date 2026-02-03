@@ -23,9 +23,9 @@ resources:
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
-    newTag: 7b200e3
+    newTag: e9d1025
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
-    newTag: 7b200e3
+    newTag: e9d1025
 
 labels:
   - pairs:

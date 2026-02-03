@@ -10,34 +10,6 @@ exports_files([
 ])
 
 py_binary(
-    name = "freeze",
-    srcs = ["freeze.py"],
-)
-
-py_binary(
-    name = "promote",
-    srcs = ["promote.py"],
-)
-
-py_binary(
-    name = "sync_dev",
-    srcs = ["sync_dev.py"],
-    data = ["//:ca-bundle.pem"],
-)
-
-py_binary(
-    name = "rollback",
-    srcs = ["rollback.py"],
-)
-
-py_binary(
     name = "generate_matrix",
     srcs = ["generate_matrix.py"],
-)
-
-# Used by smart_push
-py_binary(
-    name = "determine_base_commit",
-    srcs = ["determine_base_commit.py"],
-    data = ["//:ca-bundle.pem"],
 )

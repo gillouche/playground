@@ -4,110 +4,137 @@ import argparse
 import os
 import shutil
 import re
+import subprocess
 import sys
+import yaml
 
-def promote_app(target_env, app, version):
+
+def run_command(cmd, check=True):
+    """Run a command using subprocess and return the result."""
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True
+    )
+    if check and result.returncode != 0:
+        print(f"Command failed: {' '.join(cmd)}")
+        if result.stderr:
+            print(f"Error: {result.stderr}")
+        return None
+    return result
+
+
+def git_add(paths):
+    """Stage files for commit."""
+    if isinstance(paths, str):
+        paths = [paths]
+    result = run_command(["git", "add"] + paths, check=False)
+    return result is not None and result.returncode == 0
+
+
+def git_commit(message):
+    """Create a git commit with the given message."""
+    result = run_command(["git", "commit", "-m", message], check=False)
+    if result and result.returncode == 0:
+        return True
+    if result and "nothing to commit" in result.stdout:
+        print("Nothing to commit - files may already be committed")
+        return True
+    return False
+
+
+def promote_app(target_env, app, version, commit=False):
     """
     Promote an app version to the target environment.
-    
+
     Logic:
     1. Always source from Dev frozen BOM: releases/dev/{app}-{version}.yaml
     2. Update target environment latest BOM: releases/{target}/{app}.yaml
     3. Update apps/{app}/deploy/{target}/kustomization.yaml with tags from BOM
     4. Regenerate manifests
+    5. Optionally commit changes to git
     """
-    
+
     # Always source from Central Version Store
     source_bom = f"releases/versions/{app}/{version}.yaml"
     target_bom_latest = f"releases/{target_env}/{app}.yaml"
-    
+
     print(f"Promoting {app} {version} to {target_env} (Source: {source_bom})...")
-    
+
     # 1. Validate Source
     if not os.path.exists(source_bom):
         print(f"Error: Source BOM {source_bom} does not exist.")
         print(f"Tip: Run //tools:freeze --app {app} --version {version} first.")
         sys.exit(1)
-        
+
     # 2. Update Target Latest BOM
     os.makedirs(os.path.dirname(target_bom_latest), exist_ok=True)
     if os.path.exists(target_bom_latest):
         print(f"Updating existing {target_bom_latest}")
     else:
         print(f"Creating new {target_bom_latest}")
-        
+
     shutil.copy2(source_bom, target_bom_latest)
     print(f"Updated {target_bom_latest} with content from {version}")
-    
+
     # 3. Parse BOM to get images and metadata
-    # Structure:
-    # images:
-    #   component:
-    #     tag: ...
-    #     commit: ...
-    #     full_tag: ...
-    
-    images = {}
     with open(source_bom, 'r') as f:
-        content = f.read()
-        
-    # Python-only parsing (no yaml dependency)
-    # We iterate lines looking for components under 'images:'
-    lines = content.splitlines()
-    in_images_section = False
-    current_component = None
-    
-    for line in lines:
-        stripped = line.strip()
-        if stripped == "images:":
-            in_images_section = True
-            continue
-        
-        if not in_images_section:
-            continue
-            
-        # Check for indent 2 (component)
-        if line.startswith("  ") and not line.startswith("    ") and line.endswith(":"):
-            current_component = line.strip()[:-1]
-            images[current_component] = {}
-        
-        # Check for indent 4 (attributes)
-        elif current_component and line.startswith("    ") and not line.startswith("      "):
-            if ":" in stripped:
-                key, val = stripped.split(":", 1)
-                val = val.strip()
-                if val:
-                    images[current_component][key.strip()] = val
-        
-        # Check for indent 6 (nested attributes, e.g. image.ref)
-        elif current_component and line.startswith("      "):
-            if ":" in stripped:
-                key, val = stripped.split(":", 1)
-                val = val.strip()
-                # We specifically look for 'ref' which comes from 'image' block
-                if key.strip() == "ref":
-                     images[current_component]["image_ref"] = val
+        bom = yaml.safe_load(f)
+
+    images = {}
+    bom_images = bom.get('images', {})
+    for component, data in bom_images.items():
+        if isinstance(data, dict):
+            images[component] = {
+                'tag': data.get('tag'),
+                'commit': data.get('commit'),
+                'full_tag': data.get('full_tag'),
+            }
+            # Handle nested 'image' block
+            if 'image' in data and isinstance(data['image'], dict):
+                images[component]['image_ref'] = data['image'].get('ref')
+                images[component]['image_digest'] = data['image'].get('digest')
 
     if not images:
         print("Warning: No images found in BOM. Skipping updates.")
     else:
         update_kustomization(app, target_env, images)
-        
+
         # 5. Regenerate Manifests (Target Env Only)
         print(f"Regenerating manifests for {target_env}...")
-        
+
         for comp in images.keys():
-             print(f"  Regenerating {comp} for {target_env}...")
-             ret = os.system(f"bazel run //tools:gen_manifests -- {app} {comp} {target_env}")
-             if ret != 0:
-                 print(f"Error generating manifests for {comp}.")
-                 sys.exit(1)
-            
+            print(f"  Regenerating {comp} for {target_env}...")
+            result = subprocess.run(
+                ["bazel", "run", "//tools:gen_manifests", "--", app, comp, target_env],
+                capture_output=False
+            )
+            if result.returncode != 0:
+                print(f"Error generating manifests for {comp}.")
+                sys.exit(1)
+
         # 6. Update ConfigMaps (Metadata) AFTER generation
         # because gen_manifests overwrites them from templates
         update_configmaps(app, target_env, version, images)
-            
+
     print(f"\nSuccessfully promoted {app} {version} to {target_env}")
+
+    # 7. Optionally commit changes to git
+    if commit:
+        print("\nCommitting changes to git...")
+        paths_to_add = [
+            f"releases/{target_env}/{app}.yaml",
+            f"apps/{app}/deploy/{target_env}/"
+        ]
+
+        if git_add(paths_to_add):
+            commit_message = f"release: promote {app} {version} to {target_env}"
+            if git_commit(commit_message):
+                print(f"Created commit: {commit_message}")
+            else:
+                print("Warning: Failed to create commit")
+        else:
+            print("Warning: Failed to stage files for commit")
 
 def update_configmaps(app_name, env, version, images):
     deploy_dir = f"apps/{app_name}/deploy/{env}"
@@ -222,6 +249,7 @@ def main():
     parser.add_argument("--target", required=True, choices=["test", "prod"], help="Target environment")
     parser.add_argument("--app", required=True, help="App name (e.g. demo-app)")
     parser.add_argument("--version", required=True, help="Version tag (e.g. v1.0.0)")
+    parser.add_argument("--commit", action="store_true", help="Commit changes to git after promotion")
 
     args = parser.parse_args()
 
@@ -230,7 +258,7 @@ def main():
     if workspace_dir:
         os.chdir(workspace_dir)
 
-    promote_app(args.target, args.app, args.version)
+    promote_app(args.target, args.app, args.version, commit=args.commit)
 
 if __name__ == "__main__":
     main()

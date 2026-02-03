@@ -11,16 +11,47 @@ exports_files([
     "install_python_deps.sh",
 ])
 
-# Deploy Dev target (was previously in tools/scripts/BUILD.bazel)
-# It called deploy_dev.sh (now removed).
-# But wait, I changed it to point to sync_dev. 
-# So there is no shell binary for deploy_dev anymore in my verified state.
-# I just need to export the scripts used by macros.
+# Python script wrappers - use system Python from Nix shell (with pyyaml)
+sh_binary(
+    name = "freeze",
+    srcs = ["freeze.sh"],
+    data = ["//tools/scripts/python:freeze.py"],
+)
+
+sh_binary(
+    name = "promote",
+    srcs = ["promote.sh"],
+    data = ["//tools/scripts/python:promote.py"],
+)
+
+sh_binary(
+    name = "sync_dev",
+    srcs = ["sync_dev.sh"],
+    data = [
+        "//tools/scripts/python:sync_dev.py",
+        "//:ca-bundle.pem",
+    ],
+)
+
+sh_binary(
+    name = "rollback",
+    srcs = ["rollback.sh"],
+    data = ["//tools/scripts/python:rollback.py"],
+)
+
+sh_binary(
+    name = "determine_base_commit",
+    srcs = ["determine_base_commit.sh"],
+    data = [
+        "//tools/scripts/python:determine_base_commit.py",
+        "//:ca-bundle.pem",
+    ],
+)
 
 sh_binary(
     name = "smart_push",
     srcs = ["smart_push.sh"],
-    data = ["//tools/scripts/python:determine_base_commit"],
+    data = [":determine_base_commit"],
 )
 
 sh_binary(
@@ -32,5 +63,5 @@ sh_binary(
 sh_binary(
     name = "affected_targets",
     srcs = ["affected_targets.sh"],
-    data = ["//tools/scripts/python:determine_base_commit"],
+    data = [":determine_base_commit"],
 )
