@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traffic-generator-service-config
+  labels:
+    app: demo-app
+    component: traffic-generator-service
+    environment: prod
+data:
+  ENVIRONMENT: prod
+  APP: demo-app
+  COMPONENT: traffic-generator-service
+  LOG_LEVEL: INFO
+  APP_VERSION: v0.0.8
+  COMPONENT_VERSION: unknown
+  GIT_TAG: unknown
+  GIT_COMMIT: 2d86dbc
+  TARGET_URL: http://greeting-service
+  CONCURRENCY: "10"
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring.svc.cluster.local:4317
+  ENABLE_TRACING: "true"

@@ -2,12 +2,13 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../base
+  - ../rollouts-base
   - ../../greeting-service/deploy/base
   - greeting-service-ingress.yaml
   - greeting-service-rollout.yaml
   - infra-check-service-egress-networkpolicy.yaml
-  - greeting-service-servicemonitor.yaml
   - greeting-service-scaledobject.yaml
+  - ../../traffic-generator-service/deploy/with-hpa
   - ../../infra-check-service/deploy/base
   - infra-check-service-configmap.yaml
   - infra-check-service-ingress.yaml
@@ -19,6 +20,8 @@ resources:
 
 patches:
   - path: greeting-service-configmap.yaml
+  - path: traffic-generator-patch.yaml
+  - path: traffic-generator-service-configmap.yaml
 
 
 
