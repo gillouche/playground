@@ -30,6 +30,8 @@ images:
     newTag: 86eda1b
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
     newTag: 86eda1b
+  - name: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service
+    newTag: 86eda1b
 
 labels:
   - pairs:
