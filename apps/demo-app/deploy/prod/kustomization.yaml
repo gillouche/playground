@@ -20,6 +20,7 @@ resources:
 
 patches:
   - path: greeting-service-configmap.yaml
+  - path: traffic-generator-service-configmap.yaml
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service

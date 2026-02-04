@@ -19,10 +19,8 @@ spec:
   pollingInterval: 30
   cooldownPeriod: 300
   triggers:
-    - type: prometheus
+    - type: cpu
       metadata:
-        serverAddress: http://monitoring-kube-prometheus-prometheus.monitoring:9090
-        metricName: http_requests_per_second
-        query: #@ "sum(rate(http_requests_total{component=\"" + data.values.component + "\"}[2m]))"
-        threshold: "100"
+        type: Utilization
+        value: "50"
 #@ end
