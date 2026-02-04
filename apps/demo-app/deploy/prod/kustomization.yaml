@@ -8,7 +8,6 @@ resources:
   - greeting-service-rollout.yaml
   - infra-check-service-egress-networkpolicy.yaml
   - greeting-service-scaledobject.yaml
-  - ../../traffic-generator-service/deploy/with-hpa
   - ../../infra-check-service/deploy/base
   - infra-check-service-configmap.yaml
   - infra-check-service-ingress.yaml
@@ -20,8 +19,6 @@ resources:
 
 patches:
   - path: greeting-service-configmap.yaml
-  - path: traffic-generator-patch.yaml
-  - path: traffic-generator-service-configmap.yaml
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
