@@ -8,7 +8,7 @@ data:
   ENVIRONMENT: prod
   APP: demo-app
   COMPONENT: infra-check-service
-  APP_VERSION: v0.0.8
+  APP_VERSION: v0.0.9
   COMPONENT_VERSION: v0.0.5
   GIT_TAG: demo-app/infra-check-service/v0.0.5
   GIT_COMMIT: c333c4d12aaba4448a7361041bec11bce30e8f2d

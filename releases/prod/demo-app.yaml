@@ -1,9 +1,16 @@
 metadata:
   app: demo-app
-  version: v0.0.8
-  created_at: 2026-02-03T21:19:47.206927+00:00
+  version: v0.0.9
+  created_at: 2026-02-04T22:05:34.607262+00:00
 
 images:
+  traffic-generator-service:
+    tag: v0.0.1
+    commit: 86eda1b8e99d234e14a1fb97a1afb4ce9d26fed3
+    full_tag: demo-app/traffic-generator-service/v0.0.1
+    image:
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:v0.0.1
+      digest: sha256:42127bb6e54704363fc1f45b8c3a673af773bac85e5f1c353929b05172b6482f
   infra-check-service:
     tag: v0.0.5
     commit: c333c4d12aaba4448a7361041bec11bce30e8f2d

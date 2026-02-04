@@ -21,6 +21,8 @@ patches:
   - path: greeting-service-configmap.yaml
 
 images:
+  - name: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service
+    newTag: v0.0.1
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
     newTag: v0.0.7
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
