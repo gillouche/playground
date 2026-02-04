@@ -35,6 +35,16 @@
             port: 9092   #! Kafka
           - protocol: TCP
             port: 27017  #! MongoDB
+      #! Allow access to monitoring (Tempo)
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: monitoring
+        ports:
+          - protocol: TCP
+            port: 4317   #! OTLP gRPC
+          - protocol: TCP
+            port: 4318   #! OTLP HTTP
       #! Allow pod-to-pod within same namespace
       - to:
           - podSelector: {}

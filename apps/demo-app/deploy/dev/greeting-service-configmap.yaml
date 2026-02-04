@@ -11,6 +11,8 @@ data:
   APP: demo-app
   COMPONENT: greeting-service
   LOG_LEVEL: DEBUG
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring.svc.cluster.local:4317
+  ENABLE_TRACING: "true"
   APP_VERSION: dev
   COMPONENT_VERSION: 86eda1b
   GIT_TAG: demo-app/greeting-service/86eda1b

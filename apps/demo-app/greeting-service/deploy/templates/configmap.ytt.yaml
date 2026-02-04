@@ -20,6 +20,9 @@ data:
   #@ end
   #@ if data.values.env == "sandbox":
   ENABLE_TRACING: "false"
+  #@ else:
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring.svc.cluster.local:4317
+  ENABLE_TRACING: "true"
   #@ end
   APP_VERSION: #@ data.values.app_version
   COMPONENT_VERSION: #@ data.values.component_version
