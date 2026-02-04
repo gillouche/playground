@@ -1,0 +1,9 @@
+package(default_visibility = ["//visibility:public"])
+filegroup(
+    name = "dev",
+    srcs = glob(["dev/*.yaml"]),
+)
+filegroup(
+    name = "release",
+    srcs = glob(["prod/*.yaml", "test/*.yaml", "sandbox/*.yaml"]),
+)

@@ -14,7 +14,7 @@ data:
   APP_VERSION: sandbox
   COMPONENT_VERSION: unknown
   GIT_TAG: unknown
-  GIT_COMMIT: 2d86dbc
+  GIT_COMMIT: unknown
   TARGET_URL: http://greeting-service
   CONCURRENCY: "10"
   OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring.svc.cluster.local:4317

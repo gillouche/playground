@@ -13,5 +13,5 @@ data:
   LOG_LEVEL: DEBUG
   APP_VERSION: dev
   COMPONENT_VERSION: 86eda1b
-  GIT_TAG: 86eda1b
+  GIT_TAG: demo-app/greeting-service/86eda1b
   GIT_COMMIT: 86eda1b8e99d234e14a1fb97a1afb4ce9d26fed3

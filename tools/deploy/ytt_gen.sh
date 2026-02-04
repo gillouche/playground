@@ -4,7 +4,10 @@ set -e
 # Generic ytt manifest generator for the monorepo
 # Usage: ./ytt_gen.sh [app] [component] [env]
 
-ROOT_DIR=$(git rev-parse --show-toplevel)
+ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+if [ ! -d "$ROOT_DIR/releases" ] && [ -d "./releases" ]; then
+    ROOT_DIR="."
+fi
 APPS_DIR="$ROOT_DIR/apps"
 
 GENERATE_ALL=false
@@ -103,12 +106,9 @@ generate_component_env() {
             fi
         done < "$bom_file"
         
-        # Fallback for missing values
-        if [ "$GIT_COMMIT" = "unknown" ] || [ -z "$GIT_COMMIT" ]; then
-            GIT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-        fi
         if [ -z "$GIT_TAG" ] || [ "$GIT_TAG" = "unknown" ]; then
-            GIT_TAG="$COMPONENT_VERSION"
+            echo "Component $component not found in BOM for $env. Skipping."
+            return
         fi
     fi
 
