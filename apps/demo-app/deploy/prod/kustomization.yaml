@@ -6,15 +6,16 @@ resources:
   - ../../greeting-service/deploy/base
   - greeting-service-ingress.yaml
   - greeting-service-rollout.yaml
-  - infra-check-service-egress-networkpolicy.yaml
   - greeting-service-scaledobject.yaml
   - ../../infra-check-service/deploy/base
+  - infra-check-service-egress-networkpolicy.yaml
   - infra-check-service-configmap.yaml
   - infra-check-service-ingress.yaml
   - infra-check-service-rollout.yaml
   - infra-check-service-servicemonitor.yaml
   - infra-check-service-scaledobject.yaml
   - infra-check-credentials.yaml
+  - ../../traffic-generator-service/deploy/with-hpa
   - monitoring-grafana-dashboard.yaml
 
 patches:
