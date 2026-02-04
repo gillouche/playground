@@ -20,8 +20,7 @@ spec:
   cooldownPeriod: 300
   triggers:
     - type: cpu
+      metricType: Utilization
       metadata:
-        type: "Utilization"
-        metricType: "Utilization"
         value: "50"
 #@ end
