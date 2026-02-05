@@ -1,0 +1,101 @@
+name: Nightly Security Scan
+
+on:
+  schedule:
+    # Run at 2 AM UTC every day
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TRIVY_CACHE_DIR: /home/runner/.cache/trivy
+
+jobs:
+  discover-services:
+    name: Discover Services
+    runs-on: playground-runner
+    outputs:
+      matrix: ${{ steps.services.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Nix Environment
+        uses: ./.github/actions/setup-nix-env
+
+      - name: Find all services
+        id: services
+        run: |
+          # Find all services with build_docker targets
+          SERVICES=$(nix develop ./nix#ci --command bazel query "kind(oci_load, //apps/...)" 2>/dev/null | \
+            sed 's/:build_docker$//' | \
+            while read path; do
+              name=$(basename "$path")
+              echo "{\"name\": \"$name\", \"path\": \"${path#//}\"}"
+            done | jq -s '.')
+          echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
+          echo "Found services: $SERVICES"
+
+  scan-service:
+    name: Scan ${{ matrix.service.name }}
+    needs: discover-services
+    runs-on: playground-runner
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.discover-services.outputs.matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Nix Environment
+        uses: ./.github/actions/setup-nix-env
+
+      - name: Build and Scan
+        run: |
+          nix develop ./nix#ci --command bash -c '
+            set -e
+
+            echo "Building image for ${{ matrix.service.name }}..."
+            bazel run --config=ci //${{ matrix.service.path }}:build_docker
+
+            echo "Scanning image for vulnerabilities..."
+            trivy image --exit-code 0 --severity HIGH,CRITICAL --format json --output trivy-results.json ${{ matrix.service.name }}:latest
+
+            if [ -f trivy-results.json ]; then
+               ISSUES=$(jq -r '\''if .Results then (.Results[]? | .Vulnerabilities[]? | "- " + .PkgName + " (" + .VulnerabilityID + "): " + .Title) else empty end'\'' trivy-results.json | head -c 1900)
+
+               if [ -n "$ISSUES" ]; then
+                   echo "Critical/High Vulnerabilities found:"
+                   echo "$ISSUES"
+                   ./tools/ci/notify_discord.sh "WARNING" "Trivy Scan: ${{ matrix.service.name }}" "Found Critical/High Vulnerabilities:\n$ISSUES"
+               else
+                   echo "No critical vulnerabilities found."
+               fi
+            fi
+          '
+
+  notify-completion:
+    name: Notify Completion
+    needs: [discover-services, scan-service]
+    if: always()
+    runs-on: playground-runner
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Send completion notification
+        run: |
+          if [ "${{ needs.scan-service.result }}" == "failure" ]; then
+            ./tools/ci/notify_discord.sh "WARNING" "Nightly Security Scan" "Security scan completed with issues. Check workflow for details."
+          else
+            ./tools/ci/notify_discord.sh "SUCCESS" "Nightly Security Scan" "All services scanned successfully."
+          fi

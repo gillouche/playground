@@ -40,37 +40,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup AWS Profile for Nix
-        run: |
-          # Create credentials for Runner User (for nix copy)
-
-          mkdir -p ~/.aws
-          echo "[nix]" > ~/.aws/credentials
-          echo "aws_access_key_id=$NIX_ACCESS_KEY_ID" >> ~/.aws/credentials
-          echo "aws_secret_access_key=$NIX_SECRET_ACCESS_KEY" >> ~/.aws/credentials
-          
-          echo "[profile nix]" > ~/.aws/config
-          echo "region=us-east-1" >> ~/.aws/config
-
-          # Add default profile for general AWS SDK usage
-          echo "[default]" >> ~/.aws/credentials
-          echo "aws_access_key_id=$NIX_ACCESS_KEY_ID" >> ~/.aws/credentials
-          echo "aws_secret_access_key=$NIX_SECRET_ACCESS_KEY" >> ~/.aws/credentials
-          echo "[profile default]" >> ~/.aws/config
-          echo "region=us-east-1" >> ~/.aws/config
-
-          # Copy to Root (for Nix Daemon substitution)
-          sudo mkdir -p /root/.aws
-          sudo cp ~/.aws/credentials /root/.aws/credentials
-          sudo cp ~/.aws/config /root/.aws/config
-
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          extra-conf: |
-            substituters = s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http https://cache.nixos.org/
-            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
-            require-sigs = false
+      - name: Setup Nix Environment
+        uses: ./.github/actions/setup-nix-env
 
       - name: Determine affected services
         id: matrix
@@ -149,36 +120,8 @@ jobs:
           fetch-depth: 1  # Only need current commit for build (analyze job handles history)
           persist-credentials: false
 
-      - name: Setup AWS Profile for Nix
-        run: |
-          # Create credentials for Runner User (for nix copy)
-          mkdir -p ~/.aws
-          echo "[nix]" > ~/.aws/credentials
-          echo "aws_access_key_id=$NIX_ACCESS_KEY_ID" >> ~/.aws/credentials
-          echo "aws_secret_access_key=$NIX_SECRET_ACCESS_KEY" >> ~/.aws/credentials
-          
-          echo "[profile nix]" > ~/.aws/config
-          echo "region=us-east-1" >> ~/.aws/config
-
-          # Add default profile for general AWS SDK usage
-          echo "[default]" >> ~/.aws/credentials
-          echo "aws_access_key_id=$NIX_ACCESS_KEY_ID" >> ~/.aws/credentials
-          echo "aws_secret_access_key=$NIX_SECRET_ACCESS_KEY" >> ~/.aws/credentials
-          echo "[profile default]" >> ~/.aws/config
-          echo "region=us-east-1" >> ~/.aws/config
-
-          # Copy to Root (for Nix Daemon substitution)
-          sudo mkdir -p /root/.aws
-          sudo cp ~/.aws/credentials /root/.aws/credentials
-          sudo cp ~/.aws/config /root/.aws/config
-
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          extra-conf: |
-            substituters = s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http https://cache.nixos.org/
-            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
-            require-sigs = false
+      - name: Setup Nix Environment
+        uses: ./.github/actions/setup-nix-env
 
       - name: Load Credentials
         run: |
@@ -196,28 +139,6 @@ jobs:
 
             echo "Building image for ${{ matrix.service.name }}..."
             bazel run --config=ci //${{ matrix.service.path }}:build_docker
-
-            echo "Scanning image for vulnerabilities..."
-            # Run Trivy in non-blocking mode, output JSON for parsing
-            trivy image --exit-code 0 --severity HIGH,CRITICAL --format json --output trivy-results.json ${{ matrix.service.name }}:latest
-            
-            # Check for vulnerabilities and notify Discord
-            if [ -f trivy-results.json ]; then
-               # Extract vulnerabilities formatted for Discord
-               ISSUES=$(jq -r '\''if .Results then (.Results[]? | .Vulnerabilities[]? | "- " + .PkgName + " (" + .VulnerabilityID + "): " + .Title) else empty end'\'' trivy-results.json | head -c 1900)
-               
-               if [ -n "$ISSUES" ]; then
-                   echo "Critical/High Vulnerabilities found:"
-                   echo "$ISSUES"
-                   echo "Sending Discord notification..."
-                   # Escape quotes for shell safety if needed, but simple string passing usually okay inside single quotes context if careful
-                   # We need to break out of the 'echo' context or just call the script.
-                   # Note: The script arguments needs to be carefully handled inside this bash -c block.
-                   ./tools/ci/notify_discord.sh "WARNING" "Trivy Scan: ${{ matrix.service.name }}" "Found Critical/High Vulnerabilities:\n$ISSUES"
-               else
-                   echo "No critical vulnerabilities found."
-               fi
-            fi
 
             # Query available test/lint targets once
             AVAILABLE=$(bazel query "kind(sh_binary, //${{ matrix.service.path }}/...)" 2>/dev/null || true)
