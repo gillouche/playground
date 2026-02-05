@@ -21,3 +21,6 @@ build --remote_accept_cached=true
 build:ci --remote_cache=http://seaweedfs-filer.seaweedfs.svc.cluster.local:8888/buckets/bazel-cache
 build:ci --remote_upload_local_results=true
 build:ci --remote_cache_async
+
+# Pass UV cache directory to actions for Python dependency caching
+build:ci --action_env=UV_CACHE_DIR
