@@ -32,7 +32,10 @@ jobs:
         id: services
         run: |
           # Find all services with build_docker targets
-          SERVICES=$(nix develop ./nix#ci --command bazel query "kind(oci_load, //apps/...)" 2>/dev/null | \
+          SERVICES=$(nix develop \
+            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
+            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
+            ./nix#ci --command bazel query "kind(oci_load, //apps/...)" 2>/dev/null | \
             sed 's/:build_docker$//' | \
             while read path; do
               name=$(basename "$path")
@@ -61,7 +64,10 @@ jobs:
 
       - name: Build and Scan
         run: |
-          nix develop ./nix#ci --command bash -c '
+          nix develop \
+            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
+            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
+            ./nix#ci --command bash -c '
             set -e
 
             echo "Building image for ${{ matrix.service.name }}..."
