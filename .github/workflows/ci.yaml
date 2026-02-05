@@ -23,6 +23,7 @@ permissions:
 env:
   IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
   UV_CACHE_DIR: /home/runner/.cache/uv
+  TRIVY_CACHE_DIR: /home/runner/.cache/trivy
 
 jobs:
   analyze:
