@@ -135,24 +135,20 @@ jobs:
             bazel run --config=ci //${{ matrix.service.path }}:build_docker
 
             echo "Running lint for ${{ matrix.service.name }}..."
-            if [ "${{ matrix.service.has_lint }}" == "true" ]; then
-              bazel run //${{ matrix.service.path }}:lint
-            else
-              echo "No lint target found."
-            fi
+            bazel run //${{ matrix.service.path }}:lint
 
             echo "Running unit tests for ${{ matrix.service.name }}..."
-            if [ "${{ matrix.service.has_unit_test }}" == "true" ]; then
+            if bazel query //${{ matrix.service.path }}:unit_test &>/dev/null; then
               bazel run //${{ matrix.service.path }}:unit_test
             else
-              echo "No unit tests found."
+              echo "No unit tests defined for this service."
             fi
 
             echo "Running integration tests for ${{ matrix.service.name }}..."
-            if [ "${{ matrix.service.has_integration_test }}" == "true" ]; then
+            if bazel query //${{ matrix.service.path }}:integration_test &>/dev/null; then
               bazel run //${{ matrix.service.path }}:integration_test
             else
-              echo "No integration tests found."
+              echo "No integration tests defined for this service."
             fi
           '
 
