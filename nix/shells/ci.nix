@@ -18,9 +18,7 @@ pkgs.mkShell {
   ];
 
   packages = with pkgs; [
-    go-containerregistry  # Provides 'crane' for efficient image operations
     trivy
-    jq
   ];
 
   shellHook = ''

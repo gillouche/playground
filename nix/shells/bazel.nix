@@ -5,6 +5,7 @@ in
 pkgs.mkShell {
   packages = base.packages ++ (with pkgs; [
     bazel_8
+    go-containerregistry
     (python312.withPackages (ps: [ ps.pyyaml ]))
   ]);
 
