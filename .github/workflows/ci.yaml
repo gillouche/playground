@@ -50,10 +50,7 @@ jobs:
           # Capture stderr to log, stdout to variable (but bazel outputs to stderr mostly)
           # We need to capture the AFFECTED_* lines
           # Explicitly pass cache settings as existing install config might be stale
-          OUTPUT=$(nix develop \
-            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
-            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bazel run //tools:affected_targets 2>&1 | tee /dev/stderr)
+          OUTPUT=$(nix develop ./nix#ci --command bazel run //tools:affected_targets 2>&1 | tee /dev/stderr)
 
           BUILD_TARGETS=$(echo "$OUTPUT" | grep "^AFFECTED_BUILD_TARGETS=" | cut -d= -f2-)
           UNIT_TARGETS=$(echo "$OUTPUT" | grep "^AFFECTED_UNIT_TARGETS=" | cut -d= -f2-)
@@ -131,10 +128,7 @@ jobs:
 
       - name: Build, Test, and Lint
         run: |
-          nix develop \
-            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
-            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bash -c '
+          nix develop ./nix#ci --command bash -c '
             set -e
 
             echo "Building image for ${{ matrix.service.name }}..."
@@ -170,10 +164,7 @@ jobs:
           
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
           echo "Pushing image for ${{ matrix.service.name }} with tag $SHORT_SHA..."
-          nix develop \
-            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
-            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bazel run //${{ matrix.service.path }}:push_oci -- --tag latest --tag $SHORT_SHA
+          nix develop ./nix#ci --command bazel run //${{ matrix.service.path }}:push_oci -- --tag latest --tag $SHORT_SHA
           
           echo "Pushing build artifacts to Nix Cache..."
           # Copy current closure to S3 cache
@@ -202,7 +193,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
       - name: Download Failure Artifacts
         continue-on-error: true
         uses: actions/download-artifact@v4

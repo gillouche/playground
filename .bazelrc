@@ -24,3 +24,8 @@ build:ci --remote_cache_async
 
 # Pass UV cache directory to actions for Python dependency caching
 build:ci --action_env=UV_CACHE_DIR
+
+# Parallelism and resource settings for CI
+build:ci --jobs=auto
+build:ci --local_ram_resources=HOST_RAM*.8
+test:ci --test_output=errors
