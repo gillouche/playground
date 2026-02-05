@@ -140,25 +140,22 @@ jobs:
             echo "Building image for ${{ matrix.service.name }}..."
             bazel run --config=ci //${{ matrix.service.path }}:build_docker
 
-            # Query available test/lint targets once
-            AVAILABLE=$(bazel query "kind(sh_binary, //${{ matrix.service.path }}/...)" 2>/dev/null || true)
-
             echo "Running lint for ${{ matrix.service.name }}..."
-            if echo "$AVAILABLE" | grep -q ":lint$"; then
+            if [ "${{ matrix.service.has_lint }}" == "true" ]; then
               bazel run //${{ matrix.service.path }}:lint
             else
               echo "No lint target found."
             fi
 
             echo "Running unit tests for ${{ matrix.service.name }}..."
-            if echo "$AVAILABLE" | grep -q ":unit_test$"; then
+            if [ "${{ matrix.service.has_unit_test }}" == "true" ]; then
               bazel run //${{ matrix.service.path }}:unit_test
             else
               echo "No unit tests found."
             fi
 
             echo "Running integration tests for ${{ matrix.service.name }}..."
-            if echo "$AVAILABLE" | grep -q ":integration_test$"; then
+            if [ "${{ matrix.service.has_integration_test }}" == "true" ]; then
               bazel run //${{ matrix.service.path }}:integration_test
             else
               echo "No integration tests found."
