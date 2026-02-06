@@ -83,12 +83,23 @@ jobs:
                if [ -n "$ISSUES" ]; then
                    echo "Critical/High Vulnerabilities found:"
                    echo "$ISSUES"
+                   echo "$ISSUES"
                    ./tools/ci/notify_discord.sh "WARNING" "Trivy Scan: ${{ matrix.service.name }}" "Found Critical/High Vulnerabilities:\n$ISSUES"
+                   echo "${{ matrix.service.name }}" > vulnerable-service.txt
                else
                    echo "No critical vulnerabilities found."
                fi
             fi
           '
+ 
+      - name: Upload Vulnerability Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vulnerable-${{ matrix.service.name }}
+          path: vulnerable-service.txt
+          if-no-files-found: ignore
+          retention-days: 1
 
   notify-completion:
     name: Notify Completion
@@ -100,9 +111,24 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Send completion notification
+      - name: Download Vulnerability Artifacts
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: vulnerable-*
+          path: issues
+          merge-multiple: true
+
+      - name: Send completion notification
         run: |
-          if [ "${{ needs.scan-service.result }}" == "success" ]; then
-            ./tools/ci/notify_discord.sh "SUCCESS" "Nightly Security Scan" "All services scanned successfully."
+          # Check for vulnerabilities
+          if [ -d "issues" ] && [ "$(ls -A issues)" ]; then
+             VULNERABLE_SERVICES=$(cat issues/* | tr '\n' ', ' | sed 's/, $//')
+             ./tools/ci/notify_discord.sh "WARNING" "Nightly Security Scan" "Vulnerabilities found in the following services: $VULNERABLE_SERVICES. Check individual notifications for details."
+          elif [ "${{ needs.scan-service.result }}" != "success" ] && [ "${{ needs.scan-service.result }}" != "skipped" ]; then
+             # skipped means discover found nothing, which is fine. Not sure if Result is success or skipped then.
+             # If discover failed, scan is skipped/cancelled.
+             ./tools/ci/notify_discord.sh "FAILURE" "Nightly Security Scan" "Security execution failed (Build or Infra error). Check workflow."
           else
-            ./tools/ci/notify_discord.sh "WARNING" "Nightly Security Scan" "Security scan completed with issues (or was skipped). Check workflow for details."
+             ./tools/ci/notify_discord.sh "SUCCESS" "Nightly Security Scan" "All services scanned successfully. No critical vulnerabilities found."
           fi
