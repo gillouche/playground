@@ -36,6 +36,7 @@ jobs:
             --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
             --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
             ./nix#ci --command bazel query "kind(oci_load, //apps/...)" 2>/dev/null | \
+            grep "^//" | \
             sed 's/:build_docker$//' | \
             while read path; do
               name=$(basename "$path")
@@ -100,8 +101,8 @@ jobs:
 
       - name: Send completion notification
         run: |
-          if [ "${{ needs.scan-service.result }}" == "failure" ]; then
-            ./tools/ci/notify_discord.sh "WARNING" "Nightly Security Scan" "Security scan completed with issues. Check workflow for details."
-          else
+          if [ "${{ needs.scan-service.result }}" == "success" ]; then
             ./tools/ci/notify_discord.sh "SUCCESS" "Nightly Security Scan" "All services scanned successfully."
+          else
+            ./tools/ci/notify_discord.sh "WARNING" "Nightly Security Scan" "Security scan completed with issues (or was skipped). Check workflow for details."
           fi
