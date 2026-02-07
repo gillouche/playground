@@ -3,6 +3,18 @@ bazel_dep(name = "rules_oci", version = "2.2.7")
 bazel_dep(name = "rules_pkg", version = "1.2.0")
 bazel_dep(name = "platforms", version = "1.0.0")
 
+# Go support - uses host Go from Nix
+bazel_dep(name = "rules_go", version = "0.50.1")
+bazel_dep(name = "gazelle", version = "0.40.0")
+
+# Rust support - uses host Rust from Nix
+bazel_dep(name = "rules_rust", version = "0.56.0")
+
+# TypeScript/JavaScript support - uses host Node.js from Nix
+bazel_dep(name = "aspect_rules_js", version = "2.1.0")
+bazel_dep(name = "aspect_rules_ts", version = "3.3.1")
+bazel_dep(name = "rules_nodejs", version = "6.3.0")
+
 # Python toolchain - uses host Python from Nix
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
@@ -97,3 +109,19 @@ oci.pull(
     tag = "nonroot",
 )
 use_repo(oci, "distroless_base", "distroless_base_linux_arm64", "distroless_base_linux_amd64")
+
+go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
+go_sdk.host()
+
+rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
+rust.toolchain(
+    edition = "2021",
+    versions = [],
+)
+
+node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
+node.toolchain(
+    name = "nodejs",
+    node_version_from_nvmrc = "",
+)
+

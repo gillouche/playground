@@ -1,0 +1,19 @@
+# Template: Replace {{SERVICE_NAME}} with your service name
+# Template: Replace {{APP_NAME}} with your app name (e.g., demo-app)
+
+load("//tools:defs.bzl", "go_application")
+
+go_application(
+    name = "{{SERVICE_NAME}}",
+    srcs = glob(["*.go"], exclude = ["*_test.go"]),
+    deps = [
+        # Add dependencies from go_deps here
+        # Example: "@com_github_gin_gonic_gin//:gin",
+    ],
+    unit_tests = glob(["*_test.go"], exclude = ["*_integration_test.go"]),
+    integration_tests = glob(["*_integration_test.go"]),
+    test_deps = [
+        # Add test dependencies here
+        # Example: "@com_github_stretchr_testify//assert",
+    ],
+)
