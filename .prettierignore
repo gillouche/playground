@@ -1,0 +1,19 @@
+# Build outputs
+bazel-*
+dist/
+build/
+node_modules/
+
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Generated files
+**/deploy/dev/
+**/deploy/test/
+**/deploy/prod/
+**/deploy/sandbox/
+
+# Bazel
+*.runfiles/

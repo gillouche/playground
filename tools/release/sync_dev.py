@@ -171,10 +171,10 @@ def update_kustomization(app, component, tag):
     if not os.path.exists(kustomization_path):
         print(f"Warning: {kustomization_path} not found. Skipping kustomization update.")
         return
-    
+
     with open(kustomization_path, 'r') as f:
         content = f.read()
-    
+
     pattern = re.compile(rf"(-\s+name: .*{app}/{component}(?::\S+)?[\s\n]+newTag: ).*")
     if pattern.search(content):
         content = pattern.sub(rf"\g<1>{tag}", content)
@@ -199,10 +199,10 @@ def update_configmap(app, component, tag, commit):
         return
 
     print(f"  Updating ConfigMap: {configmap_path}")
-    
+
     with open(configmap_path, 'r') as f:
         lines = f.readlines()
-    
+
     replacements = {
         "APP_VERSION": "dev",
         "COMPONENT_VERSION": tag,
@@ -211,7 +211,7 @@ def update_configmap(app, component, tag, commit):
         "APP": app,
         "COMPONENT": component
     }
-    
+
     new_lines = []
     for line in lines:
         updated_line = line
@@ -219,7 +219,7 @@ def update_configmap(app, component, tag, commit):
              if re.match(rf"\s+{key}:", line):
                  updated_line = re.sub(rf"(\s+{key}:).*", rf"\1 {val}", line)
         new_lines.append(updated_line)
-        
+
     with open(configmap_path, 'w') as f:
         f.writelines(new_lines)
 
@@ -229,7 +229,7 @@ def update_configmap(app, component, tag, commit):
 def sync_dev(app, component=None, ssl_context=None):
     """Sync Dev environment with Nexus latest."""
     current_bom = read_bom(app)
-    
+
     components_to_sync = list(current_bom.keys()) if not component else [component]
 
     if not component:
@@ -243,35 +243,35 @@ def sync_dev(app, component=None, ssl_context=None):
                        os.path.exists(os.path.join(full_path, "BUILD.bazel")):
                         if d not in components_to_sync:
                              components_to_sync.append(d)
-    
+
     if not components_to_sync:
         print(f"No components found for app '{app}'. Please specify --component or check BOM.")
         return
-    
+
     updated_components = []
     configmap_updates = []
-    
+
     for comp_name in components_to_sync:
         print(f"Syncing {comp_name}...")
         latest_tag = query_nexus_latest(app, comp_name, ssl_context)
-        
+
         if not latest_tag:
             print(f"  Skipped (no tag found)")
             continue
-        
+
         current_tag = current_bom.get(comp_name)
-        
+
         if current_tag == latest_tag:
              print(f"  Skipped (already at {latest_tag})")
              continue
-        
+
         print(f"  Updating {current_tag or 'N/A'} -> {latest_tag}")
-        
+
         commit_sha = get_git_commit(latest_tag)
-        
+
         update_bom(app, comp_name, latest_tag, commit_sha, ssl_context)
         update_kustomization(app, comp_name, latest_tag)
-        
+
         # Defer configmap update until AFTER gen_manifests
         configmap_updates.append({
             "app": app,
@@ -279,7 +279,7 @@ def sync_dev(app, component=None, ssl_context=None):
             "tag": latest_tag,
             "commit": commit_sha
         })
-        
+
         updated_components.append(f"{comp_name}: {latest_tag}")
 
     if updated_components or configmap_updates:
@@ -287,15 +287,15 @@ def sync_dev(app, component=None, ssl_context=None):
             print(f"\nUpdated {len(updated_components)} component(s) in releases/dev/{app}.yaml:")
             for update in updated_components:
                 print(f"  - {update}")
-        
+
         print("Regenerating manifests (dev only)...")
-        
+
         components_to_regen = set()
         # From updated_components string "name: tag"
         for item in updated_components:
              comp = item.split(":")[0]
              components_to_regen.add(comp)
-        
+
         # From configmap updates
         for up in configmap_updates:
             components_to_regen.add(up["component"])
@@ -306,12 +306,12 @@ def sync_dev(app, component=None, ssl_context=None):
             ret = os.system(f"bazel run //tools:gen_manifests -- {app} {comp} dev")
             if ret != 0:
                 print(f"Error generating manifests for {comp}.")
-        
+
         # Apply ConfigMap updates NOW, after generation
         print("\nApplying metadata to generated ConfigMaps...")
         for up in configmap_updates:
             update_configmap(up["app"], up["component"], up["tag"], up["commit"])
-            
+
     else:
         print("\nNo updates needed.")
 

@@ -5,6 +5,8 @@ in
 pkgs.mkShell {
   packages = base.packages ++ (with pkgs; [
     go
+    gopls
+    gotools  # goimports, etc.
   ]);
 
   shellHook = base.shellHook + ''

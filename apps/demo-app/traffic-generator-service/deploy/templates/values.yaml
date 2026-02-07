@@ -1,4 +1,4 @@
-#@data/values
+# @data/values
 ---
 component: traffic-generator-service
 app: demo-app

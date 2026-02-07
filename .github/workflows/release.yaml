@@ -25,21 +25,21 @@ jobs:
           # e.g. demo-app/greeting-service/v0.0.1
           TAG_REF=${{ github.ref_name }}
           echo "Processing tag: $TAG_REF"
-          
+
           APP=$(echo "$TAG_REF" | cut -d'/' -f1)
           COMPONENT=$(echo "$TAG_REF" | cut -d'/' -f2)
           VERSION=$(echo "$TAG_REF" | cut -d'/' -f3)
-          
+
           echo "App: $APP"
           echo "Component: $COMPONENT"
           echo "Version: $VERSION"
-          
+
           # Validation
           if [ -z "$APP" ] || [ -z "$COMPONENT" ] || [ -z "$VERSION" ]; then
             echo "Error: Invalid tag format. Expected app/component/version"
             exit 1
           fi
-          
+
           echo "app=$APP" >> $GITHUB_OUTPUT
           echo "component=$COMPONENT" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -70,24 +70,24 @@ jobs:
           COMP=${{ steps.parse.outputs.component }}
           VER=${{ steps.parse.outputs.version }}
           SHA=${{ steps.sha.outputs.short_sha }}
-          
+
           IMAGE_BASE="nexus.gillouche.homelab/docker-hosted/$APP/$COMP"
           SRC_IMAGE="$IMAGE_BASE:$SHA"
           DST_IMAGE="$IMAGE_BASE:$VER"
-          
+
           echo "Retagging $SRC_IMAGE -> $DST_IMAGE"
-          
+
           # Pull the SHA image (should exist from CI)
           if ! docker pull "$SRC_IMAGE"; then
             echo "Error: Source image $SRC_IMAGE not found!"
             echo "Did the CI pipeline finish building for commit $SHA?"
             exit 1
           fi
-          
+
           # Tag and Push
           docker tag "$SRC_IMAGE" "$DST_IMAGE"
           docker push "$DST_IMAGE"
-          
+
           echo "Successfully released $DST_IMAGE"
 
       - name: Notify Discord

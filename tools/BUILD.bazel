@@ -33,4 +33,3 @@ alias(
     name = "gen_manifests",
     actual = "//tools/deploy:gen_manifests",
 )
-

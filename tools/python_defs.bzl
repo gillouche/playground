@@ -15,9 +15,9 @@ Key design principles:
 - No shell commands for builds - everything is pure Bazel
 """
 
-load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
 
 def python_application(
         name,
@@ -171,7 +171,6 @@ def python_application(
             visibility = visibility,
         )
 
-
 def deploy_sandbox_all(name, app, components = []):
     """
     Creates a target to deploy all components of an app to sandbox.
@@ -189,5 +188,3 @@ def deploy_sandbox_all(name, app, components = []):
         srcs = ["//tools/deploy:deploy_sandbox_all.sh"],
         args = [app],
     )
-
-

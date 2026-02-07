@@ -25,7 +25,9 @@ def run_command(cmd: list[str], capture: bool = True) -> subprocess.CompletedPro
 
 def get_local_image_digest(image_target: str) -> str | None:
     """Get the digest of a locally built OCI image using bazel."""
-    # Build the image first to ensure it exists
+    # Build the image for ARM64 target platform
+    # Note: We use --config=arm64 for building the image content,
+    # but tools that run on the host still use host binaries
     result = run_command(["bazel", "build", "--config=ci", "--config=arm64", image_target])
     if result.returncode != 0:
         print(f"Failed to build {image_target}", file=sys.stderr)
@@ -114,7 +116,10 @@ def push_image(push_target: str, tags: list[str]) -> bool:
     for tag in tags:
         tag_args.extend(["--tag", tag])
 
-    cmd = ["bazel", "run", "--config=ci", "--config=arm64", push_target, "--"] + tag_args
+    # Don't use --config=arm64 for the push - the push script runs on the host
+    # and needs host-compatible tools (jq, etc.). The image was already built
+    # for ARM64 in get_local_image_digest.
+    cmd = ["bazel", "run", "--config=ci", push_target, "--"] + tag_args
     result = run_command(cmd, capture=False)
     return result.returncode == 0
 

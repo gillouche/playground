@@ -1,7 +1,7 @@
 import os
-from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Optional
+from pathlib import Path
+
 import yaml
 
 
@@ -56,35 +56,27 @@ class Config:
     log_level: str = "INFO"
 
 
-def load_config(config_path: Optional[Path] = None) -> Config:
+def _apply_yaml_config(target: object, data: dict, section: str) -> None:
+    if section in data:
+        for key, value in data[section].items():
+            if hasattr(target, key):
+                setattr(target, key, value)
+
+
+def load_config(config_path: Path | None = None) -> Config:
     config = Config()
 
     if config_path is None:
         config_path = Path("config.yaml")
 
     if config_path.exists():
-        with open(config_path) as f:
+        with config_path.open() as f:
             data = yaml.safe_load(f) or {}
 
-        if "postgres" in data:
-            for key, value in data["postgres"].items():
-                if hasattr(config.postgres, key):
-                    setattr(config.postgres, key, value)
-
-        if "redis" in data:
-            for key, value in data["redis"].items():
-                if hasattr(config.redis, key):
-                    setattr(config.redis, key, value)
-
-        if "kafka" in data:
-            for key, value in data["kafka"].items():
-                if hasattr(config.kafka, key):
-                    setattr(config.kafka, key, value)
-
-        if "mongodb" in data:
-            for key, value in data["mongodb"].items():
-                if hasattr(config.mongodb, key):
-                    setattr(config.mongodb, key, value)
+        _apply_yaml_config(config.postgres, data, "postgres")
+        _apply_yaml_config(config.redis, data, "redis")
+        _apply_yaml_config(config.kafka, data, "kafka")
+        _apply_yaml_config(config.mongodb, data, "mongodb")
 
     config.postgres.host = os.environ.get("POSTGRES_HOST", config.postgres.host)
     config.postgres.port = int(os.environ.get("POSTGRES_PORT", config.postgres.port))
@@ -96,7 +88,9 @@ def load_config(config_path: Optional[Path] = None) -> Config:
     config.redis.port = int(os.environ.get("REDIS_PORT", config.redis.port))
     config.redis.password = os.environ.get("REDIS_PASSWORD", config.redis.password)
 
-    config.kafka.bootstrap_servers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", config.kafka.bootstrap_servers)
+    config.kafka.bootstrap_servers = os.environ.get(
+        "KAFKA_BOOTSTRAP_SERVERS", config.kafka.bootstrap_servers
+    )
     config.kafka.topic = os.environ.get("KAFKA_TOPIC", config.kafka.topic)
 
     config.mongodb.host = os.environ.get("MONGODB_HOST", config.mongodb.host)

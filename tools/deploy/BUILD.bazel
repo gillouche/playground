@@ -14,7 +14,7 @@ sh_binary(
     name = "gen_manifests",
     srcs = ["ytt_gen.sh"],
     data = [
-        "//releases:dev", 
+        "//releases:dev",
         "//releases:release",
     ],
     tags = ["no-cache"],

@@ -57,7 +57,7 @@ if [ -f "$CA_CERT" ]; then
   if command -v colima &> /dev/null && colima status &> /dev/null; then
     echo "Detected Colima VM - installing CA cert in VM..."
     colima ssh -- sudo mkdir -p /etc/docker/certs.d/${REGISTRY}
-    cat "$CA_CERT" | colima ssh -- sudo tee /etc/docker/certs.d/${REGISTRY}/ca.crt > /dev/null
+    colima ssh -- sudo tee /etc/docker/certs.d/${REGISTRY}/ca.crt < "$CA_CERT" > /dev/null
     echo "CA certificate installed in Colima VM for ${REGISTRY}"
   elif [ ! -e "$DOCKER_CA_PATH" ]; then
     echo "Installing CA certificate for Docker..."

@@ -6,8 +6,6 @@ pkgs.mkShell {
   packages = base.packages ++ (with pkgs; [
     rustc
     cargo
-    rustfmt
-    clippy
     cargo-tarpaulin
   ]);
 

@@ -1,10 +1,11 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from clients.postgres import PostgresClient
-from clients.redis import RedisClient
+
+import pytest
 from clients.kafka import KafkaClient
 from clients.mongodb import MongoClient
-from config import PostgresConfig, RedisConfig, KafkaConfig, MongoDBConfig, load_config
+from clients.postgres import PostgresClient
+from clients.redis import RedisClient
+from config import KafkaConfig, MongoDBConfig, PostgresConfig, RedisConfig, load_config
 
 
 def test_config_loading():
@@ -17,7 +18,9 @@ def test_config_loading():
 
 @pytest.fixture
 def postgres_config():
-    return PostgresConfig(host="localhost", port=5432, database="test", user="test", password="test")
+    return PostgresConfig(
+        host="localhost", port=5432, database="test", user="test", password="test"
+    )
 
 
 @pytest.fixture
@@ -32,7 +35,9 @@ def kafka_config():
 
 @pytest.fixture
 def mongodb_config():
-    return MongoDBConfig(host="localhost", port=27017, database="test", user="test", password="test")
+    return MongoDBConfig(
+        host="localhost", port=27017, database="test", user="test", password="test"
+    )
 
 
 @pytest.mark.asyncio
@@ -168,22 +173,19 @@ async def test_kafka_client_consume_success(kafka_config):
     mock_consumer = AsyncMock()
     mock_consumer.start = AsyncMock()
     mock_consumer.stop = AsyncMock()
-    
+
     # Mock getmany to return messages then empty
     msg = MagicMock()
     msg.topic = "t"
     msg.partition = 0
     msg.offset = 0
     msg.value = b"v"
-    
-    mock_consumer.getmany = AsyncMock(side_effect=[
-        {("t", 0): [msg]},
-        {}
-    ])
-    
+
+    mock_consumer.getmany = AsyncMock(side_effect=[{("t", 0): [msg]}, {}])
+
     with patch("clients.kafka.AIOKafkaConsumer", return_value=mock_consumer):
         result = await client.consume(timeout=0.1)
-    
+
     assert len(result) == 1
     assert result[0]["value"] == "v"
 
@@ -195,10 +197,10 @@ async def test_kafka_client_consume_timeout(kafka_config):
     mock_consumer.start = AsyncMock()
     mock_consumer.stop = AsyncMock()
     mock_consumer.getmany = AsyncMock(return_value={})
-    
+
     with patch("clients.kafka.AIOKafkaConsumer", return_value=mock_consumer):
         result = await client.consume(timeout=0.1)
-    
+
     assert len(result) == 0
 
 
@@ -215,9 +217,6 @@ async def test_kafka_client_disconnect_no_producer(kafka_config):
     client = KafkaClient(kafka_config)
     client.producer = None
     await client.disconnect()  # Should not raise
-
-
-
 
 
 @pytest.mark.asyncio
@@ -271,7 +270,7 @@ async def test_mongodb_client_find(mongodb_config):
     async def async_gen():
         yield {"key": "k", "value": "v", "created_at": "2024-01-01"}
 
-    mock_cursor.__aiter__ = lambda self: async_gen()
+    mock_cursor.__aiter__ = lambda _self: async_gen()
     client.collection = MagicMock()
     client.collection.find.return_value = mock_cursor
 

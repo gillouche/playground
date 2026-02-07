@@ -1,10 +1,18 @@
-load("//tools:python_defs.bzl", "python_application")
 load("@pip_infra_check_service//:requirements.bzl", "requirement")
 load("@pip_infra_check_service_dev//:requirements.bzl", dev_requirement = "requirement")
+load("//tools:python_defs.bzl", "python_application")
 
 python_application(
     name = "infra-check-service",
     srcs = glob(["src/**/*.py"]),
+    integration_tests = glob(["tests/integration/**/*.py"]),
+    test_deps = [
+        dev_requirement("pytest"),
+        dev_requirement("pytest-asyncio"),
+        dev_requirement("pytest-cov"),
+        dev_requirement("httpx"),
+    ],
+    unit_tests = glob(["tests/unit/**/*.py"]),
     deps = [
         requirement("fastapi"),
         requirement("pydantic"),
@@ -16,14 +24,6 @@ python_application(
         requirement("motor"),
         requirement("pyyaml"),
         requirement("prometheus-fastapi-instrumentator"),
-    ],
-    unit_tests = glob(["tests/unit/**/*.py"]),
-    integration_tests = glob(["tests/integration/**/*.py"]),
-    test_deps = [
-        dev_requirement("pytest"),
-        dev_requirement("pytest-asyncio"),
-        dev_requirement("pytest-cov"),
-        dev_requirement("httpx"),
     ],
 )
 

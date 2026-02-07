@@ -6,6 +6,6 @@ deploy_sandbox_all(
     components = [
         "//apps/demo-app/greeting-service:deploy_sandbox",
         "//apps/demo-app/infra-check-service:deploy_sandbox",
-        "//apps/demo-app/traffic-generator-service:deploy_sandbox"
+        "//apps/demo-app/traffic-generator-service:deploy_sandbox",
     ],
 )

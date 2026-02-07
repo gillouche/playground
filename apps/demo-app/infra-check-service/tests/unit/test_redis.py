@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 from clients.redis import RedisClient
 from config import RedisConfig
 

@@ -11,9 +11,8 @@ Note: TypeScript compilation requires ts_project which needs additional setup.
 See libs/templates/typescript-service for a complete example.
 """
 
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
-
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
 def typescript_application(
         name,

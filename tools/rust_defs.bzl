@@ -8,10 +8,9 @@ Usage in BUILD.bazel:
     load("//tools:rust_defs.bzl", "rust_application")
 """
 
-load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
-
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 
 def rust_application(
         name,

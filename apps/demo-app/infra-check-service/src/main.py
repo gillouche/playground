@@ -3,31 +3,32 @@ import os
 import platform
 import sys
 from contextlib import asynccontextmanager
-from typing import Optional
 
 import uvicorn
-from prometheus_fastapi_instrumentator import Instrumentator
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-
 from clients.kafka import KafkaClient
 from clients.mongodb import MongoClient
 from clients.postgres import PostgresClient
 from clients.redis import RedisClient
 from config import load_config
+from fastapi import FastAPI, HTTPException
+from prometheus_fastapi_instrumentator import Instrumentator
+from pydantic import BaseModel
 
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger("infra-check-service")
 
 config = load_config()
-postgres_client: Optional[PostgresClient] = None
-redis_client: Optional[RedisClient] = None
-kafka_client: Optional[KafkaClient] = None
-mongo_client: Optional[MongoClient] = None
+
+clients: dict = {
+    "postgres": None,
+    "redis": None,
+    "kafka": None,
+    "mongo": None,
+}
 
 
 class WriteRequest(BaseModel):
@@ -37,13 +38,11 @@ class WriteRequest(BaseModel):
 
 class KafkaMessage(BaseModel):
     message: str
-    topic: Optional[str] = None
+    topic: str | None = None
 
 
 @asynccontextmanager
-async def lifespan(application: FastAPI):
-    global postgres_client, redis_client, kafka_client, mongo_client
-
+async def lifespan(_application: FastAPI):
     logger.info("Infra Check Service Starting...")
     logger.info(f"Architecture: {platform.machine()}")
     logger.info(f"Environment: {config.environment}")
@@ -52,31 +51,30 @@ async def lifespan(application: FastAPI):
     logger.info(f"Kafka: {config.kafka.bootstrap_servers}")
     logger.info(f"MongoDB: {config.mongodb.host}:{config.mongodb.port}")
 
-    postgres_client = PostgresClient(config.postgres)
-    redis_client = RedisClient(config.redis)
-    kafka_client = KafkaClient(config.kafka)
-    mongo_client = MongoClient(config.mongodb)
+    clients["postgres"] = PostgresClient(config.postgres)
+    clients["redis"] = RedisClient(config.redis)
+    clients["kafka"] = KafkaClient(config.kafka)
+    clients["mongo"] = MongoClient(config.mongodb)
 
-    await postgres_client.connect()
+    await clients["postgres"].connect()
     logger.info("PostgreSQL connected")
 
-    await redis_client.connect()
+    await clients["redis"].connect()
     logger.info("Redis connected")
 
-    await kafka_client.connect()
+    await clients["kafka"].connect()
     logger.info("Kafka connected")
 
-    await mongo_client.connect()
+    await clients["mongo"].connect()
     logger.info("MongoDB connected")
 
     yield
 
-    await postgres_client.disconnect()
-    await redis_client.disconnect()
-    await kafka_client.disconnect()
-    await mongo_client.disconnect()
+    await clients["postgres"].disconnect()
+    await clients["redis"].disconnect()
+    await clients["kafka"].disconnect()
+    await clients["mongo"].disconnect()
     logger.info("All connections closed")
-
 
 
 app = FastAPI(title="Infra Check Service", lifespan=lifespan)
@@ -88,8 +86,9 @@ async def root():
     return {
         "service": "infra-check-service",
         "environment": config.environment,
-        "endpoints": ["/postgres", "/redis", "/kafka", "/mongodb"]
+        "endpoints": ["/postgres", "/redis", "/kafka", "/mongodb"],
     }
+
 
 @app.get("/healthz")
 async def healthz():
@@ -98,18 +97,20 @@ async def healthz():
 
 @app.get("/ready")
 async def ready():
-    if not all([postgres_client, redis_client, kafka_client, mongo_client]):
+    if not all(clients.values()):
         raise HTTPException(status_code=503, detail="Clients not initialized")
 
-    pg_health = await postgres_client.health_check()
-    redis_health = await redis_client.health_check()
-    kafka_health = await kafka_client.health_check()
-    mongo_health = await mongo_client.health_check()
+    pg_health = await clients["postgres"].health_check()
+    redis_health = await clients["redis"].health_check()
+    kafka_health = await clients["kafka"].health_check()
+    mongo_health = await clients["mongo"].health_check()
 
-    if (pg_health.get("status") != "healthy" or
-            redis_health.get("status") != "healthy" or
-            kafka_health.get("status") != "healthy" or
-            mongo_health.get("status") != "healthy"):
+    if (
+        pg_health.get("status") != "healthy"
+        or redis_health.get("status") != "healthy"
+        or kafka_health.get("status") != "healthy"
+        or mongo_health.get("status") != "healthy"
+    ):
         raise HTTPException(status_code=503, detail="One or more clients are unhealthy")
 
     return {"status": "ready"}
@@ -132,87 +133,99 @@ async def info():
 
 
 @app.get("/postgres")
-async def postgres_read(key: Optional[str] = None):
-    if not postgres_client or not postgres_client.engine:
+async def postgres_read(key: str | None = None):
+    pg = clients["postgres"]
+    if not pg or not pg.engine:
         raise HTTPException(status_code=503, detail="PostgreSQL not connected")
-    return await postgres_client.read(key)
+    return await pg.read(key)
 
 
 @app.post("/postgres")
 async def postgres_write(req: WriteRequest):
-    if not postgres_client or not postgres_client.engine:
+    pg = clients["postgres"]
+    if not pg or not pg.engine:
         raise HTTPException(status_code=503, detail="PostgreSQL not connected")
-    return await postgres_client.write(req.key, req.value)
+    return await pg.write(req.key, req.value)
 
 
 @app.get("/postgres/health")
 async def postgres_health():
-    if not postgres_client:
+    pg = clients["postgres"]
+    if not pg:
         return {"status": "not initialized"}
-    return await postgres_client.health_check()
+    return await pg.health_check()
 
 
 @app.get("/redis")
-async def redis_read(key: Optional[str] = None):
-    if not redis_client or not redis_client.client:
+async def redis_read(key: str | None = None):
+    redis = clients["redis"]
+    if not redis or not redis.client:
         raise HTTPException(status_code=503, detail="Redis not connected")
-    return await redis_client.get(key)
+    return await redis.get(key)
 
 
 @app.post("/redis")
 async def redis_write(req: WriteRequest):
-    if not redis_client or not redis_client.client:
+    redis = clients["redis"]
+    if not redis or not redis.client:
         raise HTTPException(status_code=503, detail="Redis not connected")
-    return await redis_client.set(req.key, req.value)
+    return await redis.set(req.key, req.value)
 
 
 @app.get("/redis/health")
 async def redis_health():
-    if not redis_client:
+    redis = clients["redis"]
+    if not redis:
         return {"status": "not initialized"}
-    return await redis_client.health_check()
+    return await redis.health_check()
 
 
 @app.get("/kafka")
-async def kafka_consume(topic: Optional[str] = None, timeout: float = 5.0):
-    if not kafka_client or not kafka_client.producer:
+async def kafka_consume(topic: str | None = None, timeout: float = 5.0):
+    kafka = clients["kafka"]
+    if not kafka or not kafka.producer:
         raise HTTPException(status_code=503, detail="Kafka not connected")
-    return await kafka_client.consume(topic, timeout)
+    return await kafka.consume(topic, timeout)
 
 
 @app.post("/kafka")
 async def kafka_produce(msg: KafkaMessage):
-    if not kafka_client or not kafka_client.producer:
+    kafka = clients["kafka"]
+    if not kafka or not kafka.producer:
         raise HTTPException(status_code=503, detail="Kafka not connected")
-    return await kafka_client.produce(msg.message, msg.topic)
+    return await kafka.produce(msg.message, msg.topic)
 
 
 @app.get("/kafka/health")
 async def kafka_health():
-    if not kafka_client:
+    kafka = clients["kafka"]
+    if not kafka:
         return {"status": "not initialized"}
-    return await kafka_client.health_check()
+    return await kafka.health_check()
 
 
 @app.get("/mongodb")
-async def mongodb_read(key: Optional[str] = None):
-    if not mongo_client or not mongo_client.client:
+async def mongodb_read(key: str | None = None):
+    mongo = clients["mongo"]
+    if not mongo or not mongo.client:
         raise HTTPException(status_code=503, detail="MongoDB not connected")
-    return await mongo_client.find(key)
+    return await mongo.find(key)
 
 
 @app.post("/mongodb")
 async def mongodb_write(req: WriteRequest):
-    if not mongo_client or not mongo_client.client:
+    mongo = clients["mongo"]
+    if not mongo or not mongo.client:
         raise HTTPException(status_code=503, detail="MongoDB not connected")
-    return await mongo_client.insert(req.key, req.value)
+    return await mongo.insert(req.key, req.value)
 
 
 @app.get("/mongodb/health")
 async def mongodb_health():
-    if not mongo_client:
+    mongo = clients["mongo"]
+    if not mongo:
         return {"status": "not initialized"}
-    return await mongo_client.health_check()
+    return await mongo.health_check()
 
 
 def main():

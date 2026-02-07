@@ -1,13 +1,13 @@
-from typing import Optional
-from datetime import datetime, timezone
-from motor.motor_asyncio import AsyncIOMotorClient
+from datetime import UTC, datetime
+
 from config import MongoDBConfig
+from motor.motor_asyncio import AsyncIOMotorClient
 
 
 class MongoClient:
     def __init__(self, config: MongoDBConfig):
         self.config = config
-        self.client: Optional[AsyncIOMotorClient] = None
+        self.client: AsyncIOMotorClient | None = None
         self.db = None
         self.collection = None
 
@@ -22,32 +22,29 @@ class MongoClient:
             self.client.close()
 
     async def insert(self, key: str, value: str) -> dict:
-        doc = {
-            "key": key,
-            "value": value,
-            "created_at": datetime.now(timezone.utc)
-        }
-        await self.collection.update_one(
-            {"key": key},
-            {"$set": doc},
-            upsert=True
-        )
+        assert self.collection is not None
+        doc = {"key": key, "value": value, "created_at": datetime.now(UTC)}
+        await self.collection.update_one({"key": key}, {"$set": doc}, upsert=True)
         return {"key": key, "value": value, "status": "inserted"}
 
-    async def find(self, key: Optional[str] = None) -> list[dict]:
+    async def find(self, key: str | None = None) -> list[dict]:
+        assert self.collection is not None
         query = {"key": key} if key else {}
         cursor = self.collection.find(query).limit(100)
         docs = []
         async for doc in cursor:
-            docs.append({
-                "key": doc.get("key"),
-                "value": doc.get("value"),
-                "created_at": str(doc.get("created_at"))
-            })
+            docs.append(
+                {
+                    "key": doc.get("key"),
+                    "value": doc.get("value"),
+                    "created_at": str(doc.get("created_at")),
+                }
+            )
         return docs
 
     async def health_check(self) -> dict:
         try:
+            assert self.client is not None
             await self.client.admin.command("ping")
             return {"status": "healthy", "host": self.config.host}
         except Exception as e:

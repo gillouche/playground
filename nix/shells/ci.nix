@@ -5,7 +5,6 @@ let
   rust = import ./rust.nix { inherit pkgs; };
   node = import ./node.nix { inherit pkgs; };
   go = import ./go.nix { inherit pkgs; };
-  bazel = import ./bazel.nix { inherit pkgs; };
 in
 pkgs.mkShell {
   # Inherit all packages and environment variables from other shells
@@ -14,7 +13,6 @@ pkgs.mkShell {
     rust
     node
     go
-    bazel
   ];
 
   packages = with pkgs; [
@@ -30,5 +28,18 @@ pkgs.mkShell {
     echo "UV: $(uv --version)"
     echo "Go: $(go version)"
     echo "Node: $(node --version)"
+
+    # Configure custom CA bundle for SSL
+    export PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+    export CA_BUNDLE="$PROJECT_ROOT/ca-bundle.pem"
+
+    if [ -f "$CA_BUNDLE" ]; then
+      echo "🔒 Found custom CA bundle: $CA_BUNDLE"
+      export NODE_EXTRA_CA_CERTS="$CA_BUNDLE"
+      export SSL_CERT_FILE="$CA_BUNDLE"
+      export REQUESTS_CA_BUNDLE="$CA_BUNDLE"
+    else
+      echo "⚠️  CA bundle not found at $CA_BUNDLE"
+    fi
   '';
 }

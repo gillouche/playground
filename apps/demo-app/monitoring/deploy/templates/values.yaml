@@ -1,4 +1,4 @@
-#@data/values
+# @data/values
 ---
 component: "monitoring"
 app: "demo-app"

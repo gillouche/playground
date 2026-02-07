@@ -10,13 +10,13 @@ spec:
     - hosts:
         - PLACEHOLDER.k3s.gillouche.homelab
   rules:
-  - host: PLACEHOLDER.k3s.gillouche.homelab
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: greeting-service
-            port:
-              number: 80
+    - host: PLACEHOLDER.k3s.gillouche.homelab
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: greeting-service
+                port:
+                  number: 80

@@ -18,24 +18,24 @@ echo "======================================"
 cd "$APP_DIR"
 for component in */; do
     component="${component%/}"
-    
+
     # Skip non-component directories
     if [ "$component" = "deploy" ] || [ "$component" = "monitoring" ]; then
         echo "Skipping $component (not a component)"
         continue
     fi
-    
+
     # Check if this is a buildable component (has BUILD or BUILD.bazel file)
     if [ -f "$component/BUILD" ] || [ -f "$component/BUILD.bazel" ]; then
         target="//apps/$APP_NAME/$component"
-        
+
         echo "======================================"
         echo "Building $component..."
         echo "======================================"
-        
+
         # Build and load the Docker image
         bazel run "${target}:build_docker"
-        
+
         echo "Loading $component image to minikube..."
         minikube image load "${component}:latest"
     else

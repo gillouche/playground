@@ -9,9 +9,8 @@ Usage in BUILD.bazel:
 """
 
 load("@rules_go//go:defs.bzl", "go_binary", "go_library", "go_test")
-load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
-
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
 def go_application(
         name,

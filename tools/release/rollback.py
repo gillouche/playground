@@ -33,21 +33,21 @@ def parse_bom_images(path):
 def update_kustomization(app_name, env, images):
     """Update kustomization files for the app with rollback versions."""
     kustomization_path = f"apps/{app_name}/deploy/{env}/kustomization.yaml"
-    
+
     if not os.path.exists(kustomization_path):
         print(f"Warning: {kustomization_path} not found")
         return
-    
+
     with open(kustomization_path, 'r') as f:
         content = f.read()
-    
+
     updated = False
     for component, tag in images.items():
         # Update newTag
         # Matches: - name: .../app/component
         #          newTag: ...
         pattern = re.compile(rf"(-\s+name: .*{app_name}/{component}.*?\n\s+newTag: ).*")
-        
+
         if pattern.search(content):
             new_content = pattern.sub(rf"\1{tag}", content)
             if content != new_content:
@@ -56,7 +56,7 @@ def update_kustomization(app_name, env, images):
                 print(f"  Updated {component} kustomization -> {tag}")
         else:
             print(f"  Warning: Could not find image entry for {component}")
-            
+
     if updated:
         with open(kustomization_path, 'w') as f:
             f.write(content)
@@ -67,15 +67,15 @@ def rollback(env, app, version):
     head_bom = f"releases/{env}/{app}.yaml"
 
     print(f"Rolling back {app} in {env} to {version}...")
-    
+
     # Copy archived BOM to HEAD
     shutil.copy(archived_bom, head_bom)
     print(f"  Copied {archived_bom} -> {head_bom}")
-    
+
     # Update kustomization files
     images = parse_bom_images(head_bom)
     update_kustomization(app, env, images)
-    
+
     print(f"\nRollback complete! {app} in {env} is now at {version}")
     print(f"Images:")
     for comp, tag in images.items():

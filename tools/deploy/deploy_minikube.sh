@@ -3,7 +3,7 @@
 set -euo pipefail
 
 TARGET_PKG="$1"
-IMAGE_REPO="$2"
+export IMAGE_REPO="$2"
 SIMPLE_NAME="$3"
 
 # Switch to minikube context

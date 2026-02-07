@@ -65,28 +65,28 @@ generate_component_env() {
     local app=$1
     local component=$2
     local env=$3
-    
+
     local base_dir="$APPS_DIR/$app/$component/deploy/templates"
     local output_dir="$APPS_DIR/$app/deploy/$env"
-    
+
     # For sandbox, output to component subdirectory
     if [ "$env" = "sandbox" ]; then
         output_dir="$APPS_DIR/$app/deploy/sandbox/$component"
     fi
-    
+
     if [ ! -d "$base_dir" ]; then
         return
     fi
-    
+
     local cmd="ytt"
-    
+
     # Read version info from release BOM using grep/awk (no external tools needed)
     local bom_file="$ROOT_DIR/releases/$env/$app.yaml"
     local APP_VERSION="unknown"
     local COMPONENT_VERSION="unknown"
     local GIT_COMMIT="unknown"
     local GIT_TAG="unknown"
-    
+
     if [ -f "$bom_file" ]; then
         # Parse YAML - extract metadata.version for APP_VERSION
         # and component-specific tag/commit/full_tag
@@ -98,10 +98,10 @@ generate_component_env() {
         #       tag: v0.0.1
         #       commit: abc123...
         #       full_tag: app/component/v0.0.1
-        
+
         local in_metadata=false
         local in_component=false
-        
+
         while IFS= read -r line; do
             # Check for metadata section
             if [[ "$line" == "metadata:" ]]; then
@@ -109,34 +109,34 @@ generate_component_env() {
                 in_component=false
                 continue
             fi
-            
+
             # Check for images section (exits metadata)
             if [[ "$line" == "images:" ]]; then
                 in_metadata=false
                 continue
             fi
-            
+
             # Extract metadata.version
             if [ "$in_metadata" = true ]; then
                 if [[ "$line" =~ ^"  version: " ]]; then
                     APP_VERSION="${line#*: }"
                 fi
             fi
-            
+
             # Check if we're entering the component section (2-space indent + component name + colon)
             if [[ "$line" =~ ^"  $component:" ]]; then
                 in_component=true
                 in_metadata=false
                 continue
             fi
-            
+
             # If in component, check for 4-space indent attributes
             if [ "$in_component" = true ]; then
                 # Exit if we hit another component (2-space indent) or end
                 if [[ "$line" =~ ^"  "[a-zA-Z] ]] && [[ ! "$line" =~ ^"    " ]]; then
                     break
                 fi
-                
+
                 # Extract tag as COMPONENT_VERSION
                 if [[ "$line" =~ ^"    tag: " ]]; then
                     COMPONENT_VERSION="${line#*: }"
@@ -151,7 +151,7 @@ generate_component_env() {
                 fi
             fi
         done < "$bom_file"
-        
+
         if [ -z "$GIT_TAG" ] || [ "$GIT_TAG" = "unknown" ]; then
             echo "Component $component not found in BOM for $env. Skipping."
             return
@@ -165,9 +165,9 @@ generate_component_env() {
     find "$base_dir" -name "*.ytt.yaml" | while read -r template; do
         filename=$(basename "$template" .ytt.yaml)
         output_file="$output_dir/${component}-${filename}.yaml"
-        
+
         echo "Generating $output_file..."
-        
+
         # Run ytt with context
         $cmd -f "$template" \
             -f "$base_dir/values.yaml" \
@@ -192,16 +192,16 @@ if [ "$GENERATE_ALL" = true ]; then
     # Discover all apps
     for app_dir in "$APPS_DIR"/*/; do
         app=$(basename "$app_dir")
-        
+
         # Discover all components in this app
         for component_dir in "$app_dir"/*/; do
             component=$(basename "$component_dir")
-            
+
             # Skip the 'deploy' directory at the app level
             if [ "$component" == "deploy" ]; then
                 continue
             fi
-            
+
             # Generate for each environment
             for env in "${ENVS[@]}"; do
                 generate_component_env "$app" "$component" "$env"

@@ -147,21 +147,21 @@ def update_configmaps(app_name, env, version, images):
         if filename.endswith("-configmap.yaml"):
             filepath = os.path.join(deploy_dir, filename)
             component = filename.replace("-configmap.yaml", "")
-            
+
             if component in images:
                 comp_data = images[component]
                 print(f"Updating ConfigMap: {filepath}")
-                
+
                 with open(filepath, 'r') as f:
                     lines = f.readlines()
-                
+
                 new_lines = []
                 data_section = False
-                
+
                 # We expect simple key-value pairs in 'data:' section
-                # If keys don't exist, we should append them? 
+                # If keys don't exist, we should append them?
                 # Better: Regex replace existing known keys.
-                
+
                 replacements = {
                     "APP_VERSION": version,
                     "GIT_TAG": comp_data.get("full_tag", "unknown"),
@@ -169,7 +169,7 @@ def update_configmaps(app_name, env, version, images):
                     "APP": app_name,
                     "COMPONENT": component
                 }
-                
+
                 for line in lines:
                     updated_line = line
                     for key, val in replacements.items():
@@ -177,13 +177,13 @@ def update_configmaps(app_name, env, version, images):
                         if re.match(rf"\s+{key}:", line):
                              updated_line = re.sub(rf"(\s+{key}:).*", rf"\1 {val}", line)
                     new_lines.append(updated_line)
-                
+
                 with open(filepath, 'w') as f:
                     f.writelines(new_lines)
 
 def update_kustomization(app_name, env, images):
     kustomization_path = f"apps/{app_name}/deploy/{env}/kustomization.yaml"
-    
+
     if not os.path.exists(kustomization_path):
         print(f"Error: {kustomization_path} not found.")
         return
@@ -192,7 +192,7 @@ def update_kustomization(app_name, env, images):
         content = f.read()
 
     updated = False
-    
+
     # Check for images section
     if "images:" not in content:
         # naive append if missing, though usually it exists
@@ -203,7 +203,7 @@ def update_kustomization(app_name, env, images):
     for comp, data in images.items():
         tag = data.get("tag")
         if not tag: continue
-        
+
         # extract repo from image_ref or full_tag or hardcoded assumption
         # image_ref = "nexus.../name:tag" -> we want "nexus.../name"
         image_ref = data.get("image_ref")
@@ -219,7 +219,7 @@ def update_kustomization(app_name, env, images):
         #   newTag: ...
         # match strictly on the repo name
         pattern = re.compile(rf"(-\s+name: {re.escape(repo_name)}\s*\n\s+newTag: ).*")
-        
+
         if pattern.search(content):
             new_content = pattern.sub(rf"\g<1>{tag}", content)
             if content != new_content:
@@ -232,13 +232,13 @@ def update_kustomization(app_name, env, images):
             # We assume 'images:' exists (ensured above)
             # Find the line "images:" and append after it? Or at the end of the block?
             # Kustomize doesn't strictly require order, but indentation matters.
-            # Safe bet: append to the end of the `images:` list if possible, or just replace `images:` with `images:\n  - name...` 
+            # Safe bet: append to the end of the `images:` list if possible, or just replace `images:` with `images:\n  - name...`
             # But regex sub is cleaner if we just find `images:` and insert after.
-            
+
             new_entry = f"  - name: {repo_name}\n    newTag: {tag}\n"
             content = content.replace("images:\n", f"images:\n{new_entry}")
             updated = True
-            
+
     if updated:
         with open(kustomization_path, 'w') as f:
             f.write(content)

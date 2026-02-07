@@ -1,7 +1,7 @@
-import os
-from pathlib import Path
 import tempfile
-from config import load_config, PostgresConfig
+from pathlib import Path
+
+from config import PostgresConfig, load_config
 
 
 def test_load_config_defaults():
@@ -31,7 +31,7 @@ redis:
     assert config.redis.host == "cache.example.com"
     assert config.mongodb.host == "localhost"
 
-    os.unlink(f.name)
+    Path(f.name).unlink()
 
 
 def test_load_config_env_override(monkeypatch):

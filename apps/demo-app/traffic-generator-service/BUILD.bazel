@@ -1,23 +1,23 @@
-load("//tools:python_defs.bzl", "python_application")
 load("@pip_traffic_generator_service//:requirements.bzl", "requirement")
 load("@pip_traffic_generator_service_dev//:requirements.bzl", dev_requirement = "requirement")
+load("//tools:python_defs.bzl", "python_application")
 
 python_application(
     name = "traffic-generator-service",
     srcs = glob(["src/**/*.py"]),
+    integration_tests = [],
+    test_deps = [
+        dev_requirement("pytest"),
+        dev_requirement("ruff"),
+    ],
+    # No tests defined for this service
+    unit_tests = [],
     deps = [
         requirement("httpx"),
         requirement("opentelemetry-api"),
         requirement("opentelemetry-sdk"),
         requirement("opentelemetry-exporter-otlp"),
         requirement("opentelemetry-instrumentation-httpx"),
-    ],
-    # No tests defined for this service
-    unit_tests = [],
-    integration_tests = [],
-    test_deps = [
-        dev_requirement("pytest"),
-        dev_requirement("ruff"),
     ],
 )
 

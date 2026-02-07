@@ -9,9 +9,9 @@
     let
       # Support both macOS M4 and Arch Linux AMD
       systems = [ "aarch64-darwin" "x86_64-linux" ];
-      
+
       forAllSystems = nixpkgs.lib.genAttrs systems;
-      
+
       pkgsFor = system: import nixpkgs { inherit system; };
     in
     {
@@ -20,32 +20,35 @@
           pkgs = pkgsFor system;
         in
         {
-          # Bazel shell: Bazel 7.x (default for root)
-          bazel = import ./shells/bazel.nix { inherit pkgs; };
-          
-          # Base shell: Common tools (git, ytt, etc)
+          # Bazel shell: Now merged into base
+          # base = ... (already defined below)
+
+          # Base shell: Common tools (git, ytt, curl, jq, kubectl, kustomize, pre-commit, bazel, python)
           base = pkgs.mkShell (import ./shells/base.nix { inherit pkgs; });
-          
+
+          # Use base as the bazel shell alias
+          bazel = self.devShells.${system}.base;
+
           # Python shell: Python 3.12 + uv
           python = import ./shells/python.nix { inherit pkgs; };
-          
+
           # Rust shell: Latest stable + cargo
           rust = import ./shells/rust.nix { inherit pkgs; };
-          
+
           # Go shell: Latest supported by Bazel
           go = import ./shells/go.nix { inherit pkgs; };
-          
+
           # Node shell: LTS + pnpm
           node = import ./shells/node.nix { inherit pkgs; };
-          
+
           # CI shell: All tools for CI
           ci = import ./shells/ci.nix { inherit pkgs; };
 
-          # Default: Bazel (for root development)
-          default = self.devShells.${system}.bazel;
+          # Default: Base (includes Bazel)
+          default = self.devShells.${system}.base;
         }
       );
-      
+
       packages = forAllSystems (system:
         {
           ci = self.devShells.${system}.ci;

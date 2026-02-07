@@ -3,7 +3,7 @@ set -euo pipefail
 
 TARGET_PKG="$1"
 shift
-CMD="$@"
+CMD="$*"
 
 cd "$BUILD_WORKSPACE_DIRECTORY/$TARGET_PKG"
 

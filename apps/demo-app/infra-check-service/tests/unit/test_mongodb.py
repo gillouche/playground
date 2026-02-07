@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from clients.mongodb import MongoClient
 from config import MongoDBConfig
 
@@ -7,11 +8,7 @@ from config import MongoDBConfig
 @pytest.fixture
 def mongodb_config():
     return MongoDBConfig(
-        host="localhost",
-        port=27017,
-        database="test",
-        user="test",
-        password="test"
+        host="localhost", port=27017, database="test", user="test", password="test"
     )
 
 
@@ -44,7 +41,7 @@ async def test_mongodb_find_all_mock(mongodb_config):
         yield {"key": "k1", "value": "v1", "created_at": "2024-01-01"}
         yield {"key": "k2", "value": "v2", "created_at": "2024-01-01"}
 
-    mock_cursor.__aiter__ = lambda self: async_gen()
+    mock_cursor.__aiter__ = lambda _self: async_gen()
     client.collection = MagicMock()
     client.collection.find.return_value = mock_cursor
 
@@ -61,7 +58,7 @@ async def test_mongodb_find_by_key_mock(mongodb_config):
     async def async_gen():
         yield {"key": "mykey", "value": "myvalue", "created_at": "2024-01-01"}
 
-    mock_cursor.__aiter__ = lambda self: async_gen()
+    mock_cursor.__aiter__ = lambda _self: async_gen()
     client.collection = MagicMock()
     client.collection.find.return_value = mock_cursor
 

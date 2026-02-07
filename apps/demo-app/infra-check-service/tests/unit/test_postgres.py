@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from clients.postgres import PostgresClient
 from config import PostgresConfig
 
@@ -7,11 +8,7 @@ from config import PostgresConfig
 @pytest.fixture
 def postgres_config():
     return PostgresConfig(
-        host="localhost",
-        port=5432,
-        database="test",
-        user="test",
-        password="test"
+        host="localhost", port=5432, database="test", user="test", password="test"
     )
 
 
