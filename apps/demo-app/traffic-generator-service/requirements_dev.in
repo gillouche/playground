@@ -1,0 +1,7 @@
+# Development/test dependencies for traffic-generator-service
+# Edit this file, then run: uv pip compile requirements_dev.in -o requirements_dev_lock.txt --python-version 3.12
+
+-r requirements.in
+
+pytest>=8.3.4
+ruff>=0.14.13

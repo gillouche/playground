@@ -1,8 +1,30 @@
-load("//tools:defs.bzl", "application")
+load("//tools:defs.bzl", "python_application")
+load("@pip_traffic_generator_service//:requirements.bzl", "requirement")
+load("@pip_traffic_generator_service_dev//:requirements.bzl", dev_requirement = "requirement")
 
-application(
+python_application(
     name = "traffic-generator-service",
-    language = "python",
     srcs = glob(["src/**/*.py"]),
-    coverage_threshold = 0,
+    deps = [
+        requirement("httpx"),
+        requirement("opentelemetry-api"),
+        requirement("opentelemetry-sdk"),
+        requirement("opentelemetry-exporter-otlp"),
+        requirement("opentelemetry-instrumentation-httpx"),
+    ],
+    # No tests defined for this service
+    unit_tests = [],
+    integration_tests = [],
+    test_deps = [
+        dev_requirement("pytest"),
+        dev_requirement("ruff"),
+    ],
 )
+
+# Export lockfiles for MODULE.bazel pip.parse
+exports_files([
+    "requirements.in",
+    "requirements_lock.txt",
+    "requirements_dev.in",
+    "requirements_dev_lock.txt",
+])

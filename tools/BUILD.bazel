@@ -1,5 +1,6 @@
 exports_files([
     "defs.bzl",
+    "pytest_runner.py",
 ])
 
 # Release tools

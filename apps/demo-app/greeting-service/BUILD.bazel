@@ -1,9 +1,34 @@
-load("//tools:defs.bzl", "application")
+load("//tools:defs.bzl", "python_application")
+load("@pip_greeting_service//:requirements.bzl", "requirement")
+load("@pip_greeting_service_dev//:requirements.bzl", dev_requirement = "requirement")
 
-application(
+python_application(
     name = "greeting-service",
-    language = "python",
     srcs = glob(["src/**/*.py"]),
+    deps = [
+        requirement("fastapi"),
+        requirement("pydantic"),
+        requirement("uvicorn"),
+        requirement("prometheus-fastapi-instrumentator"),
+        requirement("opentelemetry-api"),
+        requirement("opentelemetry-sdk"),
+        requirement("opentelemetry-instrumentation-fastapi"),
+        requirement("opentelemetry-exporter-otlp"),
+    ],
     unit_tests = glob(["tests/unit/**/*.py"]),
     integration_tests = glob(["tests/integration/**/*.py"]),
+    test_deps = [
+        dev_requirement("pytest"),
+        dev_requirement("pytest-asyncio"),
+        dev_requirement("pytest-cov"),
+        dev_requirement("httpx"),
+    ],
 )
+
+# Export lockfiles for MODULE.bazel pip.parse
+exports_files([
+    "requirements.in",
+    "requirements_lock.txt",
+    "requirements_dev.in",
+    "requirements_dev_lock.txt",
+])

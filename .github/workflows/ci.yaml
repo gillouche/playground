@@ -21,13 +21,39 @@ permissions:
   id-token: none
 
 env:
-  IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork }}
   UV_CACHE_DIR: /home/runner/.cache/uv
   TRIVY_CACHE_DIR: /home/runner/.cache/trivy
 
 jobs:
+  # Security gate for self-hosted runners
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    outputs:
+      is_safe: ${{ steps.check.outputs.is_safe }}
+    steps:
+      - name: Verify repository ownership
+        id: check
+        run: |
+          # Block forks from running on self-hosted runners
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
+            echo "::error::Fork PRs cannot run on self-hosted runners"
+            echo "is_safe=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          if [[ "${{ github.repository }}" != "gillouche/playground" ]]; then
+            echo "::error::Repository mismatch - blocking execution"
+            echo "is_safe=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          echo "is_safe=true" >> "$GITHUB_OUTPUT"
+
   analyze:
     name: Analyze Changes
+    needs: security-check
+    if: needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -165,7 +191,7 @@ jobs:
           '
 
       - name: Push Image (Main Only)
-        if: (github.event_name == 'push' && github.ref == 'refs/heads/main' && env.IS_FORK != 'true') || (github.event_name == 'workflow_dispatch')
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           # Login to Nexus
           echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
@@ -198,8 +224,8 @@ jobs:
 
   notify-end:
     name: Notify End
-    needs: [analyze, validate-service]
-    if: always()
+    needs: [security-check, analyze, validate-service]
+    if: always() && needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
     steps:
       - name: Checkout repository

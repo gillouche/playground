@@ -3,18 +3,97 @@ bazel_dep(name = "rules_oci", version = "2.2.7")
 bazel_dep(name = "rules_pkg", version = "1.2.0")
 bazel_dep(name = "platforms", version = "1.0.0")
 
+# Python toolchain - uses host Python from Nix
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
     python_version = "3.12",
+    is_default = True,
 )
 use_repo(python, "python_3_12")
 
+# pip.parse for hermetic Python dependencies
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+
+# Greeting Service dependencies
+pip.parse(
+    hub_name = "pip_greeting_service",
+    python_version = "3.12",
+    requirements_lock = "//apps/demo-app/greeting-service:requirements_lock.txt",
+    download_only = True,  # Only use pre-built wheels, never compile
+)
+
+# Greeting Service dev dependencies (for tests)
+pip.parse(
+    hub_name = "pip_greeting_service_dev",
+    python_version = "3.12",
+    requirements_lock = "//apps/demo-app/greeting-service:requirements_dev_lock.txt",
+    download_only = True,
+)
+
+# Infra Check Service dependencies
+pip.parse(
+    hub_name = "pip_infra_check_service",
+    python_version = "3.12",
+    requirements_lock = "//apps/demo-app/infra-check-service:requirements_lock.txt",
+    download_only = True,
+)
+
+# Infra Check Service dev dependencies (for tests)
+pip.parse(
+    hub_name = "pip_infra_check_service_dev",
+    python_version = "3.12",
+    requirements_lock = "//apps/demo-app/infra-check-service:requirements_dev_lock.txt",
+    download_only = True,
+)
+
+# Traffic Generator Service dependencies
+pip.parse(
+    hub_name = "pip_traffic_generator_service",
+    python_version = "3.12",
+    requirements_lock = "//apps/demo-app/traffic-generator-service:requirements_lock.txt",
+    download_only = True,
+)
+
+# Traffic Generator Service dev dependencies (for tests)
+pip.parse(
+    hub_name = "pip_traffic_generator_service_dev",
+    python_version = "3.12",
+    requirements_lock = "//apps/demo-app/traffic-generator-service:requirements_dev_lock.txt",
+    download_only = True,
+)
+
+use_repo(
+    pip,
+    "pip_greeting_service",
+    "pip_greeting_service_dev",
+    "pip_infra_check_service",
+    "pip_infra_check_service_dev",
+    "pip_traffic_generator_service",
+    "pip_traffic_generator_service_dev",
+)
+
+# OCI base images - multi-platform (ARM64 for Raspberry Pi, AMD64 for local testing)
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(
     name = "python_base",
     image = "index.docker.io/library/python",
-    platforms = ["linux/arm64/v8"],
+    platforms = [
+        "linux/arm64/v8",
+        "linux/amd64",
+    ],
     tag = "3.12-slim",
     digest = "sha256:43e4d702bbfe3bd6d5b743dc571b67c19121302eb172951a9b7b0149783a1c21",
 )
-use_repo(oci, "python_base", "python_base_linux_arm64_v8")
+use_repo(oci, "python_base", "python_base_linux_arm64_v8", "python_base_linux_amd64")
+
+# Distroless base for future Go/Rust services (smaller, more secure)
+oci.pull(
+    name = "distroless_base",
+    image = "gcr.io/distroless/base-debian12",
+    platforms = [
+        "linux/arm64",
+        "linux/amd64",
+    ],
+    tag = "nonroot",
+)
+use_repo(oci, "distroless_base", "distroless_base_linux_arm64", "distroless_base_linux_amd64")
