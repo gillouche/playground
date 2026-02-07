@@ -8,7 +8,6 @@ exports_files([
     "deploy_sandbox_all.sh",
     "sandbox_workflow.sh",
     "package_app.py",
-    "install_python_deps.sh",
 ])
 
 sh_binary(

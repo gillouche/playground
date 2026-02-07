@@ -2,13 +2,59 @@
 set -e
 
 # Generic ytt manifest generator for the monorepo
-# Usage: ./ytt_gen.sh [app] [component] [env]
+# Usage: ./ytt_gen.sh --env ENV [app] [component]
+#
+# Examples:
+#   ./ytt_gen.sh --env dev                              # All apps, all components, dev only
+#   ./ytt_gen.sh --env dev demo-app                     # All components of demo-app, dev only
+#   ./ytt_gen.sh --env dev demo-app greeting-service    # Specific component, dev only
 
 ROOT_DIR=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
 if [ ! -d "$ROOT_DIR/releases" ] && [ -d "./releases" ]; then
     ROOT_DIR="."
 fi
 APPS_DIR="$ROOT_DIR/apps"
+
+# Parse --env flag (required)
+ENV_FILTER=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --env)
+            ENV_FILTER="$2"
+            shift 2
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            echo "Usage: ./ytt_gen.sh --env ENV [app] [component]"
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+# Validate --env is provided
+if [ -z "$ENV_FILTER" ]; then
+    echo "Error: --env is required"
+    echo "Usage: ./ytt_gen.sh --env ENV [app] [component]"
+    echo ""
+    echo "Valid environments: sandbox, dev, test, prod"
+    exit 1
+fi
+
+# Validate environment value
+case "$ENV_FILTER" in
+    sandbox|dev|test|prod)
+        ;;
+    *)
+        echo "Error: Invalid environment '$ENV_FILTER'"
+        echo "Valid environments: sandbox, dev, test, prod"
+        exit 1
+        ;;
+esac
+
+ENVS=("$ENV_FILTER")
 
 GENERATE_ALL=false
 if [ "$#" -eq 0 ]; then
@@ -157,16 +203,16 @@ if [ "$GENERATE_ALL" = true ]; then
             fi
             
             # Generate for each environment
-            for env in sandbox dev test prod; do
+            for env in "${ENVS[@]}"; do
                 generate_component_env "$app" "$component" "$env"
             done
         done
     done
 elif [ "$#" -eq 1 ]; then
-    # Generate for specific app (all components, all envs)
+    # Generate for specific app (all components, filtered envs)
     app="$1"
     app_dir="$APPS_DIR/$app"
-    
+
     if [ ! -d "$app_dir" ]; then
         echo "Error: App directory not found: $app_dir"
         exit 1
@@ -175,18 +221,27 @@ elif [ "$#" -eq 1 ]; then
     # Discover all components in this app
     for component_dir in "$app_dir"/*/; do
         component=$(basename "$component_dir")
-        
+
         # Skip the 'deploy' directory at the app level
         if [ "$component" == "deploy" ]; then
             continue
         fi
-        
+
         # Generate for each environment
-        for env in sandbox dev test prod; do
+        for env in "${ENVS[@]}"; do
             generate_component_env "$app" "$component" "$env"
         done
     done
+elif [ "$#" -eq 2 ]; then
+    # Generate for specific app and component (filtered envs)
+    app="$1"
+    component="$2"
+
+    for env in "${ENVS[@]}"; do
+        generate_component_env "$app" "$component" "$env"
+    done
 else
-    # Generate for specific target
-    generate_component_env "$1" "$2" "$3"
+    echo "Error: Too many arguments"
+    echo "Usage: ./ytt_gen.sh [--env ENV] [app] [component]"
+    exit 1
 fi

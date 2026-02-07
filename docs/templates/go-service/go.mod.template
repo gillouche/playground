@@ -1,0 +1,7 @@
+module github.com/gillouche/playground/apps/{{APP_NAME}}/{{SERVICE_NAME}}
+
+go 1.23
+
+require (
+	// Add dependencies here, then run 'go mod tidy'
+)

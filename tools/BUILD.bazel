@@ -1,5 +1,10 @@
 exports_files([
-    "defs.bzl",
+    "python_defs.bzl",
+    "go_defs.bzl",
+    "rust_defs.bzl",
+    "ts_defs.bzl",
+    "pytest_runner.py",
+    "ruff_runner.py",
 ])
 
 # Release tools
@@ -28,16 +33,4 @@ alias(
     name = "gen_manifests",
     actual = "//tools/deploy:gen_manifests",
 )
-
-# CI tools
-alias(
-    name = "smart_push",
-    actual = "//tools/ci:smart_push",
-)
-
-alias(
-    name = "affected_targets",
-    actual = "//tools/ci:affected_targets",
-)
-
 

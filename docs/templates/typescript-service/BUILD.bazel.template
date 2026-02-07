@@ -1,0 +1,46 @@
+# Template: Replace {{SERVICE_NAME}} with your service name
+# Template: Replace {{APP_NAME}} with your app name (e.g., demo-app)
+
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_test")
+load("//tools:ts_defs.bzl", "typescript_application")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+
+npm_link_all_packages(name = "node_modules")
+
+# Compile TypeScript to JavaScript
+ts_project(
+    name = "{{SERVICE_NAME}}_ts",
+    srcs = glob(["src/**/*.ts"]),
+    declaration = True,
+    tsconfig = "tsconfig.json",
+    deps = [
+        ":node_modules",
+        # Add npm dependencies here
+        # Example: "@npm//express",
+    ],
+)
+
+# Bundle for production
+js_binary(
+    name = "{{SERVICE_NAME}}",
+    entry_point = "src/main.js",
+    data = [":{{SERVICE_NAME}}_ts"],
+)
+
+# Unit tests
+js_test(
+    name = "{{SERVICE_NAME}}_unit_test",
+    entry_point = "tests/test_runner.js",
+    data = [
+        ":{{SERVICE_NAME}}_ts",
+        ":node_modules",
+    ] + glob(["tests/**/*.ts"]),
+    tags = ["unit"],
+)
+
+# Use the macro for OCI image targets
+typescript_application(
+    name = "{{SERVICE_NAME}}_oci",
+    srcs = [":{{SERVICE_NAME}}"],
+)

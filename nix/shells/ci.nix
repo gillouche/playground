@@ -19,6 +19,8 @@ pkgs.mkShell {
 
   packages = with pkgs; [
     trivy
+    crane  # OCI registry tool for digest queries (smart push)
+    skopeo # Alternative OCI tool for registry operations
   ];
 
   shellHook = ''

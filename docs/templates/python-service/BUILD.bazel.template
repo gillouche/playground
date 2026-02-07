@@ -1,9 +1,12 @@
+# Template: Replace {{SERVICE_NAME}} with your service name
+# Template: Replace {{APP_NAME}} with your app name (e.g., demo-app)
+
 load("//tools:python_defs.bzl", "python_application")
-load("@pip_greeting_service//:requirements.bzl", "requirement")
-load("@pip_greeting_service_dev//:requirements.bzl", dev_requirement = "requirement")
+load("@pip_{{SERVICE_NAME_UNDERSCORE}}//:requirements.bzl", "requirement")
+load("@pip_{{SERVICE_NAME_UNDERSCORE}}_dev//:requirements.bzl", dev_requirement = "requirement")
 
 python_application(
-    name = "greeting-service",
+    name = "{{SERVICE_NAME}}",
     srcs = glob(["src/**/*.py"]),
     deps = [
         requirement("fastapi"),
@@ -22,10 +25,10 @@ python_application(
         dev_requirement("pytest-asyncio"),
         dev_requirement("pytest-cov"),
         dev_requirement("httpx"),
+        dev_requirement("ruff"),
     ],
 )
 
-# Export lockfiles for MODULE.bazel pip.parse
 exports_files([
     "requirements.in",
     "requirements_lock.txt",

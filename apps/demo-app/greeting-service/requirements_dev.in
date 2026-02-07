@@ -1,0 +1,11 @@
+# Development/test dependencies for greeting-service
+# Edit this file, then run: uv pip compile requirements_dev.in -o requirements_dev_lock.txt --python-version 3.12
+
+-r requirements.in
+
+pytest>=8.3.4
+ruff>=0.14.13
+httpx
+pytest-pythonpath>=0.7.3
+pytest-cov>=7.0.0
+pytest-asyncio>=0.23.0

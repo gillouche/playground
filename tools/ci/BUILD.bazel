@@ -1,39 +1,15 @@
 package(default_visibility = ["//visibility:public"])
 
 exports_files([
-    "determine_base_commit.py",
-    "generate_matrix.py",
-    "affected_targets.sh",
-    "smart_push.sh",
     "check_go_coverage.sh",
     "notify_discord.sh",
+    "smart_push.py",
 ])
 
-# Shell wrapper for Python script that needs system Python
-sh_binary(
-    name = "determine_base_commit",
-    srcs = ["determine_base_commit.sh"],
-    data = [
-        "determine_base_commit.py",
-        "//:ca-bundle.pem",
-    ],
-)
-
 py_binary(
-    name = "generate_matrix",
-    srcs = ["generate_matrix.py"],
-)
-
-sh_binary(
-    name = "affected_targets",
-    srcs = ["affected_targets.sh"],
-    data = [":determine_base_commit"],
-)
-
-sh_binary(
     name = "smart_push",
-    srcs = ["smart_push.sh"],
-    data = [":determine_base_commit"],
+    srcs = ["smart_push.py"],
+    python_version = "PY3",
 )
 
 sh_binary(
