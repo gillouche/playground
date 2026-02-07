@@ -30,15 +30,3 @@ alias(
     actual = "//tools/deploy:gen_manifests",
 )
 
-# CI tools
-alias(
-    name = "smart_push",
-    actual = "//tools/ci:smart_push",
-)
-
-alias(
-    name = "affected_targets",
-    actual = "//tools/ci:affected_targets",
-)
-
-
