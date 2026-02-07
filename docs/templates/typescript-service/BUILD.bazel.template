@@ -3,7 +3,7 @@
 
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_test")
-load("//tools:defs.bzl", "typescript_application")
+load("//tools:ts_defs.bzl", "typescript_application")
 load("@npm//:defs.bzl", "npm_link_all_packages")
 
 npm_link_all_packages(name = "node_modules")

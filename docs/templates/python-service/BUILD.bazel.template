@@ -1,7 +1,7 @@
 # Template: Replace {{SERVICE_NAME}} with your service name
 # Template: Replace {{APP_NAME}} with your app name (e.g., demo-app)
 
-load("//tools:defs.bzl", "python_application")
+load("//tools:python_defs.bzl", "python_application")
 load("@pip_{{SERVICE_NAME_UNDERSCORE}}//:requirements.bzl", "requirement")
 load("@pip_{{SERVICE_NAME_UNDERSCORE}}_dev//:requirements.bzl", dev_requirement = "requirement")
 

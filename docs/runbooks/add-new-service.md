@@ -9,7 +9,7 @@ mkdir -p apps/my-app/new-service
 *   Add source code `src/main.py` (or main.go, etc.).
 *   Add `BUILD.bazel` defining the binary and image.
     *   Use `py_binary` / `go_binary`.
-    *   Use `oci_image` from `//tools:defs.bzl`.
+    *   Use `oci_image` from `//tools:python_defs.bzl`.
 
 ## 3. Deployment Manifests
 *   Create `deploy/templates/rollout.ytt.yaml`.

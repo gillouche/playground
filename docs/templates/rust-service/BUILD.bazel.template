@@ -1,7 +1,7 @@
 # Template: Replace {{SERVICE_NAME}} with your service name
 # Template: Replace {{APP_NAME}} with your app name (e.g., demo-app)
 
-load("//tools:defs.bzl", "rust_application")
+load("//tools:rust_defs.bzl", "rust_application")
 load("@crates//:defs.bzl", "all_crate_deps")
 
 rust_application(

@@ -1,5 +1,8 @@
 exports_files([
-    "defs.bzl",
+    "python_defs.bzl",
+    "go_defs.bzl",
+    "rust_defs.bzl",
+    "ts_defs.bzl",
     "pytest_runner.py",
     "ruff_runner.py",
 ])

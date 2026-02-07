@@ -110,18 +110,21 @@ oci.pull(
 )
 use_repo(oci, "distroless_base", "distroless_base_linux_arm64", "distroless_base_linux_amd64")
 
+# Go SDK - uses host Go from Nix
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.host()
 
+# Rust toolchain - uses host Rust from Nix
 rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
 rust.toolchain(
     edition = "2021",
     versions = [],
 )
 
+# Node.js toolchain - uses downloaded version for TypeScript support
 node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
 node.toolchain(
     name = "nodejs",
-    node_version_from_nvmrc = "",
+    node_version = "22.12.0",
 )
 

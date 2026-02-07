@@ -1,4 +1,4 @@
-load("//tools:defs.bzl", "python_application")
+load("//tools:python_defs.bzl", "python_application")
 load("@pip_greeting_service//:requirements.bzl", "requirement")
 load("@pip_greeting_service_dev//:requirements.bzl", dev_requirement = "requirement")
 

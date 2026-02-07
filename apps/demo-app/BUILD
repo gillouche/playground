@@ -1,4 +1,4 @@
-load("//tools:defs.bzl", "deploy_sandbox_all")
+load("//tools:python_defs.bzl", "deploy_sandbox_all")
 
 deploy_sandbox_all(
     name = "deploy_sandbox",
