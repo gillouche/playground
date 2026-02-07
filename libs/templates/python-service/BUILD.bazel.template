@@ -1,0 +1,37 @@
+# Template: Replace {{SERVICE_NAME}} with your service name
+# Template: Replace {{APP_NAME}} with your app name (e.g., demo-app)
+
+load("//tools:defs.bzl", "python_application")
+load("@pip_{{SERVICE_NAME_UNDERSCORE}}//:requirements.bzl", "requirement")
+load("@pip_{{SERVICE_NAME_UNDERSCORE}}_dev//:requirements.bzl", dev_requirement = "requirement")
+
+python_application(
+    name = "{{SERVICE_NAME}}",
+    srcs = glob(["src/**/*.py"]),
+    deps = [
+        requirement("fastapi"),
+        requirement("pydantic"),
+        requirement("uvicorn"),
+        requirement("prometheus-fastapi-instrumentator"),
+        requirement("opentelemetry-api"),
+        requirement("opentelemetry-sdk"),
+        requirement("opentelemetry-instrumentation-fastapi"),
+        requirement("opentelemetry-exporter-otlp"),
+    ],
+    unit_tests = glob(["tests/unit/**/*.py"]),
+    integration_tests = glob(["tests/integration/**/*.py"]),
+    test_deps = [
+        dev_requirement("pytest"),
+        dev_requirement("pytest-asyncio"),
+        dev_requirement("pytest-cov"),
+        dev_requirement("httpx"),
+        dev_requirement("ruff"),
+    ],
+)
+
+exports_files([
+    "requirements.in",
+    "requirements_lock.txt",
+    "requirements_dev.in",
+    "requirements_dev_lock.txt",
+])

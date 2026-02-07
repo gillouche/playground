@@ -3,7 +3,14 @@ package(default_visibility = ["//visibility:public"])
 exports_files([
     "check_go_coverage.sh",
     "notify_discord.sh",
+    "smart_push.py",
 ])
+
+py_binary(
+    name = "smart_push",
+    srcs = ["smart_push.py"],
+    python_version = "PY3",
+)
 
 sh_binary(
     name = "check_go_coverage",

@@ -75,29 +75,18 @@ jobs:
             --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
             ./nix#ci --command bazel test --config=ci //apps/...
 
-      - name: Build and push images (Main Only)
+      - name: Smart push images (Main Only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
 
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
-          echo "Building ARM64 images and pushing with tags: latest, $SHORT_SHA"
+          echo "Smart pushing ARM64 images (only if changed)..."
 
           nix develop \
             --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
             --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bash -c '
-            set -e
-            # Build images for ARM64 (Raspberry Pi)
-            bazel build --config=ci --config=arm64 //apps/...:all --build_tag_filters=oci_image
-
-            # Query all oci_push targets and run them
-            PUSH_TARGETS=$(bazel query "kind(oci_push, //apps/...)")
-            for target in $PUSH_TARGETS; do
-              echo "Pushing $target..."
-              bazel run --config=ci --config=arm64 "$target" -- --tag latest --tag '"$SHORT_SHA"'
-            done
-          '
+            ./nix#ci --command python3 tools/ci/smart_push.py --tag latest --tag $SHORT_SHA
 
       - name: Push to Nix Cache (Main Only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

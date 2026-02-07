@@ -52,6 +52,7 @@ def python_application(
         {name}            - py_binary executable
         {name}_unit_test  - py_test for unit tests
         {name}_integration_test - py_test for integration tests
+        {name}_lint       - py_test for ruff linting
         {name}_image      - OCI image
         {name}_push       - oci_push to registry
         {name}_load       - oci_load to local Docker
@@ -115,7 +116,29 @@ def python_application(
             visibility = visibility,
         )
 
-    # 5. OCI image targets (if in apps/ directory)
+    # 5. Lint target (ruff)
+    # Find ruff in test_deps - look for the requirement that contains ruff
+    ruff_dep = None
+    for dep in test_deps:
+        if "ruff" in str(dep):
+            ruff_dep = dep
+            break
+
+    if ruff_dep:
+        py_test(
+            name = name + "_lint",
+            srcs = ["//tools:ruff_runner.py"] + srcs,
+            main = "//tools:ruff_runner.py",
+            args = ["--config=pyproject.toml", "src/"],
+            data = ["pyproject.toml"] if native.glob(["pyproject.toml"]) else [],
+            deps = [ruff_dep],
+            imports = ["."],
+            size = "small",
+            tags = ["lint"],
+            visibility = visibility,
+        )
+
+    # 6. OCI image targets (if in apps/ directory)
     if package_path.startswith("apps/"):
         # Auto-infer repository from package path
         if not image_repository:
