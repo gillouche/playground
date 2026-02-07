@@ -66,40 +66,36 @@ jobs:
           nix develop \
             --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
             --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bazel build //apps/...
+            ./nix#ci --command bazel build --config=ci //apps/...
 
       - name: Run all tests
         run: |
           nix develop \
             --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
             --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bazel test //apps/... --test_output=errors
+            ./nix#ci --command bazel test --config=ci //apps/...
 
-      - name: Build OCI images
-        run: |
-          nix develop \
-            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
-            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bazel build --config=ci //apps/...:all --build_tag_filters=oci_image
-
-      - name: Push images (Main Only)
+      - name: Build and push images (Main Only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
 
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
-          echo "Pushing images with tags: latest, $SHORT_SHA"
+          echo "Building ARM64 images and pushing with tags: latest, $SHORT_SHA"
 
           nix develop \
             --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
             --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
             ./nix#ci --command bash -c '
             set -e
+            # Build images for ARM64
+            bazel build --config=ci //apps/...:all --build_tag_filters=oci_image
+
             # Query all oci_push targets and run them
             PUSH_TARGETS=$(bazel query "kind(oci_push, //apps/...)")
             for target in $PUSH_TARGETS; do
               echo "Pushing $target..."
-              bazel run "$target" -- --tag latest --tag '"$SHORT_SHA"'
+              bazel run --config=ci "$target" -- --tag latest --tag '"$SHORT_SHA"'
             done
           '
 
