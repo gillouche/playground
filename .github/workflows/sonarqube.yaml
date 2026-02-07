@@ -88,9 +88,6 @@ jobs:
         uses: ./.github/actions/setup-nix-env
 
       - name: Run SonarQube Scanner
-        env:
-          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
-          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
         run: |
           nix develop \
             --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
