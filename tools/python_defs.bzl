@@ -57,7 +57,6 @@ def python_application(
         {name}            - py_binary executable
         {name}_unit_test  - py_test for unit tests
         {name}_integration_test - py_test for integration tests
-        {name}_lint       - py_test for ruff linting
         {name}_image      - OCI image
         {name}_push       - oci_push to registry
         {name}_load       - oci_load to local Docker
@@ -115,25 +114,8 @@ def python_application(
             visibility = visibility,
         )
 
-    ruff_dep = None
-    for dep in test_deps:
-        if "ruff" in str(dep):
-            ruff_dep = dep
-            break
-
-    if ruff_dep:
-        py_test(
-            name = name + "_lint",
-            srcs = ["//tools:ruff_runner.py"] + srcs,
-            main = "//tools:ruff_runner.py",
-            args = ["--config=pyproject.toml", "src/"],
-            data = ["pyproject.toml"] if native.glob(["pyproject.toml"]) else [],
-            deps = [ruff_dep],
-            imports = ["."],
-            size = "small",
-            tags = ["lint"],
-            visibility = visibility,
-        )
+    # Note: Lint targets removed - ruff is a native binary that doesn't integrate
+    # well with rules_python py_test. Run ruff manually or via pre-commit hooks.
 
     if package_path.startswith("apps/"):
         if not image_repository:
