@@ -1,0 +1,131 @@
+name: SonarQube Analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: none
+  actions: none
+  id-token: none
+
+jobs:
+  # Security gate for self-hosted runners
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    outputs:
+      is_safe: ${{ steps.check.outputs.is_safe }}
+    steps:
+      - name: Verify repository ownership
+        id: check
+        run: |
+          # Block forks from running on self-hosted runners
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
+            echo "::error::Fork PRs cannot run on self-hosted runners"
+            echo "is_safe=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          if [[ "${{ github.repository }}" != "gillouche/playground" ]]; then
+            echo "::error::Repository mismatch - blocking execution"
+            echo "is_safe=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          echo "is_safe=true" >> "$GITHUB_OUTPUT"
+
+  discover-services:
+    name: Discover Services
+    needs: security-check
+    if: needs.security-check.outputs.is_safe == 'true'
+    runs-on: playground-runner
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.services.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Find all services
+        id: services
+        run: |
+          SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type d ! -name deploy ! -name monitoring ! -name __pycache__ | \
+            while read -r dir; do
+              app=$(basename "$(dirname "$dir")")
+              service=$(basename "$dir")
+              project_key="${app}/${service}"
+              echo "{\"app\": \"$app\", \"service\": \"$service\", \"path\": \"$dir\", \"project_key\": \"$project_key\"}"
+            done | jq -s '.')
+          echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
+          echo "Found services: $SERVICES"
+
+  sonarqube:
+    name: Analyze ${{ matrix.service.project_key }}
+    needs: [security-check, discover-services]
+    if: needs.security-check.outputs.is_safe == 'true' && needs.discover-services.outputs.matrix != '[]'
+    runs-on: playground-runner
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.discover-services.outputs.matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Nix Environment
+        uses: ./.github/actions/setup-nix-env
+
+      - name: Run SonarQube Scanner
+        env:
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+        run: |
+          nix develop \
+            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
+            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
+            ./nix#ci --command bash -c '
+            set -e
+
+            SERVICE_PATH="${{ matrix.service.path }}"
+            PROJECT_KEY="${{ matrix.service.project_key }}"
+
+            echo "Analyzing $PROJECT_KEY at $SERVICE_PATH"
+
+            SONAR_ARGS=(
+              "-Dsonar.projectKey=$PROJECT_KEY"
+              "-Dsonar.projectName=$PROJECT_KEY"
+              "-Dsonar.sources=$SERVICE_PATH"
+              "-Dsonar.host.url=$SONAR_HOST_URL"
+              "-Dsonar.token=$SONAR_TOKEN"
+            )
+
+            if [ -f "$SERVICE_PATH/src" ] || [ -d "$SERVICE_PATH/src" ]; then
+              SONAR_ARGS+=("-Dsonar.sources=$SERVICE_PATH/src")
+            fi
+
+            if [ -d "$SERVICE_PATH/tests" ]; then
+              SONAR_ARGS+=("-Dsonar.tests=$SERVICE_PATH/tests")
+            fi
+
+            if [ -f "$SERVICE_PATH/coverage.xml" ]; then
+              SONAR_ARGS+=("-Dsonar.python.coverage.reportPaths=$SERVICE_PATH/coverage.xml")
+            fi
+
+            if [ -f "$SERVICE_PATH/go.mod" ]; then
+              SONAR_ARGS+=("-Dsonar.go.coverage.reportPaths=$SERVICE_PATH/coverage.out")
+            fi
+
+            sonar-scanner "${SONAR_ARGS[@]}"
+          '

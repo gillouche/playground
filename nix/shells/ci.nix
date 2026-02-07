@@ -19,6 +19,7 @@ pkgs.mkShell {
     trivy
     crane  # OCI registry tool for digest queries (smart push)
     skopeo # Alternative OCI tool for registry operations
+    sonar-scanner-cli  # SonarQube analysis
   ];
 
   shellHook = ''
