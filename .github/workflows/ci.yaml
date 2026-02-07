@@ -88,14 +88,14 @@ jobs:
             --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
             ./nix#ci --command bash -c '
             set -e
-            # Build images for ARM64
-            bazel build --config=ci //apps/...:all --build_tag_filters=oci_image
+            # Build images for ARM64 (Raspberry Pi)
+            bazel build --config=ci --config=arm64 //apps/...:all --build_tag_filters=oci_image
 
             # Query all oci_push targets and run them
             PUSH_TARGETS=$(bazel query "kind(oci_push, //apps/...)")
             for target in $PUSH_TARGETS; do
               echo "Pushing $target..."
-              bazel run --config=ci "$target" -- --tag latest --tag '"$SHORT_SHA"'
+              bazel run --config=ci --config=arm64 "$target" -- --tag latest --tag '"$SHORT_SHA"'
             done
           '
 
