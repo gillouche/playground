@@ -87,6 +87,48 @@ jobs:
       - name: Setup Nix Environment
         uses: ./.github/actions/setup-nix-env
 
+      - name: Run Tests with Coverage
+        run: |
+          nix develop \
+            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
+            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
+            ./nix#ci --command bash -c '
+            set -e
+
+            SERVICE_PATH="${{ matrix.service.path }}"
+            echo "Running tests with coverage for $SERVICE_PATH"
+
+            cd "$SERVICE_PATH"
+
+            # Python projects
+            if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+              echo "Detected Python project"
+              if [ -d "tests" ]; then
+                # Install dependencies if needed
+                if [ -f "pyproject.toml" ]; then
+                  uv pip install -e ".[dev]" 2>/dev/null || uv pip install -e . 2>/dev/null || true
+                fi
+                # Run pytest with coverage
+                pytest tests/ --cov=src --cov-report=xml:coverage.xml --cov-report=term -q || true
+              fi
+            fi
+
+            # Go projects
+            if [ -f "go.mod" ]; then
+              echo "Detected Go project"
+              go test -coverprofile=coverage.out ./... || true
+            fi
+
+            # TypeScript/JavaScript projects
+            if [ -f "package.json" ]; then
+              echo "Detected Node.js project"
+              if command -v pnpm &> /dev/null; then
+                pnpm install --frozen-lockfile 2>/dev/null || true
+                pnpm test --coverage 2>/dev/null || true
+              fi
+            fi
+          '
+
       - name: Run SonarQube Scanner
         run: |
           nix develop \

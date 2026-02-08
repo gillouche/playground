@@ -55,16 +55,22 @@ jobs:
       - name: Find all services
         id: services
         run: |
-          # Find all services with build_docker targets
+          # Find all services with oci_load targets
           SERVICES=$(nix develop \
             --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
             --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
             ./nix#ci --command bazel query "kind(oci_load, //apps/...)" 2>/dev/null | \
             grep "^//" | \
-            sed 's/:build_docker$//' | \
-            while read path; do
-              name=$(basename "$path")
-              echo "{\"name\": \"$name\", \"path\": \"${path#//}\"}"
+            while read target; do
+              # target is like //apps/demo-app/greeting-service:greeting-service_load
+              # Extract package path (before the colon)
+              package="${target%:*}"
+              package="${package#//}"
+              # Extract target name (after the colon)
+              target_name="${target##*:}"
+              # Service name is the target without _load suffix
+              name="${target_name%_load}"
+              echo "{\"name\": \"$name\", \"package\": \"$package\", \"target\": \"$target_name\"}"
             done | jq -sc '.')
           echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
           echo "Found services: $SERVICES"
@@ -98,7 +104,7 @@ jobs:
             set -e
 
             echo "Building image for ${{ matrix.service.name }}..."
-            bazel run --config=ci //${{ matrix.service.path }}:build_docker
+            bazel run --config=ci //${{ matrix.service.package }}:${{ matrix.service.target }}
 
             echo "Scanning image for vulnerabilities..."
             trivy image --exit-code 0 --severity HIGH,CRITICAL --format json --output trivy-results.json ${{ matrix.service.name }}:latest
