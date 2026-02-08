@@ -1,8 +1,6 @@
 name: Nightly Security Scan
 
 on:
-  push:
-    branches: [main]
   schedule:
     # Run at 2 AM UTC every day
     - cron: '0 2 * * *'
