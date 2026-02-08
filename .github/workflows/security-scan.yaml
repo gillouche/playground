@@ -8,14 +8,38 @@ on:
 
 permissions:
   contents: read
+  packages: none
+  actions: none
+  id-token: none
 
 env:
   TRIVY_CACHE_DIR: /home/runner/.cache/trivy
 
 jobs:
+  # Security gate for self-hosted runners
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    outputs:
+      is_safe: ${{ steps.check.outputs.is_safe }}
+    steps:
+      - name: Verify repository ownership
+        id: check
+        run: |
+          if [[ "${{ github.repository }}" != "gillouche/playground" ]]; then
+            echo "::error::Repository mismatch - blocking execution"
+            echo "is_safe=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          echo "is_safe=true" >> "$GITHUB_OUTPUT"
+
   discover-services:
     name: Discover Services
+    needs: security-check
+    if: needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
+    timeout-minutes: 10
     outputs:
       matrix: ${{ steps.services.outputs.matrix }}
     steps:
@@ -41,14 +65,16 @@ jobs:
             while read path; do
               name=$(basename "$path")
               echo "{\"name\": \"$name\", \"path\": \"${path#//}\"}"
-            done | jq -s '.')
+            done | jq -sc '.')
           echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
           echo "Found services: $SERVICES"
 
   scan-service:
     name: Scan ${{ matrix.service.name }}
-    needs: discover-services
+    needs: [security-check, discover-services]
+    if: needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -103,14 +129,17 @@ jobs:
 
   notify-completion:
     name: Notify Completion
-    needs: [discover-services, scan-service]
-    if: always()
+    needs: [security-check, discover-services, scan-service]
+    if: always() && needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
+    timeout-minutes: 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
 
-      - name: Send completion notification
       - name: Download Vulnerability Artifacts
         continue-on-error: true
         uses: actions/download-artifact@v4

@@ -41,7 +41,8 @@ def mock_clients():
 
 
 @pytest.mark.asyncio
-async def test_root_endpoint(_mock_clients):
+@pytest.mark.usefixtures("mock_clients")
+async def test_root_endpoint():
     from main import app
 
     transport = ASGITransport(app=app)

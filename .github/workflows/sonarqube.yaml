@@ -63,7 +63,7 @@ jobs:
               service=$(basename "$dir")
               project_key="${app}/${service}"
               echo "{\"app\": \"$app\", \"service\": \"$service\", \"path\": \"$dir\", \"project_key\": \"$project_key\"}"
-            done | jq -s '.')
+            done | jq -sc '.')
           echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
           echo "Found services: $SERVICES"
 
