@@ -20,6 +20,7 @@ jobs:
   security-check:
     name: Security Check
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'gillouche'
     outputs:
       is_safe: ${{ steps.check.outputs.is_safe }}
     steps:

@@ -18,6 +18,7 @@ jobs:
   security-check:
     name: Security Check
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'gillouche'
     outputs:
       is_safe: ${{ steps.check.outputs.is_safe }}
     steps:
@@ -104,30 +105,40 @@ jobs:
             if [ -f "requirements_lock.txt" ] || [ -f "requirements.txt" ]; then
               echo "Detected Python project"
               if [ -d "tests" ]; then
-                # Create virtual environment and install dependencies
-                python -m venv .venv
+                # Create virtual environment using uv (more reliable in Nix environments)
+                uv venv .venv
                 source .venv/bin/activate
 
-                # Install from lock file
-                if [ -f "requirements_lock.txt" ]; then
-                  pip install -r requirements_lock.txt -q
-                elif [ -f "requirements.txt" ]; then
-                  pip install -r requirements.txt -q
-                fi
-
-                # Install dev dependencies for testing
+                # Install dependencies using uv
                 if [ -f "requirements_dev_lock.txt" ]; then
-                  pip install -r requirements_dev_lock.txt -q
+                  uv pip install -r requirements_dev_lock.txt -q
+                elif [ -f "requirements_lock.txt" ]; then
+                  uv pip install -r requirements_lock.txt -q
+                elif [ -f "requirements.txt" ]; then
+                  uv pip install -r requirements.txt -q
                 fi
 
                 # Run pytest with coverage
+                set +e
                 PYTHONPATH=src:. pytest tests/ \
                   --cov=src \
                   --cov-report=xml:coverage.xml \
                   --cov-report=term \
-                  -q || true
+                  -q
+                PYTEST_EXIT=$?
+                set -e
+
+                if [ $PYTEST_EXIT -ne 0 ]; then
+                  echo "::warning::pytest exited with code $PYTEST_EXIT"
+                fi
 
                 deactivate
+
+                if [ -f "coverage.xml" ]; then
+                  echo "Coverage report generated successfully"
+                else
+                  echo "::warning::coverage.xml was not generated"
+                fi
               fi
             fi
 
@@ -183,7 +194,10 @@ jobs:
             fi
 
             if [ -f "$SERVICE_PATH/coverage.xml" ]; then
+              echo "Found coverage report at $SERVICE_PATH/coverage.xml"
               SONAR_ARGS+=("-Dsonar.python.coverage.reportPaths=coverage.xml")
+            else
+              echo "::warning::No coverage report found at $SERVICE_PATH/coverage.xml"
             fi
 
             if [ -f "$SERVICE_PATH/go.mod" ]; then

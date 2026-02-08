@@ -20,6 +20,7 @@ jobs:
   security-check:
     name: Security Check
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'gillouche'
     outputs:
       is_safe: ${{ steps.check.outputs.is_safe }}
     steps:
@@ -44,7 +45,7 @@ jobs:
   build-and-test:
     name: Build & Test
     needs: security-check
-    if: needs.security-check.outputs.is_safe == 'true'
+    if: github.repository_owner == 'gillouche' && needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
     timeout-minutes: 30
     steps:
