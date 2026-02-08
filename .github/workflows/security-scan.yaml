@@ -1,6 +1,8 @@
 name: Nightly Security Scan
 
 on:
+  push:
+    branches: [main]
   schedule:
     # Run at 2 AM UTC every day
     - cron: '0 2 * * *'
@@ -72,7 +74,7 @@ jobs:
   scan-service:
     name: Scan ${{ matrix.service.name }}
     needs: [security-check, discover-services]
-    if: needs.security-check.outputs.is_safe == 'true'
+    if: needs.security-check.outputs.is_safe == 'true' && needs.discover-services.outputs.matrix != '[]'
     runs-on: playground-runner
     timeout-minutes: 30
     strategy:
