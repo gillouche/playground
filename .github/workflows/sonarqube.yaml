@@ -61,7 +61,7 @@ jobs:
             while read -r dir; do
               app=$(basename "$(dirname "$dir")")
               service=$(basename "$dir")
-              project_key="${app}/${service}"
+              project_key="${app}:${service}"
               echo "{\"app\": \"$app\", \"service\": \"$service\", \"path\": \"$dir\", \"project_key\": \"$project_key\"}"
             done | jq -sc '.')
           echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
@@ -100,17 +100,20 @@ jobs:
 
             echo "Analyzing $PROJECT_KEY at $SERVICE_PATH"
 
+            # Determine sources path (prefer src/ subdirectory if it exists)
+            if [ -d "$SERVICE_PATH/src" ]; then
+              SOURCES_PATH="$SERVICE_PATH/src"
+            else
+              SOURCES_PATH="$SERVICE_PATH"
+            fi
+
             SONAR_ARGS=(
               "-Dsonar.projectKey=$PROJECT_KEY"
               "-Dsonar.projectName=$PROJECT_KEY"
-              "-Dsonar.sources=$SERVICE_PATH"
+              "-Dsonar.sources=$SOURCES_PATH"
               "-Dsonar.host.url=$SONAR_HOST_URL"
               "-Dsonar.token=$SONAR_TOKEN"
             )
-
-            if [ -f "$SERVICE_PATH/src" ] || [ -d "$SERVICE_PATH/src" ]; then
-              SONAR_ARGS+=("-Dsonar.sources=$SERVICE_PATH/src")
-            fi
 
             if [ -d "$SERVICE_PATH/tests" ]; then
               SONAR_ARGS+=("-Dsonar.tests=$SERVICE_PATH/tests")
