@@ -160,16 +160,17 @@ jobs:
 
             echo "Analyzing $PROJECT_KEY at $SERVICE_PATH"
 
-            # Determine sources path (prefer src/ subdirectory if it exists)
+            # Determine sources path relative to service dir
             if [ -d "$SERVICE_PATH/src" ]; then
-              SOURCES_PATH="$SERVICE_PATH/src"
+              SOURCES_PATH="src"
             else
-              SOURCES_PATH="$SERVICE_PATH"
+              SOURCES_PATH="."
             fi
 
             SONAR_ARGS=(
               "-Dsonar.projectKey=$PROJECT_KEY"
               "-Dsonar.projectName=$PROJECT_KEY"
+              "-Dsonar.projectBaseDir=$SERVICE_PATH"
               "-Dsonar.sources=$SOURCES_PATH"
               "-Dsonar.host.url=$SONAR_HOST_URL"
               "-Dsonar.token=$SONAR_TOKEN"
@@ -178,15 +179,15 @@ jobs:
             )
 
             if [ -d "$SERVICE_PATH/tests" ]; then
-              SONAR_ARGS+=("-Dsonar.tests=$SERVICE_PATH/tests")
+              SONAR_ARGS+=("-Dsonar.tests=tests")
             fi
 
             if [ -f "$SERVICE_PATH/coverage.xml" ]; then
-              SONAR_ARGS+=("-Dsonar.python.coverage.reportPaths=$SERVICE_PATH/coverage.xml")
+              SONAR_ARGS+=("-Dsonar.python.coverage.reportPaths=coverage.xml")
             fi
 
             if [ -f "$SERVICE_PATH/go.mod" ]; then
-              SONAR_ARGS+=("-Dsonar.go.coverage.reportPaths=$SERVICE_PATH/coverage.out")
+              SONAR_ARGS+=("-Dsonar.go.coverage.reportPaths=coverage.out")
             fi
 
             sonar-scanner "${SONAR_ARGS[@]}"

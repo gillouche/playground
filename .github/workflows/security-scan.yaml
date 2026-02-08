@@ -115,9 +115,9 @@ jobs:
                if [ -n "$ISSUES" ]; then
                    echo "Critical/High Vulnerabilities found:"
                    echo "$ISSUES"
-                   echo "$ISSUES"
                    ./tools/ci/notify_discord.sh "WARNING" "Trivy Scan: ${{ matrix.service.name }}" "Found Critical/High Vulnerabilities:\n$ISSUES"
                    echo "${{ matrix.service.name }}" > vulnerable-service.txt
+                   exit 1
                else
                    echo "No critical vulnerabilities found."
                fi
