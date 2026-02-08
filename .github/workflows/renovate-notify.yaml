@@ -26,7 +26,7 @@ jobs:
             --arg repo "$REPO" \
             --arg branch "$BRANCH" \
             '{
-              content: "🤖 **Renovate opened a PR**",
+              content: "**Renovate opened a PR**",
               embeds: [{
                 title: $title,
                 url: $url,
