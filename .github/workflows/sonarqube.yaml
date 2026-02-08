@@ -101,15 +101,33 @@ jobs:
             cd "$SERVICE_PATH"
 
             # Python projects
-            if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ]; then
+            if [ -f "requirements_lock.txt" ] || [ -f "requirements.txt" ]; then
               echo "Detected Python project"
               if [ -d "tests" ]; then
-                # Install dependencies if needed
-                if [ -f "pyproject.toml" ]; then
-                  uv pip install -e ".[dev]" 2>/dev/null || uv pip install -e . 2>/dev/null || true
+                # Create virtual environment and install dependencies
+                python -m venv .venv
+                source .venv/bin/activate
+
+                # Install from lock file
+                if [ -f "requirements_lock.txt" ]; then
+                  pip install -r requirements_lock.txt -q
+                elif [ -f "requirements.txt" ]; then
+                  pip install -r requirements.txt -q
                 fi
+
+                # Install dev dependencies for testing
+                if [ -f "requirements_dev_lock.txt" ]; then
+                  pip install -r requirements_dev_lock.txt -q
+                fi
+
                 # Run pytest with coverage
-                pytest tests/ --cov=src --cov-report=xml:coverage.xml --cov-report=term -q || true
+                PYTHONPATH=src:. pytest tests/ \
+                  --cov=src \
+                  --cov-report=xml:coverage.xml \
+                  --cov-report=term \
+                  -q || true
+
+                deactivate
               fi
             fi
 
@@ -155,6 +173,8 @@ jobs:
               "-Dsonar.sources=$SOURCES_PATH"
               "-Dsonar.host.url=$SONAR_HOST_URL"
               "-Dsonar.token=$SONAR_TOKEN"
+              "-Dsonar.qualitygate.wait=true"
+              "-Dsonar.exclusions=**/.venv/**,**/node_modules/**,**/__pycache__/**"
             )
 
             if [ -d "$SERVICE_PATH/tests" ]; then
