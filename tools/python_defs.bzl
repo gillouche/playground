@@ -18,6 +18,7 @@ Key design principles:
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("//tools:transitions.bzl", "transition_rule")
 
 def python_application(
         name,
@@ -147,9 +148,19 @@ def python_application(
             visibility = visibility,
         )
 
+        # The image is wrapped in a transition to force it to ARM64
+        # This allows building the image for ARM64 even when the pusher
+        # is running on an AMD64 host (fix for Exec format error on jq).
+        transition_rule(
+            name = name + "_image_arm64",
+            actual = ":" + name + "_image",
+            platform = "//tools/platforms:linux_arm64",
+            visibility = visibility,
+        )
+
         oci_push(
             name = name + "_push",
-            image = ":" + name + "_image",
+            image = ":" + name + "_image_arm64",
             repository = image_repository,
             visibility = visibility,
         )
