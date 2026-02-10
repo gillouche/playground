@@ -26,10 +26,10 @@ jobs:
           NIX_CACHE_ACCESS_KEY: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           NIX_CACHE_SECRET_KEY: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
-      - name: Test S3 Connection (AWS CLI)
+      - name: Test Nix Cache (S3 - port 8333)
         run: |
           nix shell nixpkgs#awscli2 --command bash -c "
-            echo 'Testing 'aws s3 ls' against nix-cache...'
+            echo 'Testing Nix Cache S3 Access...'
             aws s3 ls s3://nix-cache \
               --endpoint-url http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333 \
               --no-verify-ssl
@@ -38,6 +38,24 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.NIX_CACHE_SECRET_KEY }}
           AWS_DEFAULT_REGION: us-east-1
+
+      - name: Test Bazel Cache (S3 - port 8333)
+        run: |
+          nix shell nixpkgs#awscli2 --command bash -c "
+            echo 'Testing Bazel Cache S3 Access...'
+            aws s3 ls s3://bazel-cache \
+              --endpoint-url http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333 \
+              --no-verify-ssl
+          "
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BAZEL_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BAZEL_CACHE_SECRET_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+
+      - name: Test Filer Connectivity (port 8888)
+        run: |
+          echo "Testing Filer connectivity for Bazel (port 8888)..."
+          curl -v -I http://seaweedfs-filer.seaweedfs.svc.cluster.local:8888/buckets/bazel-cache/ || echo "Filer connectivity failed"
 
       - name: Debug Nix Config (Setup Action)
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
