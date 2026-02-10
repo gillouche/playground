@@ -14,6 +14,6 @@ data:
   OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring.svc.cluster.local:4317
   ENABLE_TRACING: "true"
   APP_VERSION: dev
-  COMPONENT_VERSION: 1ebf99d
-  GIT_TAG: 1ebf99d
-  GIT_COMMIT: 1ebf99d33c3a61eaa572cacce2081fd9d12fdb8c
+  COMPONENT_VERSION: b0abbf6
+  GIT_TAG: b0abbf6
+  GIT_COMMIT: b0abbf62ab029d14e460ef4e0c4ae9bd071324c7
