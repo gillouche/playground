@@ -116,10 +116,10 @@ def push_image(push_target: str, tags: list[str]) -> bool:
     for tag in tags:
         tag_args.extend(["--tag", tag])
 
-    # Don't use --config=arm64 for the push - the push script runs on the host
-    # and needs host-compatible tools (jq, etc.). The image was already built
-    # for ARM64 in get_local_image_digest.
-    cmd = ["bazel", "run", "--config=ci", push_target, "--"] + tag_args
+    # We use --config=arm64 to ensure the container layers (built via oci_image)
+    # are built for the target platform (ARM64), otherwise Bazel would
+    # default to the host platform (AMD64).
+    cmd = ["bazel", "run", "--config=ci", "--config=arm64", push_target, "--"] + tag_args
     result = run_command(cmd, capture=False)
     return result.returncode == 0
 
