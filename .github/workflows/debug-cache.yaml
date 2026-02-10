@@ -1,0 +1,53 @@
+name: Debug Cache Access
+on: workflow_dispatch
+
+jobs:
+  debug:
+    runs-on: playground-runner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Secrets Presence
+        run: |
+          echo "Checking secrets..."
+          if [ -z "${{ secrets.NIX_CACHE_ACCESS_KEY }}" ]; then
+            echo "::error::NIX_CACHE_ACCESS_KEY is empty/missing!"
+          else
+            echo "NIX_CACHE_ACCESS_KEY is set (length: ${#NIX_CACHE_ACCESS_KEY})"
+          fi
+
+          if [ -z "${{ secrets.NIX_CACHE_SECRET_KEY }}" ]; then
+            echo "::error::NIX_CACHE_SECRET_KEY is empty/missing!"
+          else
+            echo "NIX_CACHE_SECRET_KEY is set (length: ${#NIX_CACHE_SECRET_KEY})"
+          fi
+        env:
+          NIX_CACHE_ACCESS_KEY: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          NIX_CACHE_SECRET_KEY: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
+      - name: Test S3 Connection (AWS CLI)
+        run: |
+          nix shell nixpkgs#awscli2 --command bash -c "
+            echo 'Testing 'aws s3 ls' against nix-cache...'
+            aws s3 ls s3://nix-cache \
+              --endpoint-url http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333 \
+              --no-verify-ssl
+          "
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+
+      - name: Debug Nix Config (Setup Action)
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+        with:
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
+      - name: Inspect Nix Config
+        run: |
+          echo "=== /etc/nix/nix.conf ==="
+          cat /etc/nix/nix.conf || echo "No global config"
+          echo "=== ~/.config/nix/nix.conf ==="
+          cat ~/.config/nix/nix.conf || echo "No user config"
