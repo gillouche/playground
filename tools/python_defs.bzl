@@ -123,30 +123,20 @@ def python_application(
             image_repository = "nexus.gillouche.homelab/docker-hosted/{}".format(repo_suffix)
 
         pkg_tar(
-            name = name + "_src_layer",
-            srcs = srcs,
-            package_dir = "/app/src",
-            strip_prefix = "src",
-        )
-
-        pkg_tar(
-            name = name + "_bin_layer",
+            name = name + "_layer",
             srcs = [":" + name],
             package_dir = "/app",
             include_runfiles = True,
+            mode = "0755",
         )
 
         oci_image(
             name = name + "_image",
             base = base_image,
-            tars = [
-                ":" + name + "_src_layer",
-                ":" + name + "_bin_layer",
-            ],
-            entrypoint = ["python", "-m", "main"],
-            workdir = "/app/src",
+            tars = [":" + name + "_layer"],
+            entrypoint = ["/app/{}".format(name)],
+            workdir = "/app",
             env = dict({
-                "PYTHONPATH": "/app/src",
                 "PYTHONUNBUFFERED": "1",
             }, **env),
             labels = {
