@@ -1,26 +1,26 @@
 metadata:
   app: demo-app
   version: dev
-  created_at: '2026-02-03T23:09:19.721630+00:00'
+  created_at: '2026-02-10T21:16:18.864238+00:00'
 images:
   greeting-service:
-    tag: 86eda1b
-    commit: 86eda1b8e99d234e14a1fb97a1afb4ce9d26fed3
-    full_tag: demo-app/greeting-service/86eda1b
+    tag: 1ebf99d
+    commit: 1ebf99d33c3a61eaa572cacce2081fd9d12fdb8c
+    full_tag: demo-app/greeting-service/1ebf99d
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:86eda1b
-      digest: sha256:577e5906f58d52ac6a747dfa460d40c7a7cbb263f3edd0063542869ed996c559
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:1ebf99d
+      digest: sha256:f2a73abaf185c9008b765f0cf8ba83503968841e52261be346a864637b5306c5
   infra-check-service:
-    tag: 86eda1b
-    commit: 86eda1b8e99d234e14a1fb97a1afb4ce9d26fed3
-    full_tag: demo-app/infra-check-service/86eda1b
+    tag: 1ebf99d
+    commit: 1ebf99d33c3a61eaa572cacce2081fd9d12fdb8c
+    full_tag: demo-app/infra-check-service/1ebf99d
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:86eda1b
-      digest: sha256:6ab28cef055ee8900493afc8b0fe548c780ca845f642262446025ab4d2cdcb02
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:1ebf99d
+      digest: sha256:60d4343c60b71bbb043e2990469338dc08d1a271d8547ed3423428075474d0fd
   traffic-generator-service:
-    tag: 86eda1b
-    commit: 86eda1b8e99d234e14a1fb97a1afb4ce9d26fed3
-    full_tag: demo-app/traffic-generator-service/86eda1b
+    tag: 1ebf99d
+    commit: 1ebf99d33c3a61eaa572cacce2081fd9d12fdb8c
+    full_tag: demo-app/traffic-generator-service/1ebf99d
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:86eda1b
-      digest: sha256:42127bb6e54704363fc1f45b8c3a673af773bac85e5f1c353929b05172b6482f
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:1ebf99d
+      digest: sha256:602e3375fd503149f629eedf286a50357aab03011cad193fbf564974784f7234
