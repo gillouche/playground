@@ -1,26 +1,26 @@
 metadata:
   app: demo-app
   version: dev
-  created_at: '2026-02-10T22:09:21.417143+00:00'
+  created_at: '2026-02-10T22:56:22.622793+00:00'
 images:
   greeting-service:
-    tag: b0abbf6
-    commit: b0abbf62ab029d14e460ef4e0c4ae9bd071324c7
-    full_tag: demo-app/greeting-service/b0abbf6
+    tag: b5929af
+    commit: b5929af2400f04cafc75437f1ff98842724f3163
+    full_tag: demo-app/greeting-service/b5929af
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:b0abbf6
-      digest: sha256:2bc349281edf3790a4f0140bc2ec7302135d771c55fe5db2e44e566e67c7d0ec
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:b5929af
+      digest: sha256:cc1a2f7127fa7486a53edaa8c0dde1900a0ea097ceb81f3e13497284768e9314
   infra-check-service:
-    tag: b0abbf6
-    commit: b0abbf62ab029d14e460ef4e0c4ae9bd071324c7
-    full_tag: demo-app/infra-check-service/b0abbf6
+    tag: b5929af
+    commit: b5929af2400f04cafc75437f1ff98842724f3163
+    full_tag: demo-app/infra-check-service/b5929af
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:b0abbf6
-      digest: sha256:222ad326e66f1b53cbe8123f3b6df7e343a6bb6c41fb2ac10f1e42df3a447e93
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:b5929af
+      digest: sha256:4bee65ea27be0a89049788320b483d9d72dfb3b827d30de401f6a9145edf0cef
   traffic-generator-service:
-    tag: b0abbf6
-    commit: b0abbf62ab029d14e460ef4e0c4ae9bd071324c7
-    full_tag: demo-app/traffic-generator-service/b0abbf6
+    tag: b5929af
+    commit: b5929af2400f04cafc75437f1ff98842724f3163
+    full_tag: demo-app/traffic-generator-service/b5929af
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:b0abbf6
-      digest: sha256:d55cb26b3106a42302de42522d7e306cbb5b88302869dbc2d1cdc88a94469785
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:b5929af
+      digest: sha256:9e665fef0025a1918e07329924b63e6ab7ff36e89ed7e0621fe7b5b22d3d2f73
