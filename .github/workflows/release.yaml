@@ -21,6 +21,7 @@ jobs:
       - name: Parse Tag
         id: parse
         run: |
+          { set +x; } 2>/dev/null
           # Tag format: app/component/version
           # e.g. demo-app/greeting-service/v0.0.1
           TAG_REF=${{ github.ref_name }}
@@ -47,25 +48,22 @@ jobs:
       - name: Resolve Commit SHA
         id: sha
         run: |
+          { set +x; } 2>/dev/null
           # Get the commit SHA pointed to by the tag
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "Commit Short SHA: $SHORT_SHA"
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
 
-      - name: Load Secrets
-        run: |
-          echo "NEXUS_USERNAME=$NEXUS_USERNAME" >> $GITHUB_ENV
-          echo "NEXUS_PASSWORD=$NEXUS_PASSWORD" >> $GITHUB_ENV
-
       - name: Login to Nexus
         uses: docker/login-action@v3
         with:
           registry: nexus.gillouche.homelab
-          username: ${{ env.NEXUS_USERNAME }}
-          password: ${{ env.NEXUS_PASSWORD }}
+          username: ${{ secrets.NEXUS_USERNAME }}
+          password: ${{ secrets.NEXUS_PASSWORD }}
 
       - name: Retag Image
         run: |
+          { set +x; } 2>/dev/null
           APP=${{ steps.parse.outputs.app }}
           COMP=${{ steps.parse.outputs.component }}
           VER=${{ steps.parse.outputs.version }}
@@ -98,8 +96,10 @@ jobs:
           RELEASE_CONCEPT: ${{ steps.parse.outputs.app }}
           RELEASE_APP: ${{ steps.parse.outputs.component }}
           RELEASE_VERSION: ${{ steps.parse.outputs.version }}
-          RELEASE_IMAGE_TAG: ${{ steps.sha.outputs.short_sha }} # Using SHA as image tag
+          RELEASE_IMAGE_TAG: ${{ steps.sha.outputs.short_sha }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
         run: |
+          { set +x; } 2>/dev/null
           MSG="Released $RELEASE_TAG"
           if [ "$STATUS" != "success" ]; then
              MSG="Release failed for $RELEASE_TAG"

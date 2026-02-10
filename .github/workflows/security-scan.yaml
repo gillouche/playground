@@ -2,7 +2,6 @@ name: Nightly Security Scan
 
 on:
   schedule:
-    # Run at 2 AM UTC every day
     - cron: '0 2 * * *'
   workflow_dispatch:
 
@@ -16,24 +15,16 @@ env:
   TRIVY_CACHE_DIR: /home/runner/.cache/trivy
 
 jobs:
-  # Security gate for self-hosted runners
   security-check:
     name: Security Check
     runs-on: ubuntu-latest
     if: github.repository_owner == 'gillouche'
     outputs:
-      is_safe: ${{ steps.check.outputs.is_safe }}
+      is_safe: ${{ steps.gate.outputs.is_safe }}
     steps:
-      - name: Verify repository ownership
-        id: check
-        run: |
-          if [[ "${{ github.repository }}" != "gillouche/playground" ]]; then
-            echo "::error::Repository mismatch - blocking execution"
-            echo "is_safe=false" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
-          echo "is_safe=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+      - uses: gillouche/homelab-ci/actions/security-gate@main
+        id: gate
 
   discover-services:
     name: Discover Services
@@ -51,25 +42,24 @@ jobs:
           persist-credentials: false
 
       - name: Setup Nix Environment
-        uses: ./.github/actions/setup-nix-env
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+        with:
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Find all services
         id: services
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BAZEL_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BAZEL_CACHE_SECRET_KEY }}
         run: |
-          # Find all services with oci_load targets
-          SERVICES=$(nix develop \
-            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
-            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bazel query "kind(oci_load, //apps/...)" 2>/dev/null | \
+          { set +x; } 2>/dev/null
+          SERVICES=$(nix develop ./nix#ci --command bazel query "kind(oci_load, //apps/...)" 2>/dev/null | \
             grep "^//" | \
             while read target; do
-              # target is like //apps/demo-app/greeting-service:greeting-service_load
-              # Extract package path (before the colon)
               package="${target%:*}"
               package="${package#//}"
-              # Extract target name (after the colon)
               target_name="${target##*:}"
-              # Service name is the target without _load suffix
               name="${target_name%_load}"
               echo "{\"name\": \"$name\", \"package\": \"$package\", \"target\": \"$target_name\"}"
             done | jq -sc '.')
@@ -94,36 +84,30 @@ jobs:
           persist-credentials: false
 
       - name: Setup Nix Environment
-        uses: ./.github/actions/setup-nix-env
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+        with:
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
-      - name: Build and Scan
+
+      - name: Build Image
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BAZEL_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BAZEL_CACHE_SECRET_KEY }}
         run: |
-          nix develop \
-            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
-            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bash -c '
-            set -e
+          { set +x; } 2>/dev/null
+          nix develop ./nix#ci --command bazel run --config=ci //${{ matrix.service.package }}:${{ matrix.service.target }}
 
-            echo "Building image for ${{ matrix.service.name }}..."
-            bazel run --config=ci //${{ matrix.service.package }}:${{ matrix.service.target }}
+      - name: Trivy Scan
+        uses: gillouche/homelab-ci/actions/trivy-scan@main
+        with:
+          image: ${{ matrix.service.name }}:latest
+          trivyignore: .trivyignore
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
 
-            echo "Scanning image for vulnerabilities..."
-            trivy image --exit-code 0 --severity HIGH,CRITICAL --format json --output trivy-results.json ${{ matrix.service.name }}:latest
-
-            if [ -f trivy-results.json ]; then
-               ISSUES=$(jq -r '\''if .Results then (.Results[]? | .Vulnerabilities[]? | "- " + .PkgName + " (" + .VulnerabilityID + "): " + .Title) else empty end'\'' trivy-results.json | head -c 1900)
-
-               if [ -n "$ISSUES" ]; then
-                   echo "Critical/High Vulnerabilities found:"
-                   echo "$ISSUES"
-                   ./tools/ci/notify_discord.sh "WARNING" "Trivy Scan: ${{ matrix.service.name }}" "Found Critical/High Vulnerabilities:\n$ISSUES"
-                   echo "${{ matrix.service.name }}" > vulnerable-service.txt
-                   exit 1
-               else
-                   echo "No critical vulnerabilities found."
-               fi
-            fi
-          '
+      - name: Flag Vulnerability
+        if: failure()
+        run: echo "${{ matrix.service.name }}" > vulnerable-service.txt
 
       - name: Upload Vulnerability Artifact
         uses: actions/upload-artifact@v4
@@ -156,15 +140,12 @@ jobs:
           merge-multiple: true
 
       - name: Send completion notification
-        run: |
-          # Check for vulnerabilities
-          if [ -d "issues" ] && [ "$(ls -A issues)" ]; then
-             VULNERABLE_SERVICES=$(cat issues/* | tr '\n' ', ' | sed 's/, $//')
-             ./tools/ci/notify_discord.sh "WARNING" "Nightly Security Scan" "Vulnerabilities found in the following services: $VULNERABLE_SERVICES. Check individual notifications for details."
-          elif [ "${{ needs.scan-service.result }}" != "success" ] && [ "${{ needs.scan-service.result }}" != "skipped" ]; then
-             # skipped means discover found nothing, which is fine. Not sure if Result is success or skipped then.
-             # If discover failed, scan is skipped/cancelled.
-             ./tools/ci/notify_discord.sh "FAILURE" "Nightly Security Scan" "Security execution failed (Build or Infra error). Check workflow."
-          else
-             ./tools/ci/notify_discord.sh "SUCCESS" "Nightly Security Scan" "All services scanned successfully. No critical vulnerabilities found."
-          fi
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
+          status: ${{ needs.scan-service.result == 'success' && 'success' || 'failure' }}
+          title: Nightly Security Scan
+          message: >-
+             ${{ needs.scan-service.result == 'success' &&
+             'All services scanned successfully. No critical vulnerabilities found.' ||
+             'Security scan found issues. Check individual notifications.' }}

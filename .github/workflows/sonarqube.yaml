@@ -14,31 +14,16 @@ permissions:
   id-token: none
 
 jobs:
-  # Security gate for self-hosted runners
   security-check:
     name: Security Check
     runs-on: ubuntu-latest
     if: github.repository_owner == 'gillouche'
     outputs:
-      is_safe: ${{ steps.check.outputs.is_safe }}
+      is_safe: ${{ steps.gate.outputs.is_safe }}
     steps:
-      - name: Verify repository ownership
-        id: check
-        run: |
-          # Block forks from running on self-hosted runners
-          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
-            echo "::error::Fork PRs cannot run on self-hosted runners"
-            echo "is_safe=false" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
-          if [[ "${{ github.repository }}" != "gillouche/playground" ]]; then
-            echo "::error::Repository mismatch - blocking execution"
-            echo "is_safe=false" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
-          echo "is_safe=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+      - uses: gillouche/homelab-ci/actions/security-gate@main
+        id: gate
 
   discover-services:
     name: Discover Services
@@ -58,12 +43,19 @@ jobs:
       - name: Find all services
         id: services
         run: |
+          { set +x; } 2>/dev/null
           SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type d ! -name deploy ! -name monitoring ! -name __pycache__ | \
             while read -r dir; do
               app=$(basename "$(dirname "$dir")")
               service=$(basename "$dir")
               project_key="${app}:${service}"
-              echo "{\"app\": \"$app\", \"service\": \"$service\", \"path\": \"$dir\", \"project_key\": \"$project_key\"}"
+              # Create JSON object using jq
+              jq -n -c \
+                --arg app "$app" \
+                --arg service "$service" \
+                --arg path "$dir" \
+                --arg pk "$project_key" \
+                '{app: $app, service: $service, path: $path, project_key: $pk}'
             done | jq -sc '.')
           echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
           echo "Found services: $SERVICES"
@@ -86,14 +78,16 @@ jobs:
           persist-credentials: false
 
       - name: Setup Nix Environment
-        uses: ./.github/actions/setup-nix-env
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+        with:
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
 
       - name: Run Tests with Coverage
         run: |
-          nix develop \
-            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
-            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bash -c '
+          { set +x; } 2>/dev/null
+          nix develop ./nix#ci --command bash -c '
             set -e
 
             SERVICE_PATH="${{ matrix.service.path }}"
@@ -157,13 +151,14 @@ jobs:
               fi
             fi
           '
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Run SonarQube Scanner
         run: |
-          nix develop \
-            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
-            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bash -c '
+          { set +x; } 2>/dev/null
+          nix develop ./nix#ci --command bash -c '
             set -e
 
             SERVICE_PATH="${{ matrix.service.path }}"
@@ -206,3 +201,8 @@ jobs:
 
             sonar-scanner "${SONAR_ARGS[@]}"
           '
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.NIX_CACHE_SECRET_KEY }}

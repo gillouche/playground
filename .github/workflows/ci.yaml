@@ -16,31 +16,16 @@ permissions:
   id-token: none
 
 jobs:
-  # Security gate for self-hosted runners
   security-check:
     name: Security Check
     runs-on: ubuntu-latest
     if: github.repository_owner == 'gillouche'
     outputs:
-      is_safe: ${{ steps.check.outputs.is_safe }}
+      is_safe: ${{ steps.gate.outputs.is_safe }}
     steps:
-      - name: Verify repository ownership
-        id: check
-        run: |
-          # Block forks from running on self-hosted runners
-          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
-            echo "::error::Fork PRs cannot run on self-hosted runners"
-            echo "is_safe=false" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
-          if [[ "${{ github.repository }}" != "gillouche/playground" ]]; then
-            echo "::error::Repository mismatch - blocking execution"
-            echo "is_safe=false" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
-          echo "is_safe=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+      - uses: gillouche/homelab-ci/actions/security-gate@main
+        id: gate
 
   build-and-test:
     name: Build & Test
@@ -56,53 +41,78 @@ jobs:
           persist-credentials: false
 
       - name: Setup Nix Environment
-        uses: ./.github/actions/setup-nix-env
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+        with:
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
 
       - name: Send Start Notification
-        run: |
-          ./tools/ci/notify_discord.sh START "CI Pipeline" "Build started for commit $GITHUB_SHA"
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
+          status: info
+          title: CI Pipeline
+          message: "Build started for commit ${{ github.sha }}"
 
       - name: Build all applications
         run: |
-          nix develop \
-            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
-            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bazel build --config=ci //apps/...
+          { set +x; } 2>/dev/null
+          nix develop ./nix#ci --command bazel build --config=ci //apps/...
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BAZEL_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BAZEL_CACHE_SECRET_KEY }}
 
       - name: Run all tests
         run: |
-          nix develop \
-            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
-            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command bazel test --config=ci //apps/...
+          { set +x; } 2>/dev/null
+          nix develop ./nix#ci --command bazel test --config=ci //apps/...
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BAZEL_CACHE_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BAZEL_CACHE_SECRET_KEY }}
 
       - name: Smart push images (Main Only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          echo "$NEXUS_PASSWORD" | docker login nexus.gillouche.homelab -u "$NEXUS_USERNAME" --password-stdin
+          { set +x; } 2>/dev/null
+          echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab \
+            -u "${{ secrets.NEXUS_USERNAME }}" \
+            --password-stdin
 
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
           echo "Smart pushing ARM64 images (only if changed)..."
 
-          nix develop \
-            --extra-substituters "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
-            --extra-trusted-public-keys "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" \
-            ./nix#ci --command python3 tools/ci/smart_push.py --tag latest --tag $SHORT_SHA
+          nix develop ./nix#ci --command python3 tools/ci/smart_push.py --tag latest --tag $SHORT_SHA
+        env:
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          # smart_push.py uses these too
+          DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
 
       - name: Push to Nix Cache (Main Only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
+          { set +x; } 2>/dev/null
           echo "Pushing build artifacts to Nix Cache..."
-          export AWS_ACCESS_KEY_ID=$NIX_ACCESS_KEY_ID
-          export AWS_SECRET_ACCESS_KEY=$NIX_SECRET_ACCESS_KEY
-          nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" ./nix#ci
+          export AWS_ACCESS_KEY_ID="${{ secrets.NIX_CACHE_ACCESS_KEY }}"
+          export AWS_SECRET_ACCESS_KEY="${{ secrets.NIX_CACHE_SECRET_KEY }}"
+          nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
+            ./nix#ci
 
       - name: Send Success Notification
         if: success()
-        run: |
-          ./tools/ci/notify_discord.sh SUCCESS "CI Pipeline" "Build completed successfully for commit $GITHUB_SHA"
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
+          status: success
+          title: CI Pipeline
+          message: "Build completed successfully for commit ${{ github.sha }}"
 
       - name: Send Failure Notification
         if: failure()
-        run: |
-          ./tools/ci/notify_discord.sh FAILURE "CI Pipeline" "Build failed for commit $GITHUB_SHA"
+        uses: gillouche/homelab-ci/actions/discord-notify@main
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
+          status: failure
+          title: CI Pipeline
+          message: "Build failed for commit ${{ github.sha }}"
