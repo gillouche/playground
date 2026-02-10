@@ -10,7 +10,7 @@ data:
   COMPONENT: infra-check-service
   APP_VERSION: dev
   COMPONENT_VERSION: b0abbf6
-  GIT_TAG: b0abbf6
+  GIT_TAG: demo-app/infra-check-service/b0abbf6
   GIT_COMMIT: b0abbf62ab029d14e460ef4e0c4ae9bd071324c7
   LOG_LEVEL: INFO
   POSTGRES_HOST: postgres.playground-infra-dev.svc.cluster.local

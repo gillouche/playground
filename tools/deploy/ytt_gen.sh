@@ -170,7 +170,7 @@ generate_component_env() {
 
         # Run ytt with context
         $cmd -f "$template" \
-            -f "$base_dir/values.yaml" \
+            --data-values-file "$base_dir/values.yaml" \
             -v component="$component" \
             -v app="$app" \
             -v env="$env" \

@@ -18,7 +18,6 @@ spec:
       - name: traffic-generator-service
         image: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:latest
         imagePullPolicy: Always
-        command: ["python", "/app/src/main.py"]
         envFrom:
         - configMapRef:
             name: traffic-generator-service-config

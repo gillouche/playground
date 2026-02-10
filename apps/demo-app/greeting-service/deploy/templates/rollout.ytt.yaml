@@ -78,8 +78,6 @@ spec:
           mountPath: /tmp
         #@ end
 
-        command: ["/usr/local/bin/python"]
-        args: ["/app/src/main.py"]
 
 
         envFrom:
