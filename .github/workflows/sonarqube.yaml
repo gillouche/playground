@@ -80,9 +80,9 @@ jobs:
       - name: Setup Nix Environment
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
         with:
+          profile: "nix"
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
-
 
       - name: Run Tests with Coverage
         run: |
@@ -152,8 +152,7 @@ jobs:
             fi
           '
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+          AWS_PROFILE: "nix"
 
       - name: Run SonarQube Scanner
         run: |
@@ -204,5 +203,4 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+          AWS_PROFILE: "nix"

@@ -40,11 +40,19 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Setup Nix Environment
+      - name: Setup Nix Cache Profile
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
         with:
+          profile: nix
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
+      - name: Setup Bazel Cache Profile
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+        with:
+          profile: bazel
+          access-key-id: ${{ secrets.BAZEL_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.BAZEL_CACHE_SECRET_KEY }}
 
 
       - name: Send Start Notification
@@ -60,16 +68,14 @@ jobs:
           { set +x; } 2>/dev/null
           nix develop ./nix#ci --command bazel build --config=ci //apps/...
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.BAZEL_CACHE_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.BAZEL_CACHE_SECRET_KEY }}
+          AWS_PROFILE: bazel
 
       - name: Run all tests
         run: |
           { set +x; } 2>/dev/null
           nix develop ./nix#ci --command bazel test --config=ci //apps/...
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.BAZEL_CACHE_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.BAZEL_CACHE_SECRET_KEY }}
+          AWS_PROFILE: bazel
 
       - name: Smart push images (Main Only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -86,6 +92,7 @@ jobs:
         env:
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          AWS_PROFILE: bazel
           # smart_push.py uses these too
           DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
 
@@ -94,6 +101,7 @@ jobs:
         run: |
           { set +x; } 2>/dev/null
           echo "Pushing build artifacts to Nix Cache..."
+          export AWS_PROFILE="nix"
           export AWS_ACCESS_KEY_ID="${{ secrets.NIX_CACHE_ACCESS_KEY }}"
           export AWS_SECRET_ACCESS_KEY="${{ secrets.NIX_CACHE_SECRET_KEY }}"
           nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http" \
