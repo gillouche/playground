@@ -81,6 +81,23 @@ async def worker(client: httpx.AsyncClient):
         await asyncio.sleep(0.01)
 
 
+async def wait_for_target(client: httpx.AsyncClient):
+    """Wait for the target service to become healthy before sending traffic."""
+    interval = 5
+    logger.info(f"Waiting for target {TARGET_URL} to become ready...")
+    while running_state["running"]:
+        try:
+            resp = await client.get(TARGET_URL, timeout=5.0)
+            if resp.status_code < 500:
+                logger.info(f"Target {TARGET_URL} is ready (status {resp.status_code})")
+                return True
+        except httpx.RequestError:
+            pass
+        logger.info(f"Target not ready, retrying in {interval}s...")
+        await asyncio.sleep(interval)
+    return False
+
+
 async def main():
     setup_opentelemetry()
     logger.info(
@@ -91,6 +108,10 @@ async def main():
     limits = httpx.Limits(max_keepalive_connections=CONCURRENCY, max_connections=CONCURRENCY + 5)
 
     async with httpx.AsyncClient(limits=limits) as client:
+        if not await wait_for_target(client):
+            logger.info("Shutting down before target became ready.")
+            return
+
         tasks = [asyncio.create_task(worker(client)) for _ in range(CONCURRENCY)]
 
         # Wait until a signal sets running = False
