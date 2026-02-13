@@ -31,7 +31,11 @@ pip.parse(
     hub_name = "pip_greeting_service",
     python_version = "3.12",
     requirements_lock = "//apps/demo-app/greeting-service:requirements_lock.txt",
-    download_only = True,  # Only use pre-built wheels, never compile
+    download_only = True,
+    experimental_target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+    ],
 )
 
 # Greeting Service dev dependencies (for tests)
@@ -40,6 +44,10 @@ pip.parse(
     python_version = "3.12",
     requirements_lock = "//apps/demo-app/greeting-service:requirements_dev_lock.txt",
     download_only = True,
+    experimental_target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+    ],
 )
 
 # Infra Check Service dependencies
@@ -48,6 +56,10 @@ pip.parse(
     python_version = "3.12",
     requirements_lock = "//apps/demo-app/infra-check-service:requirements_lock.txt",
     download_only = True,
+    experimental_target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+    ],
 )
 
 # Infra Check Service dev dependencies (for tests)
@@ -56,6 +68,10 @@ pip.parse(
     python_version = "3.12",
     requirements_lock = "//apps/demo-app/infra-check-service:requirements_dev_lock.txt",
     download_only = True,
+    experimental_target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+    ],
 )
 
 # Traffic Generator Service dependencies
@@ -64,6 +80,10 @@ pip.parse(
     python_version = "3.12",
     requirements_lock = "//apps/demo-app/traffic-generator-service:requirements_lock.txt",
     download_only = True,
+    experimental_target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+    ],
 )
 
 # Traffic Generator Service dev dependencies (for tests)
@@ -72,6 +92,10 @@ pip.parse(
     python_version = "3.12",
     requirements_lock = "//apps/demo-app/traffic-generator-service:requirements_dev_lock.txt",
     download_only = True,
+    experimental_target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+    ],
 )
 
 use_repo(
