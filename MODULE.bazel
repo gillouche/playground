@@ -30,72 +30,60 @@ pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
     hub_name = "pip_greeting_service",
     python_version = "3.12",
-    requirements_lock = "//apps/demo-app/greeting-service:requirements_lock.txt",
+    requirements_by_platform = {
+        "//apps/demo-app/greeting-service:requirements_lock.txt": "cp312_linux_aarch64,cp312_linux_x86_64",
+    },
     download_only = True,
-    experimental_target_platforms = [
-        "linux_aarch64",
-        "linux_x86_64",
-    ],
 )
 
 # Greeting Service dev dependencies (for tests)
 pip.parse(
     hub_name = "pip_greeting_service_dev",
     python_version = "3.12",
-    requirements_lock = "//apps/demo-app/greeting-service:requirements_dev_lock.txt",
+    requirements_by_platform = {
+        "//apps/demo-app/greeting-service:requirements_dev_lock.txt": "cp312_linux_aarch64,cp312_linux_x86_64",
+    },
     download_only = True,
-    experimental_target_platforms = [
-        "linux_aarch64",
-        "linux_x86_64",
-    ],
 )
 
 # Infra Check Service dependencies
 pip.parse(
     hub_name = "pip_infra_check_service",
     python_version = "3.12",
-    requirements_lock = "//apps/demo-app/infra-check-service:requirements_lock.txt",
+    requirements_by_platform = {
+        "//apps/demo-app/infra-check-service:requirements_lock.txt": "cp312_linux_aarch64,cp312_linux_x86_64",
+    },
     download_only = True,
-    experimental_target_platforms = [
-        "linux_aarch64",
-        "linux_x86_64",
-    ],
 )
 
 # Infra Check Service dev dependencies (for tests)
 pip.parse(
     hub_name = "pip_infra_check_service_dev",
     python_version = "3.12",
-    requirements_lock = "//apps/demo-app/infra-check-service:requirements_dev_lock.txt",
+    requirements_by_platform = {
+        "//apps/demo-app/infra-check-service:requirements_dev_lock.txt": "cp312_linux_aarch64,cp312_linux_x86_64",
+    },
     download_only = True,
-    experimental_target_platforms = [
-        "linux_aarch64",
-        "linux_x86_64",
-    ],
 )
 
 # Traffic Generator Service dependencies
 pip.parse(
     hub_name = "pip_traffic_generator_service",
     python_version = "3.12",
-    requirements_lock = "//apps/demo-app/traffic-generator-service:requirements_lock.txt",
+    requirements_by_platform = {
+        "//apps/demo-app/traffic-generator-service:requirements_lock.txt": "cp312_linux_aarch64,cp312_linux_x86_64",
+    },
     download_only = True,
-    experimental_target_platforms = [
-        "linux_aarch64",
-        "linux_x86_64",
-    ],
 )
 
 # Traffic Generator Service dev dependencies (for tests)
 pip.parse(
     hub_name = "pip_traffic_generator_service_dev",
     python_version = "3.12",
-    requirements_lock = "//apps/demo-app/traffic-generator-service:requirements_dev_lock.txt",
+    requirements_by_platform = {
+        "//apps/demo-app/traffic-generator-service:requirements_dev_lock.txt": "cp312_linux_aarch64,cp312_linux_x86_64",
+    },
     download_only = True,
-    experimental_target_platforms = [
-        "linux_aarch64",
-        "linux_x86_64",
-    ],
 )
 
 use_repo(
