@@ -108,7 +108,7 @@ def promote_app(target_env, app, version, commit=False):
         for comp in images.keys():
             print(f"  Regenerating {comp} for {target_env}...")
             result = subprocess.run(
-                ["bazel", "run", "//tools:gen_manifests", "--", app, comp, target_env],
+                ["bazel", "run", "//tools:gen_manifests", "--", "--env", target_env, app, comp],
                 capture_output=False
             )
             if result.returncode != 0:
