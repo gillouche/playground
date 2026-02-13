@@ -1,26 +1,26 @@
 metadata:
   app: demo-app
   version: dev
-  created_at: '2026-02-13T07:28:38.014818+00:00'
+  created_at: '2026-02-13T19:33:12.295988+00:00'
 images:
   greeting-service:
-    tag: 240453e
-    commit: 240453ecc8fede951f0626591d9addf5e6d1e81a
-    full_tag: demo-app/greeting-service/240453e
+    tag: 44ba71b
+    commit: 44ba71b205b4df9d747eb2b1a74790d8da1b57fc
+    full_tag: demo-app/greeting-service/44ba71b
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:240453e
-      digest: sha256:cc1a2f7127fa7486a53edaa8c0dde1900a0ea097ceb81f3e13497284768e9314
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:44ba71b
+      digest: sha256:467d6718196aa0f2db6c7c7b13362a2afcc8691a850f9ff9fea42dfdaec9080d
   infra-check-service:
-    tag: 240453e
-    commit: 240453ecc8fede951f0626591d9addf5e6d1e81a
-    full_tag: demo-app/infra-check-service/240453e
+    tag: 44ba71b
+    commit: 44ba71b205b4df9d747eb2b1a74790d8da1b57fc
+    full_tag: demo-app/infra-check-service/44ba71b
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:240453e
-      digest: sha256:4bee65ea27be0a89049788320b483d9d72dfb3b827d30de401f6a9145edf0cef
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:44ba71b
+      digest: sha256:c0ddfe1f3d06432df1275202722f6c941241f99c26e9ad10d7273dc64be98956
   traffic-generator-service:
-    tag: 240453e
-    commit: 240453ecc8fede951f0626591d9addf5e6d1e81a
-    full_tag: demo-app/traffic-generator-service/240453e
+    tag: 44ba71b
+    commit: 44ba71b205b4df9d747eb2b1a74790d8da1b57fc
+    full_tag: demo-app/traffic-generator-service/44ba71b
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:240453e
-      digest: sha256:9e665fef0025a1918e07329924b63e6ab7ff36e89ed7e0621fe7b5b22d3d2f73
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:44ba71b
+      digest: sha256:61dffc200e5dadc767b3864a482359827fe806e4ebb0a6b7f6f7876bbb27e5be
