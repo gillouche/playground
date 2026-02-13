@@ -31,9 +31,9 @@ pip.parse(
     hub_name = "pip_greeting_service",
     python_version = "3.12",
     requirements_by_platform = {
-        "//apps/demo-app/greeting-service:requirements_lock.txt": "cp312_linux_aarch64,cp312_linux_x86_64",
+        "//apps/demo-app/greeting-service:requirements_lock.txt": "linux_aarch64,linux_x86_64",
     },
-    download_only = True,
+    experimental_index_url = "https://pypi.org/simple",
 )
 
 # Greeting Service dev dependencies (for tests)
@@ -41,9 +41,9 @@ pip.parse(
     hub_name = "pip_greeting_service_dev",
     python_version = "3.12",
     requirements_by_platform = {
-        "//apps/demo-app/greeting-service:requirements_dev_lock.txt": "cp312_linux_aarch64,cp312_linux_x86_64",
+        "//apps/demo-app/greeting-service:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64",
     },
-    download_only = True,
+    experimental_index_url = "https://pypi.org/simple",
 )
 
 # Infra Check Service dependencies
@@ -51,9 +51,9 @@ pip.parse(
     hub_name = "pip_infra_check_service",
     python_version = "3.12",
     requirements_by_platform = {
-        "//apps/demo-app/infra-check-service:requirements_lock.txt": "cp312_linux_aarch64,cp312_linux_x86_64",
+        "//apps/demo-app/infra-check-service:requirements_lock.txt": "linux_aarch64,linux_x86_64",
     },
-    download_only = True,
+    experimental_index_url = "https://pypi.org/simple",
 )
 
 # Infra Check Service dev dependencies (for tests)
@@ -61,9 +61,9 @@ pip.parse(
     hub_name = "pip_infra_check_service_dev",
     python_version = "3.12",
     requirements_by_platform = {
-        "//apps/demo-app/infra-check-service:requirements_dev_lock.txt": "cp312_linux_aarch64,cp312_linux_x86_64",
+        "//apps/demo-app/infra-check-service:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64",
     },
-    download_only = True,
+    experimental_index_url = "https://pypi.org/simple",
 )
 
 # Traffic Generator Service dependencies
@@ -71,9 +71,9 @@ pip.parse(
     hub_name = "pip_traffic_generator_service",
     python_version = "3.12",
     requirements_by_platform = {
-        "//apps/demo-app/traffic-generator-service:requirements_lock.txt": "cp312_linux_aarch64,cp312_linux_x86_64",
+        "//apps/demo-app/traffic-generator-service:requirements_lock.txt": "linux_aarch64,linux_x86_64",
     },
-    download_only = True,
+    experimental_index_url = "https://pypi.org/simple",
 )
 
 # Traffic Generator Service dev dependencies (for tests)
@@ -81,9 +81,9 @@ pip.parse(
     hub_name = "pip_traffic_generator_service_dev",
     python_version = "3.12",
     requirements_by_platform = {
-        "//apps/demo-app/traffic-generator-service:requirements_dev_lock.txt": "cp312_linux_aarch64,cp312_linux_x86_64",
+        "//apps/demo-app/traffic-generator-service:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64",
     },
-    download_only = True,
+    experimental_index_url = "https://pypi.org/simple",
 )
 
 use_repo(
