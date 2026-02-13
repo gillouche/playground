@@ -1,37 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-patches:
-  - path: greeting-service-configmap.yaml
-  - path: infra-check-service-configmap.yaml
-  - path: traffic-generator-patch.yaml
-  - path: traffic-generator-service-configmap.yaml
-
 resources:
   - ../base
   - ../rollouts-base
-  - ../../greeting-service/deploy/base
-  - greeting-service-ingress.yaml
-  - greeting-service-rollout.yaml
-  - greeting-service-servicemonitor.yaml
-  - greeting-service-scaledobject.yaml
-  - ../../infra-check-service/deploy/base
-  - infra-check-service-egress-networkpolicy.yaml
-  - infra-check-service-configmap.yaml
-  - infra-check-service-ingress.yaml
-  - infra-check-service-rollout.yaml
-  - infra-check-service-servicemonitor.yaml
-  - infra-check-service-scaledobject.yaml
-  - infra-check-credentials.yaml
-  - ../../traffic-generator-service/deploy/with-hpa
   - monitoring-grafana-dashboard.yaml
-
-images:
-  - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
-    newTag: b5929af
-  - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
-    newTag: b5929af
-  - name: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service
-    newTag: b5929af
 
 labels:
   - pairs:

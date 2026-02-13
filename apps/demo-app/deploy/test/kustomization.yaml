@@ -3,34 +3,7 @@ kind: Kustomization
 resources:
   - ../base
   - ../rollouts-base
-  - ../../greeting-service/deploy/base
-  - greeting-service-ingress.yaml
-  - greeting-service-rollout.yaml
-  - greeting-service-scaledobject.yaml
-  - ../../infra-check-service/deploy/base
-  - infra-check-service-egress-networkpolicy.yaml
-  - infra-check-service-configmap.yaml
-  - infra-check-service-ingress.yaml
-  - infra-check-service-rollout.yaml
-  - infra-check-service-servicemonitor.yaml
-  - infra-check-service-scaledobject.yaml
-  - infra-check-credentials.yaml
-  - ../../traffic-generator-service/deploy/with-hpa
   - monitoring-grafana-dashboard.yaml
-
-patches:
-  - path: greeting-service-configmap.yaml
-  - path: traffic-generator-service-configmap.yaml
-
-
-
-images:
-  - name: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service
-    newTag: v0.0.1
-  - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
-    newTag: v0.0.7
-  - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
-    newTag: v0.0.5
 
 labels:
   - pairs:
