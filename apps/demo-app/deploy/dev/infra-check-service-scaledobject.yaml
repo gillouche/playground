@@ -12,7 +12,7 @@ spec:
     kind: Rollout
     name: infra-check-service
   minReplicaCount: 0
-  maxReplicaCount: 0
+  maxReplicaCount: 1
   pollingInterval: 30
   cooldownPeriod: 300
   triggers:

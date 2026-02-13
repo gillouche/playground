@@ -9,7 +9,7 @@ spec:
     name: traffic-generator-service
     kind: Deployment
   minReplicaCount: 0
-  maxReplicaCount: 0
+  maxReplicaCount: 1
   triggers:
   - type: cron
     metadata:
