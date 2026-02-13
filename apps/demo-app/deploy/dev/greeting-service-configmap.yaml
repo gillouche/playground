@@ -15,5 +15,5 @@ data:
   ENABLE_TRACING: "true"
   APP_VERSION: dev
   COMPONENT_VERSION: 44ba71b
-  GIT_TAG: 44ba71b
+  GIT_TAG: demo-app/greeting-service/44ba71b
   GIT_COMMIT: 44ba71b205b4df9d747eb2b1a74790d8da1b57fc
