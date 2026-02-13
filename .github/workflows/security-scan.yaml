@@ -41,27 +41,21 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+      - name: Setup Nix Cache Profile
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
         with:
           profile: "nix"
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
-      - name: Setup Nix Environment (bazel)
+      - name: Setup Nix Environment
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
-        with:
-          profile: "bazel"
-          access-key-id: ${{ secrets.BAZEL_CACHE_ACCESS_KEY }}
-          secret-access-key: ${{ secrets.BAZEL_CACHE_SECRET_KEY }}
 
       - name: Find all services
         id: services
-        env:
-          AWS_PROFILE: "bazel"
         run: |
           { set +x; } 2>/dev/null
-          SERVICES=$(nix develop ./nix#ci --command bazel query "kind(oci_load, //apps/...)" 2>/dev/null | \
+          SERVICES=$(nix develop ./nix#ci --command bazel query 'kind(oci_load, //apps/...)' 2>/dev/null | \
             grep "^//" | \
             while read target; do
               package="${target%:*}"
@@ -90,23 +84,17 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+      - name: Setup Nix Cache Profile
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
         with:
           profile: "nix"
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
-      - name: Setup Nix Environment (bazel)
+      - name: Setup Nix Environment
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
-        with:
-          profile: "bazel"
-          access-key-id: ${{ secrets.BAZEL_CACHE_ACCESS_KEY }}
-          secret-access-key: ${{ secrets.BAZEL_CACHE_SECRET_KEY }}
 
       - name: Build Image
-        env:
-          AWS_PROFILE: "bazel"
         run: |
           { set +x; } 2>/dev/null
           nix develop ./nix#ci --command bazel run --config=ci //${{ matrix.service.package }}:${{ matrix.service.target }}

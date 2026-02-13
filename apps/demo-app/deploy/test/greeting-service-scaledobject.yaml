@@ -11,8 +11,8 @@ spec:
     apiVersion: argoproj.io/v1alpha1
     kind: Rollout
     name: greeting-service
-  minReplicaCount: 1
-  maxReplicaCount: 5
+  minReplicaCount: 0
+  maxReplicaCount: 0
   pollingInterval: 30
   cooldownPeriod: 300
   triggers:

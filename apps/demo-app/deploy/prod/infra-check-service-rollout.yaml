@@ -59,10 +59,6 @@ spec:
         volumeMounts:
         - name: tmp
           mountPath: /tmp
-        command:
-        - /usr/local/bin/python
-        args:
-        - /app/src/main.py
         envFrom:
         - configMapRef:
             name: infra-check-service-config

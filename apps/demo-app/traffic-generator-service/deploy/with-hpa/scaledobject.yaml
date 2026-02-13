@@ -8,8 +8,8 @@ spec:
   scaleTargetRef:
     name: traffic-generator-service
     kind: Deployment
-  minReplicaCount: 1
-  maxReplicaCount: 10
+  minReplicaCount: 0
+  maxReplicaCount: 0
   triggers:
   - type: cron
     metadata:
