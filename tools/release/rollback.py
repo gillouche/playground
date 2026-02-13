@@ -82,7 +82,12 @@ def rollback(env, app, version):
         print(f"  - {comp}: {tag}")
 
     print("Regenerating manifests...")
-    subprocess.run(["bazel", "run", "//tools:gen_manifests"], capture_output=False)
+    for comp in images.keys():
+        print(f"  Regenerating {comp} for {env}...")
+        subprocess.run(
+            ["bazel", "run", "//tools:gen_manifests", "--", "--env", env, app, comp],
+            capture_output=False,
+        )
 
 def main():
     parser = argparse.ArgumentParser(description="Rollback Test or Prod environment to archived version")

@@ -12,9 +12,9 @@ data:
   COMPONENT: traffic-generator-service
   LOG_LEVEL: INFO
   APP_VERSION: dev
-  COMPONENT_VERSION: 44ba71b
-  GIT_TAG: demo-app/traffic-generator-service/44ba71b
-  GIT_COMMIT: 44ba71b205b4df9d747eb2b1a74790d8da1b57fc
+  COMPONENT_VERSION: 6fd6b0e
+  GIT_TAG: demo-app/traffic-generator-service/6fd6b0e
+  GIT_COMMIT: 6fd6b0ef80613f067c87145c7e6115121244364a
   TARGET_URL: http://greeting-service
   CONCURRENCY: "10"
   OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring.svc.cluster.local:4317

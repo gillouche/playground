@@ -1,26 +1,26 @@
 metadata:
   app: demo-app
   version: dev
-  created_at: '2026-02-13T19:33:12.295988+00:00'
+  created_at: '2026-02-13T20:25:24.621108+00:00'
 images:
   greeting-service:
-    tag: 44ba71b
-    commit: 44ba71b205b4df9d747eb2b1a74790d8da1b57fc
-    full_tag: demo-app/greeting-service/44ba71b
+    tag: 41b4a35
+    commit: 41b4a350904d342f9d98453695a5ac40f64055a7
+    full_tag: demo-app/greeting-service/41b4a35
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:44ba71b
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:41b4a35
       digest: sha256:467d6718196aa0f2db6c7c7b13362a2afcc8691a850f9ff9fea42dfdaec9080d
   infra-check-service:
-    tag: 44ba71b
-    commit: 44ba71b205b4df9d747eb2b1a74790d8da1b57fc
-    full_tag: demo-app/infra-check-service/44ba71b
+    tag: 41b4a35
+    commit: 41b4a350904d342f9d98453695a5ac40f64055a7
+    full_tag: demo-app/infra-check-service/41b4a35
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:44ba71b
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:41b4a35
       digest: sha256:c0ddfe1f3d06432df1275202722f6c941241f99c26e9ad10d7273dc64be98956
   traffic-generator-service:
-    tag: 44ba71b
-    commit: 44ba71b205b4df9d747eb2b1a74790d8da1b57fc
-    full_tag: demo-app/traffic-generator-service/44ba71b
+    tag: 6fd6b0e
+    commit: 6fd6b0ef80613f067c87145c7e6115121244364a
+    full_tag: demo-app/traffic-generator-service/6fd6b0e
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:44ba71b
-      digest: sha256:61dffc200e5dadc767b3864a482359827fe806e4ebb0a6b7f6f7876bbb27e5be
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:6fd6b0e
+      digest: sha256:cc6dc51caa55ea03495f74f13b76ac5266da48bb7b4c59136833d63752fe19ef
