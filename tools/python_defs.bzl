@@ -135,7 +135,7 @@ def python_application(
             name = name + "_image",
             base = base_image,
             tars = [":" + name + "_layer"],
-            entrypoint = ["/app/{}".format(name)],
+            entrypoint = ["/usr/local/bin/python3", "/app/{}".format(name)],
             workdir = "/app",
             env = dict({
                 "PYTHONUNBUFFERED": "1",
