@@ -49,7 +49,7 @@ def update_kustomization(app_name, env, images):
         pattern = re.compile(rf"(-\s+name: .*{app_name}/{component}.*?\n\s+newTag: ).*")
 
         if pattern.search(content):
-            new_content = pattern.sub(rf"\1{tag}", content)
+            new_content = pattern.sub(rf'\1"{tag}"', content)
             if content != new_content:
                 content = new_content
                 updated = True

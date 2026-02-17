@@ -21,7 +21,7 @@ KUSTOMIZATION="$PACKAGE/deploy/sandbox/kustomization.yaml"
 if [ -f "$KUSTOMIZATION" ]; then
     echo "Ensuring kustomization uses 'latest' tag..."
     # Use perl for portability between Mac and Linux
-    perl -pi -e 's/newTag: .*/newTag: latest/' "$KUSTOMIZATION"
+    perl -pi -e 's/newTag: .*/newTag: "latest"/' "$KUSTOMIZATION"
 else
     echo "Warning: Kustomization file not found at $KUSTOMIZATION"
 fi

@@ -221,7 +221,7 @@ def update_kustomization(app_name, env, images):
         pattern = re.compile(rf"(-\s+name: {re.escape(repo_name)}\s*\n\s+newTag: ).*")
 
         if pattern.search(content):
-            new_content = pattern.sub(rf"\g<1>{tag}", content)
+            new_content = pattern.sub(rf'\g<1>"{tag}"', content)
             if content != new_content:
                 content = new_content
                 updated = True
@@ -235,7 +235,7 @@ def update_kustomization(app_name, env, images):
             # Safe bet: append to the end of the `images:` list if possible, or just replace `images:` with `images:\n  - name...`
             # But regex sub is cleaner if we just find `images:` and insert after.
 
-            new_entry = f"  - name: {repo_name}\n    newTag: {tag}\n"
+            new_entry = f'  - name: {repo_name}\n    newTag: "{tag}"\n'
             content = content.replace("images:\n", f"images:\n{new_entry}")
             updated = True
 

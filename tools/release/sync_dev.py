@@ -177,7 +177,7 @@ def update_kustomization(app, component, tag):
 
     pattern = re.compile(rf"(-\s+name: .*{app}/{component}(?::\S+)?[\s\n]+newTag: ).*")
     if pattern.search(content):
-        content = pattern.sub(rf"\g<1>{tag}", content)
+        content = pattern.sub(rf'\g<1>"{tag}"', content)
         with open(kustomization_path, 'w') as f:
             f.write(content)
     else:
