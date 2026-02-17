@@ -30,7 +30,7 @@ def python_application(
         test_deps = [],
         data = [],
         env = {},
-        base_image = "@python_base_linux_arm64_v8",
+        base_image = "@python_base_linux_arm64",
         image_repository = "",
         visibility = ["//visibility:public"]):
     """

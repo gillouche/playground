@@ -100,15 +100,15 @@ use_repo(
 oci = use_extension("@rules_oci//oci:extensions.bzl", "oci")
 oci.pull(
     name = "python_base",
-    image = "index.docker.io/library/python",
+    image = "nexus.gillouche.homelab/docker-hosted/base/python-distroless",
     platforms = [
-        "linux/arm64/v8",
+        "linux/arm64",
         "linux/amd64",
     ],
-    tag = "3.12-slim",
-    digest = "sha256:43e4d702bbfe3bd6d5b743dc571b67c19121302eb172951a9b7b0149783a1c21",
+    tag = "3.12.12",
+    digest = "sha256:6cebf7b6ed5b872475d1b735b921a4f95fa4831680895cbd05ace26d086f5dcd",
 )
-use_repo(oci, "python_base", "python_base_linux_arm64_v8", "python_base_linux_amd64")
+use_repo(oci, "python_base", "python_base_linux_arm64", "python_base_linux_amd64")
 
 # Distroless base for future Go/Rust services (smaller, more secure)
 oci.pull(
