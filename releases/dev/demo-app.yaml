@@ -1,26 +1,26 @@
 metadata:
   app: demo-app
   version: dev
-  created_at: '2026-02-17T22:45:50.836262+00:00'
+  created_at: '2026-02-17T22:59:34.960571+00:00'
 images:
   greeting-service:
-    tag: 9697d7e
-    commit: 9697d7eb1460b70683c7aa0217072c5528bfaa92
-    full_tag: demo-app/greeting-service/9697d7e
+    tag: '2269718'
+    commit: 22697180eff7fcbca95d344bddb83316b980cadf
+    full_tag: demo-app/greeting-service/2269718
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:9697d7e
-      digest: sha256:b1e0cd7222985363f6f1ac18db634125a5e028694b2137abda2b2e3bb85c1ecd
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:2269718
+      digest: sha256:8b020107388441059d66c53f8f6e66e5a9a8aa083b45871b4b8496f520951937
   infra-check-service:
-    tag: 9697d7e
-    commit: 9697d7eb1460b70683c7aa0217072c5528bfaa92
-    full_tag: demo-app/infra-check-service/9697d7e
+    tag: '2269718'
+    commit: 22697180eff7fcbca95d344bddb83316b980cadf
+    full_tag: demo-app/infra-check-service/2269718
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:9697d7e
-      digest: sha256:2755903d4f79e33b479d84fa3045b96a222d8870ab5836750f59d73004aae78c
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:2269718
+      digest: sha256:0947304ff6d7fe3c39bcfdac0fde8e6dac3ca64c63dbb364c66bb8b31f4f8b56
   traffic-generator-service:
-    tag: 9697d7e
-    commit: 9697d7eb1460b70683c7aa0217072c5528bfaa92
-    full_tag: demo-app/traffic-generator-service/9697d7e
+    tag: '2269718'
+    commit: 22697180eff7fcbca95d344bddb83316b980cadf
+    full_tag: demo-app/traffic-generator-service/2269718
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:9697d7e
-      digest: sha256:c98ffcf2967286a01200bfa8784f795ba0123b557f76a22e5f9179fc0eb82f7d
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:2269718
+      digest: sha256:f3b2a4a7e6813bc750ca5ddf7e453f6cbf93b67a45e23da0941d93ccd3640bae

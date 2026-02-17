@@ -27,11 +27,11 @@ resources:
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
-    newTag: 9697d7e
+    newTag: 2269718
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
-    newTag: 9697d7e
+    newTag: 2269718
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service
-    newTag: 9697d7e
+    newTag: 2269718
 
 labels:
   - pairs:
