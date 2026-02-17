@@ -58,6 +58,13 @@ jobs:
           title: CI Pipeline
           message: "Build started for commit ${{ github.sha }}"
 
+      - name: Login to Nexus registry
+        run: |
+          { set +x; } 2>/dev/null
+          echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab \
+            -u "${{ secrets.NEXUS_USERNAME }}" \
+            --password-stdin
+
       - name: Build all applications
         run: |
           { set +x; } 2>/dev/null
@@ -72,10 +79,6 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           { set +x; } 2>/dev/null
-          echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab \
-            -u "${{ secrets.NEXUS_USERNAME }}" \
-            --password-stdin
-
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
           echo "Smart pushing ARM64 images (only if changed)..."
 
