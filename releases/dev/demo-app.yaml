@@ -1,26 +1,26 @@
 metadata:
   app: demo-app
   version: dev
-  created_at: '2026-02-13T20:25:24.621108+00:00'
+  created_at: '2026-02-17T22:29:20.845841+00:00'
 images:
   greeting-service:
-    tag: 41b4a35
-    commit: 41b4a350904d342f9d98453695a5ac40f64055a7
-    full_tag: demo-app/greeting-service/41b4a35
+    tag: 68f084b
+    commit: 68f084be90be2279757b15b25b02b02fdc971ace
+    full_tag: demo-app/greeting-service/68f084b
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:41b4a35
-      digest: sha256:467d6718196aa0f2db6c7c7b13362a2afcc8691a850f9ff9fea42dfdaec9080d
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:68f084b
+      digest: sha256:2fd5bc5591b70c7f25543af2e012ce45423b9fda63a284f302d21ad6160bf170
   infra-check-service:
-    tag: 41b4a35
-    commit: 41b4a350904d342f9d98453695a5ac40f64055a7
-    full_tag: demo-app/infra-check-service/41b4a35
+    tag: 68f084b
+    commit: 68f084be90be2279757b15b25b02b02fdc971ace
+    full_tag: demo-app/infra-check-service/68f084b
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:41b4a35
-      digest: sha256:c0ddfe1f3d06432df1275202722f6c941241f99c26e9ad10d7273dc64be98956
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:68f084b
+      digest: sha256:4d94fb394f5d37d5e39680c9daeb4c0d8ae6b37977513709329c9b608941b5f4
   traffic-generator-service:
-    tag: 6fd6b0e
-    commit: 6fd6b0ef80613f067c87145c7e6115121244364a
-    full_tag: demo-app/traffic-generator-service/6fd6b0e
+    tag: 68f084b
+    commit: 68f084be90be2279757b15b25b02b02fdc971ace
+    full_tag: demo-app/traffic-generator-service/68f084b
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:6fd6b0e
-      digest: sha256:cc6dc51caa55ea03495f74f13b76ac5266da48bb7b4c59136833d63752fe19ef
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:68f084b
+      digest: sha256:53afd3da9bdbf5b43a16e1424dcd35216bbc86b52a83b17498f3903301f97ce8
