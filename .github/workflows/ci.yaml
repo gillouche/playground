@@ -68,12 +68,18 @@ jobs:
       - name: Build all applications
         run: |
           { set +x; } 2>/dev/null
-          nix develop ./nix#ci --command bazel build --config=ci //apps/...
+          nix develop ./nix#ci --command bazel \
+            --host_jvm_args=-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts \
+            --host_jvm_args=-Djavax.net.ssl.trustStorePassword=changeit \
+            build --config=ci //apps/...
 
       - name: Run all tests
         run: |
           { set +x; } 2>/dev/null
-          nix develop ./nix#ci --command bazel test --config=ci //apps/...
+          nix develop ./nix#ci --command bazel \
+            --host_jvm_args=-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts \
+            --host_jvm_args=-Djavax.net.ssl.trustStorePassword=changeit \
+            test --config=ci //apps/...
 
       - name: Smart push images (Main Only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
