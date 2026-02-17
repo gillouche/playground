@@ -8,12 +8,12 @@ metadata:
     environment: dev
 data:
   ENVIRONMENT: dev
-  APP: demo-app
-  COMPONENT: greeting-service
+  APP: "demo-app"
+  COMPONENT: "greeting-service"
   LOG_LEVEL: DEBUG
   OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring.svc.cluster.local:4317
   ENABLE_TRACING: "true"
-  APP_VERSION: dev
-  COMPONENT_VERSION: 2269718
-  GIT_TAG: 2269718
-  GIT_COMMIT: 22697180eff7fcbca95d344bddb83316b980cadf
+  APP_VERSION: "dev"
+  COMPONENT_VERSION: "2269718"
+  GIT_TAG: "2269718"
+  GIT_COMMIT: "22697180eff7fcbca95d344bddb83316b980cadf"

@@ -217,7 +217,7 @@ def update_configmap(app, component, tag, commit):
         updated_line = line
         for key, val in replacements.items():
              if re.match(rf"\s+{key}:", line):
-                 updated_line = re.sub(rf"(\s+{key}:).*", rf"\1 {val}", line)
+                 updated_line = re.sub(rf"(\s+{key}:).*", rf'\1 "{val}"', line)
         new_lines.append(updated_line)
 
     with open(configmap_path, 'w') as f:

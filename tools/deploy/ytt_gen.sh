@@ -120,6 +120,11 @@ generate_component_env() {
             if [ "$in_metadata" = true ]; then
                 if [[ "$line" =~ ^"  version: " ]]; then
                     APP_VERSION="${line#*: }"
+                    # Strip YAML quotes
+                    APP_VERSION="${APP_VERSION#\'}"
+                    APP_VERSION="${APP_VERSION%\'}"
+                    APP_VERSION="${APP_VERSION#\"}"
+                    APP_VERSION="${APP_VERSION%\"}"
                 fi
             fi
 
@@ -140,6 +145,11 @@ generate_component_env() {
                 # Extract tag as COMPONENT_VERSION
                 if [[ "$line" =~ ^"    tag: " ]]; then
                     COMPONENT_VERSION="${line#*: }"
+                    # Strip YAML quotes (e.g. '2269718' -> 2269718)
+                    COMPONENT_VERSION="${COMPONENT_VERSION#\'}"
+                    COMPONENT_VERSION="${COMPONENT_VERSION%\'}"
+                    COMPONENT_VERSION="${COMPONENT_VERSION#\"}"
+                    COMPONENT_VERSION="${COMPONENT_VERSION%\"}"
                 fi
                 # Extract commit
                 if [[ "$line" =~ ^"    commit: " ]]; then

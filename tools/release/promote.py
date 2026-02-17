@@ -175,7 +175,7 @@ def update_configmaps(app_name, env, version, images):
                     for key, val in replacements.items():
                         # Match "  KEY: value" or "  KEY:"
                         if re.match(rf"\s+{key}:", line):
-                             updated_line = re.sub(rf"(\s+{key}:).*", rf"\1 {val}", line)
+                             updated_line = re.sub(rf"(\s+{key}:).*", rf'\1 "{val}"', line)
                     new_lines.append(updated_line)
 
                 with open(filepath, 'w') as f:

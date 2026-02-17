@@ -6,12 +6,12 @@ metadata:
     component: infra-check-service
 data:
   ENVIRONMENT: dev
-  APP: demo-app
-  COMPONENT: infra-check-service
-  APP_VERSION: dev
-  COMPONENT_VERSION: 2269718
-  GIT_TAG: 2269718
-  GIT_COMMIT: 22697180eff7fcbca95d344bddb83316b980cadf
+  APP: "demo-app"
+  COMPONENT: "infra-check-service"
+  APP_VERSION: "dev"
+  COMPONENT_VERSION: "2269718"
+  GIT_TAG: "2269718"
+  GIT_COMMIT: "22697180eff7fcbca95d344bddb83316b980cadf"
   LOG_LEVEL: INFO
   POSTGRES_HOST: postgres.playground-infra-dev.svc.cluster.local
   POSTGRES_PORT: "5432"
