@@ -106,7 +106,7 @@ oci.pull(
         "linux/amd64",
     ],
     tag = "3.12.12",
-    digest = "sha256:6cebf7b6ed5b872475d1b735b921a4f95fa4831680895cbd05ace26d086f5dcd",
+    digest = "sha256:bde394732e0bc073d0581c810cd262f4b71285947ab1386ce58896051383f675",
 )
 use_repo(oci, "python_base", "python_base_linux_arm64", "python_base_linux_amd64")
 
