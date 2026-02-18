@@ -1,5 +1,5 @@
 # Development/test dependencies for greeting-service
-# Edit this file, then run: uv pip compile requirements_dev.in -o requirements_dev_lock.txt --python-version 3.12
+# Edit this file, then run: uv pip compile requirements_dev.in -o requirements_dev_lock.txt --python-version 3.13
 
 -r requirements.in
 

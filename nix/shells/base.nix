@@ -13,7 +13,7 @@
     # Bazel tools (from merged bazel.nix)
     bazel_8
     go-containerregistry
-    (python312.withPackages (ps: [ ps.pip ps.pyyaml ]))
+    (python313.withPackages (ps: [ ps.pip ps.pyyaml ]))
   ];
 
   shellHook = ''

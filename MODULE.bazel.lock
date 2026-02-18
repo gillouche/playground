@@ -790,7 +790,7 @@
     "@@rules_oci+//oci:extensions.bzl%oci": {
       "general": {
         "bzlTransitiveDigest": "IYpR5OVBji0eKrKt9kenua0hswMSDgeMhoJ1JfYl468=",
-        "usagesDigest": "eTDh2gZ+ld9tbiB08dyasRaOMw+BnJMZ9VvuomwH6xI=",
+        "usagesDigest": "fAmjq0/YZkryD18haEOuGH++EDRy+qxWqgYNbQ7MPuI=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
@@ -802,7 +802,7 @@
               "scheme": "https",
               "registry": "nexus.gillouche.homelab",
               "repository": "docker-hosted/base/python-distroless",
-              "identifier": "sha256:bde394732e0bc073d0581c810cd262f4b71285947ab1386ce58896051383f675",
+              "identifier": "sha256:d02bf4418eb23ee84c98f6eb52d9696467db4f7c5b9fbff38da74063abf44542",
               "platform": "linux/arm64",
               "target_name": "python_base_linux_arm64",
               "bazel_tags": []
@@ -815,7 +815,7 @@
               "scheme": "https",
               "registry": "nexus.gillouche.homelab",
               "repository": "docker-hosted/base/python-distroless",
-              "identifier": "sha256:bde394732e0bc073d0581c810cd262f4b71285947ab1386ce58896051383f675",
+              "identifier": "sha256:d02bf4418eb23ee84c98f6eb52d9696467db4f7c5b9fbff38da74063abf44542",
               "platform": "linux/amd64",
               "target_name": "python_base_linux_amd64",
               "bazel_tags": []
@@ -829,7 +829,7 @@
               "scheme": "https",
               "registry": "nexus.gillouche.homelab",
               "repository": "docker-hosted/base/python-distroless",
-              "identifier": "sha256:bde394732e0bc073d0581c810cd262f4b71285947ab1386ce58896051383f675",
+              "identifier": "sha256:d02bf4418eb23ee84c98f6eb52d9696467db4f7c5b9fbff38da74063abf44542",
               "platforms": {
                 "@@platforms//cpu:arm64": "@python_base_linux_arm64",
                 "@@platforms//cpu:x86_64": "@python_base_linux_amd64"
