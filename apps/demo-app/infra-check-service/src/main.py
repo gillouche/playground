@@ -14,6 +14,8 @@ from fastapi import FastAPI, HTTPException
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
+STATUS_NOT_INITIALIZED = "not initialized"
+
 logging.basicConfig(
     level=os.environ.get("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -152,7 +154,7 @@ async def postgres_write(req: WriteRequest):
 async def postgres_health():
     pg = clients["postgres"]
     if not pg:
-        return {"status": "not initialized"}
+        return {"status": STATUS_NOT_INITIALIZED}
     return await pg.health_check()
 
 
@@ -176,7 +178,7 @@ async def redis_write(req: WriteRequest):
 async def redis_health():
     redis = clients["redis"]
     if not redis:
-        return {"status": "not initialized"}
+        return {"status": STATUS_NOT_INITIALIZED}
     return await redis.health_check()
 
 
@@ -200,7 +202,7 @@ async def kafka_produce(msg: KafkaMessage):
 async def kafka_health():
     kafka = clients["kafka"]
     if not kafka:
-        return {"status": "not initialized"}
+        return {"status": STATUS_NOT_INITIALIZED}
     return await kafka.health_check()
 
 
@@ -224,7 +226,7 @@ async def mongodb_write(req: WriteRequest):
 async def mongodb_health():
     mongo = clients["mongo"]
     if not mongo:
-        return {"status": "not initialized"}
+        return {"status": STATUS_NOT_INITIALIZED}
     return await mongo.health_check()
 
 

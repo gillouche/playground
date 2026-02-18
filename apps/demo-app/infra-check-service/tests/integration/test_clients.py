@@ -35,9 +35,7 @@ def kafka_config():
 
 @pytest.fixture
 def mongodb_config():
-    return MongoDBConfig(
-        host="localhost", port=27017, database="test", user="test", password="test"
-    )
+    return MongoDBConfig(host="localhost", port=27017, database="test", user="test")
 
 
 @pytest.mark.asyncio

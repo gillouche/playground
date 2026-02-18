@@ -1,4 +1,5 @@
-from unittest.mock import AsyncMock, MagicMock
+import os
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from clients.mongodb import MongoClient
@@ -7,9 +8,7 @@ from config import MongoDBConfig
 
 @pytest.fixture
 def mongodb_config():
-    return MongoDBConfig(
-        host="localhost", port=27017, database="test", user="test", password="test"
-    )
+    return MongoDBConfig(host="localhost", port=27017, database="test", user="test")
 
 
 @pytest.mark.asyncio
@@ -89,10 +88,12 @@ async def test_mongodb_health_check_unhealthy(mongodb_config):
     assert result["status"] == "unhealthy"
 
 
+@patch.dict(os.environ, {"MONGODB_PASSWORD": "test"})
 def test_mongodb_url_with_auth(mongodb_config):
     assert "test:test@localhost" in mongodb_config.url
 
 
+@patch.dict(os.environ, {"MONGODB_PASSWORD": ""})
 def test_mongodb_url_without_auth():
-    config = MongoDBConfig(host="localhost", port=27017, database="test", user="", password="")
+    config = MongoDBConfig(host="localhost", port=27017, database="test", user="")
     assert config.url == "mongodb://localhost:27017"

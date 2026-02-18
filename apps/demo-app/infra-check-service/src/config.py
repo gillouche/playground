@@ -37,12 +37,12 @@ class MongoDBConfig:
     port: int = 27017
     database: str = "playground"
     user: str = "playground"
-    password: str = ""
 
     @property
     def url(self) -> str:
-        if self.user and self.password:
-            return f"mongodb://{self.user}:{self.password}@{self.host}:{self.port}"
+        password = os.environ.get("MONGODB_PASSWORD", "")
+        if self.user and password:
+            return f"mongodb://{self.user}:{password}@{self.host}:{self.port}"
         return f"mongodb://{self.host}:{self.port}"
 
 
@@ -97,7 +97,6 @@ def load_config(config_path: Path | None = None) -> Config:
     config.mongodb.port = int(os.environ.get("MONGODB_PORT", config.mongodb.port))
     config.mongodb.database = os.environ.get("MONGODB_DB", config.mongodb.database)
     config.mongodb.user = os.environ.get("MONGODB_USER", config.mongodb.user)
-    config.mongodb.password = os.environ.get("MONGODB_PASSWORD", config.mongodb.password)
 
     config.environment = os.environ.get("ENVIRONMENT", config.environment)
     config.log_level = os.environ.get("LOG_LEVEL", config.log_level)

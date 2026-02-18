@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from main import STATUS_NOT_INITIALIZED
 
 
 @pytest.fixture
@@ -223,7 +224,7 @@ async def test_postgres_health_endpoint():
             response = await client.get("/postgres/health")
 
         assert response.status_code == 200
-        assert response.json()["status"] == "not initialized"
+        assert response.json()["status"] == STATUS_NOT_INITIALIZED
 
 
 @pytest.mark.asyncio
@@ -238,7 +239,7 @@ async def test_redis_health_endpoint():
             response = await client.get("/redis/health")
 
         assert response.status_code == 200
-        assert response.json()["status"] == "not initialized"
+        assert response.json()["status"] == STATUS_NOT_INITIALIZED
 
 
 @pytest.mark.asyncio
@@ -253,7 +254,7 @@ async def test_kafka_health_endpoint():
             response = await client.get("/kafka/health")
 
         assert response.status_code == 200
-        assert response.json()["status"] == "not initialized"
+        assert response.json()["status"] == STATUS_NOT_INITIALIZED
 
 
 @pytest.mark.asyncio
@@ -268,7 +269,7 @@ async def test_mongodb_health_endpoint():
             response = await client.get("/mongodb/health")
 
         assert response.status_code == 200
-        assert response.json()["status"] == "not initialized"
+        assert response.json()["status"] == STATUS_NOT_INITIALIZED
 
 
 @pytest.mark.asyncio
