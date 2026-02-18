@@ -1,26 +1,26 @@
 metadata:
   app: demo-app
   version: dev
-  created_at: '2026-02-17T23:09:52.831086+00:00'
+  created_at: '2026-02-18T06:58:43.692517+00:00'
 images:
   greeting-service:
-    tag: '2269718'
-    commit: 22697180eff7fcbca95d344bddb83316b980cadf
-    full_tag: demo-app/greeting-service/2269718
+    tag: 8693faf
+    commit: 8693faf221d4d5a76fba2a2e6bd46315bf82c4ea
+    full_tag: demo-app/greeting-service/8693faf
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:2269718
-      digest: sha256:8b020107388441059d66c53f8f6e66e5a9a8aa083b45871b4b8496f520951937
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:8693faf
+      digest: sha256:1c8a5269cc1938916a6cae4d4cd49bdb7733e2bf7d918d4a516251064e1ed592
   infra-check-service:
-    tag: '2269718'
-    commit: 22697180eff7fcbca95d344bddb83316b980cadf
-    full_tag: demo-app/infra-check-service/2269718
+    tag: 8693faf
+    commit: 8693faf221d4d5a76fba2a2e6bd46315bf82c4ea
+    full_tag: demo-app/infra-check-service/8693faf
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:2269718
-      digest: sha256:0947304ff6d7fe3c39bcfdac0fde8e6dac3ca64c63dbb364c66bb8b31f4f8b56
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:8693faf
+      digest: sha256:df00b2e077ad9ba553b1064e8bc568c8381104077826b7091ae76fec9d74e7db
   traffic-generator-service:
-    tag: '2269718'
-    commit: 22697180eff7fcbca95d344bddb83316b980cadf
-    full_tag: demo-app/traffic-generator-service/2269718
+    tag: 8693faf
+    commit: 8693faf221d4d5a76fba2a2e6bd46315bf82c4ea
+    full_tag: demo-app/traffic-generator-service/8693faf
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:2269718
-      digest: sha256:f3b2a4a7e6813bc750ca5ddf7e453f6cbf93b67a45e23da0941d93ccd3640bae
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:8693faf
+      digest: sha256:f36a02d1cff866884955283fa66e873a9470f79c91c9f1f56312442c4f2a3b8a
