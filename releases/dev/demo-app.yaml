@@ -1,7 +1,7 @@
 metadata:
   app: demo-app
   version: dev
-  created_at: '2026-02-18T06:58:43.692517+00:00'
+  created_at: '2026-02-18T21:34:43.109914+00:00'
 images:
   greeting-service:
     tag: 8693faf
@@ -11,12 +11,12 @@ images:
       ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:8693faf
       digest: sha256:1c8a5269cc1938916a6cae4d4cd49bdb7733e2bf7d918d4a516251064e1ed592
   infra-check-service:
-    tag: 8693faf
-    commit: 8693faf221d4d5a76fba2a2e6bd46315bf82c4ea
-    full_tag: demo-app/infra-check-service/8693faf
+    tag: c69afea
+    commit: c69afea676f078b503a3726a3220dabe116aa5ab
+    full_tag: demo-app/infra-check-service/c69afea
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:8693faf
-      digest: sha256:df00b2e077ad9ba553b1064e8bc568c8381104077826b7091ae76fec9d74e7db
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:c69afea
+      digest: sha256:2861da31b3fc511d163c649209d3c9be1d732293d386b3cfac002b25a09281d1
   traffic-generator-service:
     tag: 8693faf
     commit: 8693faf221d4d5a76fba2a2e6bd46315bf82c4ea

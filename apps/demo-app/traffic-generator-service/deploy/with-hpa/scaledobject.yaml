@@ -17,4 +17,4 @@ spec:
       # Default schedule (will be patched by overlays)
       start: "0 * * * *"
       end: "15 * * * *"
-      desiredReplicas: "5"
+      desiredReplicas: "1"

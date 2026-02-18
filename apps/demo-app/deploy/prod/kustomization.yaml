@@ -22,7 +22,7 @@ resources:
 patches:
   - path: greeting-service-configmap.yaml
   - path: infra-check-service-configmap.yaml
-  - path: traffic-generator-patch.yaml
+
   - path: traffic-generator-service-configmap.yaml
 
 images:

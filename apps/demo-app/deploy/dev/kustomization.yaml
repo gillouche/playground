@@ -3,7 +3,7 @@ kind: Kustomization
 patches:
   - path: greeting-service-configmap.yaml
   - path: infra-check-service-configmap.yaml
-  - path: traffic-generator-patch.yaml
+
   - path: traffic-generator-service-configmap.yaml
 
 resources:
@@ -29,7 +29,7 @@ images:
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service
     newTag: "8693faf"
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service
-    newTag: "8693faf"
+    newTag: "c69afea"
   - name: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service
     newTag: "8693faf"
 
