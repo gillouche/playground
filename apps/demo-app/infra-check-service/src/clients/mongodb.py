@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, datetime
 
 from config import MongoDBConfig
@@ -12,7 +13,12 @@ class MongoClient:
         self.collection = None
 
     async def connect(self):
-        self.client = AsyncIOMotorClient(self.config.url)
+        kwargs: dict = {"host": self.config.host, "port": self.config.port}
+        password = os.environ.get("MONGODB_PASSWORD", "")
+        if self.config.user and password:
+            kwargs["username"] = self.config.user
+            kwargs["password"] = password
+        self.client = AsyncIOMotorClient(**kwargs)
         self.db = self.client[self.config.database]
         self.collection = self.db["infra_check"]
         await self.client.admin.command("ping")

@@ -38,13 +38,6 @@ class MongoDBConfig:
     database: str = "playground"
     user: str = "playground"
 
-    @property
-    def url(self) -> str:
-        password = os.environ.get("MONGODB_PASSWORD", "")
-        if self.user and password:
-            return f"mongodb://{self.user}:{password}@{self.host}:{self.port}"
-        return f"mongodb://{self.host}:{self.port}"
-
 
 @dataclass
 class Config:

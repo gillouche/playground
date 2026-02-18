@@ -88,12 +88,32 @@ async def test_mongodb_health_check_unhealthy(mongodb_config):
     assert result["status"] == "unhealthy"
 
 
-@patch.dict(os.environ, {"MONGODB_PASSWORD": "test"})
-def test_mongodb_url_with_auth(mongodb_config):
-    assert "test:test@localhost" in mongodb_config.url
+@patch.dict(os.environ, {"MONGODB_PASSWORD": "secret"})
+@patch("clients.mongodb.AsyncIOMotorClient")
+@pytest.mark.asyncio
+async def test_mongodb_connect_with_auth(mock_motor, mongodb_config):
+    mock_client = MagicMock()
+    mock_client.admin.command = AsyncMock()
+    mock_client.__getitem__ = MagicMock()
+    mock_motor.return_value = mock_client
+
+    client = MongoClient(mongodb_config)
+    await client.connect()
+    mock_motor.assert_called_once_with(
+        host="localhost", port=27017, username="test", password="secret"
+    )
 
 
 @patch.dict(os.environ, {"MONGODB_PASSWORD": ""})
-def test_mongodb_url_without_auth():
+@patch("clients.mongodb.AsyncIOMotorClient")
+@pytest.mark.asyncio
+async def test_mongodb_connect_without_auth(mock_motor):
+    mock_client = MagicMock()
+    mock_client.admin.command = AsyncMock()
+    mock_client.__getitem__ = MagicMock()
+    mock_motor.return_value = mock_client
+
     config = MongoDBConfig(host="localhost", port=27017, database="test", user="")
-    assert config.url == "mongodb://localhost:27017"
+    client = MongoClient(config)
+    await client.connect()
+    mock_motor.assert_called_once_with(host="localhost", port=27017)

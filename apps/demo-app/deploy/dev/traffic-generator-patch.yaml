@@ -3,13 +3,15 @@ kind: Deployment
 metadata:
   name: traffic-generator-service
 spec:
-  replicas: 2
+  replicas: 1
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: traffic-generator-service-scaler
 spec:
+  minReplicaCount: 1
+  maxReplicaCount: 1
   triggers:
   - type: cron
     metadata:
