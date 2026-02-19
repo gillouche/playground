@@ -42,5 +42,10 @@ pkgs.mkShell {
     else
       echo "CA bundle not found at $CA_BUNDLE"
     fi
+
+    # Configure Java truststore for Bazel's JVM (Nexus registry uses homelab CA)
+    if [ -f /etc/ssl/certs/java/cacerts ]; then
+      export JAVA_TOOL_OPTIONS="-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+    fi
   '';
 }

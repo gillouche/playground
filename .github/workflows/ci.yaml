@@ -27,19 +27,43 @@ jobs:
       - uses: gillouche/homelab-ci/actions/security-gate@main
         id: gate
 
-  build-and-test:
-    name: ${{ matrix.service.name }}
+  discover-services:
+    name: Discover Services
     needs: security-check
-    if: github.repository_owner == 'gillouche' && needs.security-check.outputs.is_safe == 'true'
+    if: needs.security-check.outputs.is_safe == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.services.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Find all services
+        id: services
+        run: |
+          SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type f -name BUILD.bazel | while read -r f; do
+            dir=$(dirname "$f")
+            app=$(basename "$(dirname "$dir")")
+            service=$(basename "$dir")
+            jq -n -c --arg app "$app" --arg service "$service" '{app: $app, service: $service}'
+          done | jq -sc '.')
+          echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
+          echo "Found services: $SERVICES"
+
+  build-and-test:
+    name: ${{ matrix.service.app }}/${{ matrix.service.service }}
+    needs: [security-check, discover-services]
+    if: needs.security-check.outputs.is_safe == 'true' && needs.discover-services.outputs.matrix != '[]'
     runs-on: playground-runner
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        service:
-          - {name: greeting-service, app: demo-app, has_tests: true}
-          - {name: infra-check-service, app: demo-app, has_tests: true}
-          - {name: traffic-generator-service, app: demo-app, has_tests: false}
+        service: ${{ fromJson(needs.discover-services.outputs.matrix) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -64,21 +88,17 @@ jobs:
             -u "${{ secrets.NEXUS_USERNAME }}" \
             --password-stdin
 
-      - name: Build & Test
+      - name: Build
         run: |
           { set +x; } 2>/dev/null
-          TARGET="//apps/${{ matrix.service.app }}/${{ matrix.service.name }}/..."
-          if [ "${{ matrix.service.has_tests }}" = "true" ]; then
-            nix develop ./nix#ci --command bazel \
-              --host_jvm_args=-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts \
-              --host_jvm_args=-Djavax.net.ssl.trustStorePassword=changeit \
-              test --config=ci "$TARGET"
-          else
-            nix develop ./nix#ci --command bazel \
-              --host_jvm_args=-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts \
-              --host_jvm_args=-Djavax.net.ssl.trustStorePassword=changeit \
-              build --config=ci "$TARGET"
-          fi
+          nix develop ./nix#ci --command bazel \
+            build --config=ci //apps/${{ matrix.service.app }}/${{ matrix.service.service }}/...
+
+      - name: Test
+        run: |
+          { set +x; } 2>/dev/null
+          nix develop ./nix#ci --command bazel \
+            test --config=ci //apps/${{ matrix.service.app }}/${{ matrix.service.service }}/...
 
   push-images:
     name: Push Images

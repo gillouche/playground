@@ -23,7 +23,7 @@
           # Bazel shell: Now merged into base
           # base = ... (already defined below)
 
-          # Base shell: Common tools (git, ytt, curl, jq, kubectl, kustomize, pre-commit, bazel, python)
+          # Base shell: Common tools (git, ytt, curl, jq, kubectl, kustomize, bazel, python)
           base = pkgs.mkShell (import ./shells/base.nix { inherit pkgs; });
 
           # Use base as the bazel shell alias
@@ -44,8 +44,11 @@
           # CI shell: All tools for CI
           ci = import ./shells/ci.nix { inherit pkgs; };
 
-          # Default: Base (includes Bazel)
-          default = self.devShells.${system}.base;
+          # Default: Base + dev tools (pre-commit uses Python 3.13 internally, kept out of CI)
+          default = pkgs.mkShell {
+            inputsFrom = [ self.devShells.${system}.base ];
+            packages = [ pkgs.pre-commit ];
+          };
         }
       );
 

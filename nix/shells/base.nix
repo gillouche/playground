@@ -8,8 +8,6 @@
     jq
     kubectl
     kustomize
-    pre-commit
-
     # Bazel tools (from merged bazel.nix)
     bazel_8
     go-containerregistry
@@ -17,7 +15,7 @@
   ];
 
   shellHook = ''
-    echo "🛠️  Base Shell Tools Loaded (git, ytt, curl, jq, pre-commit)"
+    echo "🛠️  Base Shell Tools Loaded (git, ytt, curl, jq, bazel, python)"
     echo "Bazel: $(bazel --version)"
     echo "Python: $(python --version)"
   '';
