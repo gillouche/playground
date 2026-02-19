@@ -28,11 +28,18 @@ jobs:
         id: gate
 
   build-and-test:
-    name: Build & Test
+    name: ${{ matrix.service.name }}
     needs: security-check
     if: github.repository_owner == 'gillouche' && needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
-    timeout-minutes: 30
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - {name: greeting-service, app: demo-app, has_tests: true}
+          - {name: infra-check-service, app: demo-app, has_tests: true}
+          - {name: traffic-generator-service, app: demo-app, has_tests: false}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,13 +57,51 @@ jobs:
       - name: Setup Nix Environment
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
 
-      - name: Send Start Notification
-        uses: gillouche/homelab-ci/actions/discord-notify@main
+      - name: Login to Nexus registry
+        run: |
+          { set +x; } 2>/dev/null
+          echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab \
+            -u "${{ secrets.NEXUS_USERNAME }}" \
+            --password-stdin
+
+      - name: Build & Test
+        run: |
+          { set +x; } 2>/dev/null
+          TARGET="//apps/${{ matrix.service.app }}/${{ matrix.service.name }}/..."
+          if [ "${{ matrix.service.has_tests }}" = "true" ]; then
+            nix develop ./nix#ci --command bazel \
+              --host_jvm_args=-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts \
+              --host_jvm_args=-Djavax.net.ssl.trustStorePassword=changeit \
+              test --config=ci "$TARGET"
+          else
+            nix develop ./nix#ci --command bazel \
+              --host_jvm_args=-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts \
+              --host_jvm_args=-Djavax.net.ssl.trustStorePassword=changeit \
+              build --config=ci "$TARGET"
+          fi
+
+  push-images:
+    name: Push Images
+    needs: [security-check, build-and-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.security-check.outputs.is_safe == 'true'
+    runs-on: playground-runner
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
-          status: info
-          title: CI Pipeline
-          message: "Build started for commit ${{ github.sha }}"
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Nix Cache Profile
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
+        with:
+          profile: nix
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
+      - name: Setup Nix Environment
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
 
       - name: Login to Nexus registry
         run: |
@@ -65,24 +110,7 @@ jobs:
             -u "${{ secrets.NEXUS_USERNAME }}" \
             --password-stdin
 
-      - name: Build all applications
-        run: |
-          { set +x; } 2>/dev/null
-          nix develop ./nix#ci --command bazel \
-            --host_jvm_args=-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts \
-            --host_jvm_args=-Djavax.net.ssl.trustStorePassword=changeit \
-            build --config=ci //apps/...
-
-      - name: Run all tests
-        run: |
-          { set +x; } 2>/dev/null
-          nix develop ./nix#ci --command bazel \
-            --host_jvm_args=-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts \
-            --host_jvm_args=-Djavax.net.ssl.trustStorePassword=changeit \
-            test --config=ci //apps/...
-
-      - name: Smart push images (Main Only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Smart push images
         run: |
           { set +x; } 2>/dev/null
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
@@ -94,16 +122,28 @@ jobs:
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
           DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
 
-      - name: Push to Nix Cache (Main Only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Push to Nix Cache
         run: |
           { set +x; } 2>/dev/null
           echo "Pushing build artifacts to Nix Cache..."
           nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http&profile=nix" \
             ./nix#ci
 
+  notify:
+    name: Notify
+    needs: [security-check, build-and-test, push-images]
+    if: always() && needs.security-check.outputs.is_safe == 'true'
+    runs-on: playground-runner
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
       - name: Send Success Notification
-        if: success()
+        if: needs.build-and-test.result == 'success' && (needs.push-images.result == 'success' || needs.push-images.result == 'skipped')
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
@@ -112,7 +152,7 @@ jobs:
           message: "Build completed successfully for commit ${{ github.sha }}"
 
       - name: Send Failure Notification
-        if: failure()
+        if: needs.build-and-test.result != 'success' || (needs.push-images.result != 'success' && needs.push-images.result != 'skipped')
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
