@@ -101,12 +101,24 @@ jobs:
             test --config=ci //apps/${{ matrix.service.app }}/${{ matrix.service.service }}/... \
             || { rc=$?; if [ $rc -eq 4 ]; then echo "No test targets found, skipping"; else exit $rc; fi; }
 
-  push-images:
-    name: Push Images
+      - name: Push image (Main Only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          { set +x; } 2>/dev/null
+          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
+          nix develop ./nix#ci --command bazel \
+            run --config=ci //apps/${{ matrix.service.app }}/${{ matrix.service.service }}:${{ matrix.service.service }}_push \
+            -- --tag latest --tag "$SHORT_SHA"
+        env:
+          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+
+  finalize:
+    name: Finalize
     needs: [security-check, build-and-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.security-check.outputs.is_safe == 'true'
+    if: always() && needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -115,6 +127,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Nix Cache Profile
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.result == 'success'
         uses: gillouche/homelab-ci/actions/setup-aws-profile@main
         with:
           profile: nix
@@ -122,49 +135,19 @@ jobs:
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Setup Nix Environment
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.result == 'success'
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
 
-      - name: Login to Nexus registry
-        run: |
-          { set +x; } 2>/dev/null
-          echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab \
-            -u "${{ secrets.NEXUS_USERNAME }}" \
-            --password-stdin
-
-      - name: Smart push images
-        run: |
-          { set +x; } 2>/dev/null
-          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
-          echo "Smart pushing ARM64 images (only if changed)..."
-
-          nix develop ./nix#ci --command python3 tools/ci/smart_push.py --tag latest --tag $SHORT_SHA
-        env:
-          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-          DISCORD_WEBHOOK_SECURITY_NOTIFICATIONS: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
-
-      - name: Push to Nix Cache
+      - name: Push to Nix Cache (Main Only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.result == 'success'
         run: |
           { set +x; } 2>/dev/null
           echo "Pushing build artifacts to Nix Cache..."
           nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http&profile=nix" \
             ./nix#ci
 
-  notify:
-    name: Notify
-    needs: [security-check, build-and-test, push-images]
-    if: always() && needs.security-check.outputs.is_safe == 'true'
-    runs-on: playground-runner
-    timeout-minutes: 5
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          persist-credentials: false
-
       - name: Send Success Notification
-        if: needs.build-and-test.result == 'success' && (needs.push-images.result == 'success' || needs.push-images.result == 'skipped')
+        if: needs.build-and-test.result == 'success'
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
@@ -173,7 +156,7 @@ jobs:
           message: "Build completed successfully for commit ${{ github.sha }}"
 
       - name: Send Failure Notification
-        if: needs.build-and-test.result != 'success' || (needs.push-images.result != 'success' && needs.push-images.result != 'skipped')
+        if: needs.build-and-test.result != 'success'
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
