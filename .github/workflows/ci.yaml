@@ -98,7 +98,8 @@ jobs:
         run: |
           { set +x; } 2>/dev/null
           nix develop ./nix#ci --command bazel \
-            test --config=ci //apps/${{ matrix.service.app }}/${{ matrix.service.service }}/...
+            test --config=ci //apps/${{ matrix.service.app }}/${{ matrix.service.service }}/... \
+            || { rc=$?; if [ $rc -eq 4 ]; then echo "No test targets found, skipping"; else exit $rc; fi; }
 
   push-images:
     name: Push Images
