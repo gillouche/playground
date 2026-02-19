@@ -45,7 +45,7 @@ jobs:
       - name: Find all services
         id: services
         run: |
-          SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type f -name BUILD.bazel | while read -r f; do
+          SERVICES=$(find apps -mindepth 3 -maxdepth 3 -type f -name BUILD.bazel | while read -r f; do
             dir=$(dirname "$f")
             app=$(basename "$(dirname "$dir")")
             service=$(basename "$dir")
