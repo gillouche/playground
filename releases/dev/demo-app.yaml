@@ -1,26 +1,26 @@
 metadata:
   app: demo-app
   version: dev
-  created_at: '2026-02-18T21:34:43.109914+00:00'
+  created_at: '2026-02-19T00:10:34.704489+00:00'
 images:
   greeting-service:
-    tag: 8693faf
-    commit: 8693faf221d4d5a76fba2a2e6bd46315bf82c4ea
-    full_tag: demo-app/greeting-service/8693faf
+    tag: 10cc2a8
+    commit: 10cc2a83f6c812bf14c750b1297533ed82207a98
+    full_tag: demo-app/greeting-service/10cc2a8
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:8693faf
-      digest: sha256:1c8a5269cc1938916a6cae4d4cd49bdb7733e2bf7d918d4a516251064e1ed592
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/greeting-service:10cc2a8
+      digest: sha256:1d420090ad9872cdcfcb09d66ac10c50b4578a84eaef446bfe6209b3aeda7255
   infra-check-service:
-    tag: c69afea
-    commit: c69afea676f078b503a3726a3220dabe116aa5ab
-    full_tag: demo-app/infra-check-service/c69afea
+    tag: 10cc2a8
+    commit: 10cc2a83f6c812bf14c750b1297533ed82207a98
+    full_tag: demo-app/infra-check-service/10cc2a8
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:c69afea
-      digest: sha256:2861da31b3fc511d163c649209d3c9be1d732293d386b3cfac002b25a09281d1
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/infra-check-service:10cc2a8
+      digest: sha256:f9b9d3d3b9311abc3b979abdf5c97c211536c87c9c8e16d63ce1c86392961928
   traffic-generator-service:
-    tag: 8693faf
-    commit: 8693faf221d4d5a76fba2a2e6bd46315bf82c4ea
-    full_tag: demo-app/traffic-generator-service/8693faf
+    tag: 10cc2a8
+    commit: 10cc2a83f6c812bf14c750b1297533ed82207a98
+    full_tag: demo-app/traffic-generator-service/10cc2a8
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:8693faf
-      digest: sha256:f36a02d1cff866884955283fa66e873a9470f79c91c9f1f56312442c4f2a3b8a
+      ref: nexus.gillouche.homelab/docker-hosted/demo-app/traffic-generator-service:10cc2a8
+      digest: sha256:8001eed7e6ef1d14f95846b2024d5547a0323c496fe7ad9e105e22240362942a

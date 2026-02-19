@@ -8,13 +8,13 @@ metadata:
     environment: dev
 data:
   ENVIRONMENT: dev
-  APP: demo-app
-  COMPONENT: traffic-generator-service
+  APP: "demo-app"
+  COMPONENT: "traffic-generator-service"
   LOG_LEVEL: INFO
-  APP_VERSION: dev
-  COMPONENT_VERSION: 8693faf
-  GIT_TAG: demo-app/traffic-generator-service/8693faf
-  GIT_COMMIT: 8693faf221d4d5a76fba2a2e6bd46315bf82c4ea
+  APP_VERSION: "dev"
+  COMPONENT_VERSION: "10cc2a8"
+  GIT_TAG: "10cc2a8"
+  GIT_COMMIT: "10cc2a83f6c812bf14c750b1297533ed82207a98"
   TARGET_URL: http://greeting-service
   CONCURRENCY: "10"
   OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring.svc.cluster.local:4317
