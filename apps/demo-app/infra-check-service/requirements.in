@@ -1,5 +1,5 @@
 # Production dependencies for infra-check-service
-# Edit this file, then run: uv pip compile requirements.in -o requirements_lock.txt --python-version 3.13
+# Edit this file, then run: uv pip compile requirements.in -o requirements_lock.txt --python-version 3.14
 
 fastapi>=0.128.0
 pydantic>=2.12.5
