@@ -47,3 +47,4 @@ secrets/
 matrix.json
 trivy-results.json
 failure-*.txt
+.bazelrc.ci

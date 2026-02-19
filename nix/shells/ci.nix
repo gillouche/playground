@@ -44,8 +44,13 @@ pkgs.mkShell {
     fi
 
     # Configure Java truststore for Bazel's JVM (Nexus registry uses homelab CA)
+    # Written as .bazelrc.ci and loaded via try-import in .bazelrc
+    # This ensures the persistent Bazel server restarts with the correct truststore
     if [ -f /etc/ssl/certs/java/cacerts ]; then
-      export JAVA_TOOL_OPTIONS="-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+      cat > "$PROJECT_ROOT/.bazelrc.ci" << 'EOF'
+startup --host_jvm_args=-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts
+startup --host_jvm_args=-Djavax.net.ssl.trustStorePassword=changeit
+EOF
     fi
   '';
 }
