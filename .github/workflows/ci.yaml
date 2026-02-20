@@ -81,6 +81,12 @@ jobs:
       - name: Setup Nix Environment
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
 
+      - name: Inject Nexus CA into Docker Daemon
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          sudo mkdir -p /etc/docker/certs.d/nexus.gillouche.homelab
+          sudo cp /usr/local/share/ca-certificates/nexus-ca.crt /etc/docker/certs.d/nexus.gillouche.homelab/ca.crt
+
       - name: Login to Nexus registry
         run: |
           { set +x; } 2>/dev/null
