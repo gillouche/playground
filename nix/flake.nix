@@ -44,10 +44,13 @@
           # CI shell: All tools for CI
           ci = import ./shells/ci.nix { inherit pkgs; };
 
-          # Default: Base + dev tools (pre-commit uses Python 3.13 internally, kept out of CI)
+          # Default: Base + dev tools (pre-commit kept out of CI)
           default = pkgs.mkShell {
             inputsFrom = [ self.devShells.${system}.base ];
-            packages = [ pkgs.pre-commit ];
+            packages = [
+              (pkgs.python314.withPackages (ps: [ ps.pyyaml ]))
+              pkgs.pre-commit
+            ];
           };
         }
       );
