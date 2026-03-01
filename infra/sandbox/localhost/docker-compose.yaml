@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: nexus.gillouche.homelab/docker-hub/postgres:18.3-alpine
+    image: nexus.gillouche.homelab/docker-hub/library/postgres:18.3-alpine
     ports:
       - "5432:5432"
     environment:
@@ -11,7 +11,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   redis:
-    image: nexus.gillouche.homelab/docker-hub/redis:8-alpine
+    image: nexus.gillouche.homelab/docker-hub/library/redis:8-alpine
     ports:
       - "6379:6379"
     command: redis-server --requirepass playground
@@ -34,7 +34,7 @@ services:
       CLUSTER_ID: sandbox-kafka
 
   mongodb:
-    image: nexus.gillouche.homelab/docker-hub/mongo:8
+    image: nexus.gillouche.homelab/docker-hub/library/mongo:8
     ports:
       - "27017:27017"
     environment:

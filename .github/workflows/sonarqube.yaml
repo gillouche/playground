@@ -22,7 +22,7 @@ jobs:
       is_safe: ${{ steps.gate.outputs.is_safe }}
     steps:
       - uses: actions/checkout@v4
-      - uses: gillouche/homelab-ci/actions/security-gate@main
+      - uses: gillouche/homelab-ci/actions/security-gate@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
         id: gate
 
   discover-services:
@@ -78,14 +78,14 @@ jobs:
           persist-credentials: false
 
       - name: Setup Nix Cache Profile
-        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
         with:
           profile: "nix"
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+        uses: gillouche/homelab-ci/actions/setup-nix-env@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
 
       - name: Run Tests with Coverage
         run: |

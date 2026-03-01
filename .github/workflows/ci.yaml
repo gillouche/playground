@@ -24,7 +24,7 @@ jobs:
       is_safe: ${{ steps.gate.outputs.is_safe }}
     steps:
       - uses: actions/checkout@v4
-      - uses: gillouche/homelab-ci/actions/security-gate@main
+      - uses: gillouche/homelab-ci/actions/security-gate@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
         id: gate
 
   discover-services:
@@ -72,14 +72,14 @@ jobs:
           persist-credentials: false
 
       - name: Setup Nix Cache Profile
-        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
         with:
           profile: nix
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+        uses: gillouche/homelab-ci/actions/setup-nix-env@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
 
       - name: Inject Nexus CA into Docker Daemon
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -134,7 +134,7 @@ jobs:
 
       - name: Setup Nix Cache Profile
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.result == 'success'
-        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
         with:
           profile: nix
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
@@ -142,7 +142,7 @@ jobs:
 
       - name: Setup Nix Environment
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.result == 'success'
-        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+        uses: gillouche/homelab-ci/actions/setup-nix-env@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
 
       - name: Push to Nix Cache (Main Only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.result == 'success'
@@ -154,7 +154,7 @@ jobs:
 
       - name: Send Success Notification
         if: needs.build-and-test.result == 'success'
-        uses: gillouche/homelab-ci/actions/discord-notify@main
+        uses: gillouche/homelab-ci/actions/discord-notify@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: success
@@ -163,7 +163,7 @@ jobs:
 
       - name: Send Failure Notification
         if: needs.build-and-test.result != 'success'
-        uses: gillouche/homelab-ci/actions/discord-notify@main
+        uses: gillouche/homelab-ci/actions/discord-notify@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: failure
