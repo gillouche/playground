@@ -1,4 +1,4 @@
-FROM ghcr.io/actions/actions-runner:latest
+FROM nexus.gillouche.homelab/ghcr-proxy/actions/actions-runner:latest
 
 # Switch to root to install dependencies
 USER root
