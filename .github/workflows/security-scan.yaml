@@ -23,7 +23,7 @@ jobs:
       is_safe: ${{ steps.gate.outputs.is_safe }}
     steps:
       - uses: actions/checkout@v4
-      - uses: gillouche/homelab-ci/actions/security-gate@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
+      - uses: gillouche/homelab-ci/actions/security-gate@main
         id: gate
 
   discover-services:
@@ -42,14 +42,14 @@ jobs:
           persist-credentials: false
 
       - name: Setup Nix Cache Profile
-        uses: gillouche/homelab-ci/actions/setup-aws-profile@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
         with:
           profile: "nix"
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
 
       - name: Find all services
         id: services
@@ -85,14 +85,14 @@ jobs:
           persist-credentials: false
 
       - name: Setup Nix Cache Profile
-        uses: gillouche/homelab-ci/actions/setup-aws-profile@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
         with:
           profile: "nix"
           access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Setup Nix Environment
-        uses: gillouche/homelab-ci/actions/setup-nix-env@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
 
       - name: Build Image
         run: |
@@ -100,7 +100,7 @@ jobs:
           nix develop ./nix#ci --command bazel run --config=ci //${{ matrix.service.package }}:${{ matrix.service.target }}
 
       - name: Trivy Scan
-        uses: gillouche/homelab-ci/actions/trivy-scan@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
+        uses: gillouche/homelab-ci/actions/trivy-scan@main
         with:
           image: ${{ matrix.service.name }}:latest
           trivyignore: .trivyignore
@@ -141,7 +141,7 @@ jobs:
           merge-multiple: true
 
       - name: Send completion notification
-        uses: gillouche/homelab-ci/actions/discord-notify@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
+        uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: ${{ needs.scan-service.result == 'success' && 'success' || 'failure' }}

@@ -15,7 +15,7 @@ jobs:
       github.repository_owner == 'gillouche'
     runs-on: ubuntu-latest
     steps:
-      - uses: gillouche/homelab-ci/actions/renovate-notify@f1ce96ddb91e83c928bf76940005cbcaaab4d1fb # main
+      - uses: gillouche/homelab-ci/actions/renovate-notify@main
         with:
           webhook: ${{ secrets.DISCORD_RENOVATE_WEBHOOK }}
           pr-title: ${{ github.event.pull_request.title }}
