@@ -12,7 +12,7 @@ bazel_dep(name = "rules_rust", version = "0.69.0")
 
 # TypeScript/JavaScript support - uses host Node.js from Nix
 bazel_dep(name = "aspect_rules_js", version = "3.0.1")
-bazel_dep(name = "aspect_rules_ts", version = "3.8.5")
+bazel_dep(name = "aspect_rules_ts", version = "3.8.6")
 bazel_dep(name = "rules_nodejs", version = "6.7.3")
 
 # Python toolchain - uses host Python from Nix
