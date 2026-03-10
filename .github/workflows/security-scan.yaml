@@ -146,7 +146,14 @@ jobs:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: ${{ needs.scan-service.result == 'success' && 'success' || 'failure' }}
           title: Nightly Security Scan
+          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           message: >-
              ${{ needs.scan-service.result == 'success' &&
              'All services scanned successfully. No critical vulnerabilities found.' ||
              'Security scan found issues. Check individual notifications.' }}
+          fields: |
+            [
+              {"name": "Repository", "value": "${{ github.repository }}", "inline": true},
+              {"name": "Ref", "value": "${{ github.ref_name }}", "inline": true},
+              {"name": "Commit", "value": "`${{ github.sha }}`", "inline": false}
+            ]

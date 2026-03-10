@@ -157,8 +157,17 @@ jobs:
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: success
-          title: CI Pipeline
-          message: "Build completed successfully for commit ${{ github.sha }}"
+          title: CI Pipeline Result
+          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          message: "Build completed successfully"
+          fields: |
+            [
+              {"name": "Repository", "value": "${{ github.repository }}", "inline": true},
+              {"name": "Ref", "value": "${{ github.ref_name }}", "inline": true},
+              {"name": "Commit", "value": "`${{ github.sha }}`", "inline": false},
+              {"name": "Actor", "value": "${{ github.actor }}", "inline": true},
+              {"name": "Trigger", "value": "${{ github.event_name }}", "inline": true}
+            ]
 
       - name: Send Failure Notification
         if: needs.build-and-test.result != 'success'
@@ -166,5 +175,14 @@ jobs:
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: failure
-          title: CI Pipeline
-          message: "Build failed for commit ${{ github.sha }}"
+          title: CI Pipeline Result
+          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          message: "Build failed"
+          fields: |
+            [
+              {"name": "Repository", "value": "${{ github.repository }}", "inline": true},
+              {"name": "Ref", "value": "${{ github.ref_name }}", "inline": true},
+              {"name": "Commit", "value": "`${{ github.sha }}`", "inline": false},
+              {"name": "Actor", "value": "${{ github.actor }}", "inline": true},
+              {"name": "Trigger", "value": "${{ github.event_name }}", "inline": true}
+            ]
