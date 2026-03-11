@@ -1,0 +1,12 @@
+resources:
+  - service.yaml
+  - configmap.yaml
+images:
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/go-api
+    newName: nexus.gillouche.homelab/docker-hosted/api-lab/go-api
+    newTag: latest
+labels:
+  - pairs:
+      component: go-api
+    includeSelectors: false
+    includeTemplates: true

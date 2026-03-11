@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: python-api-config
+  labels:
+    component: python-api
+data:
+  ENVIRONMENT: base
+  APP: api-lab
+  APP_VERSION: unknown
+  COMPONENT: python-api
+  COMPONENT_VERSION: unknown
+  GIT_TAG: unknown
+  GIT_COMMIT: unknown
+  LOG_LEVEL: INFO
+  POSTGRES_HOST: localhost
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: api_lab
+  POSTGRES_USER: api_lab
+  REDIS_HOST: localhost
+  REDIS_PORT: "6379"
+  GRPC_PORT: "50051"
+  ENABLE_TRACING: "false"
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317

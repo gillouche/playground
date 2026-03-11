@@ -1,23 +1,14 @@
-# Rust formatting configuration
+# Rust formatting configuration (stable options only)
 edition = "2021"
 max_width = 100
 tab_spaces = 4
 newline_style = "Auto"
 use_small_heuristics = "Default"
 
-# Imports
-imports_granularity = "Module"
-group_imports = "StdExternalCrate"
+# Imports (stable)
 reorder_imports = true
 reorder_modules = true
 
-# Formatting
-format_code_in_doc_comments = true
-format_macro_matchers = true
-format_strings = false
-wrap_comments = true
-comment_width = 100
-
-# Misc
+# Misc (stable)
 use_field_init_shorthand = true
 use_try_shorthand = true

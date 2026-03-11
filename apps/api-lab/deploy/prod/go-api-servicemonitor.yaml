@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: go-api
+  labels:
+    app: api-lab
+    component: go-api
+    environment: prod
+    release: monitoring
+spec:
+  jobLabel: component
+  selector:
+    matchLabels:
+      app: api-lab
+      component: go-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+  podTargetLabels:
+    - app
+    - component
+    - environment
+  namespaceSelector:
+    matchNames:
+      - playground-apps-prod-api-lab

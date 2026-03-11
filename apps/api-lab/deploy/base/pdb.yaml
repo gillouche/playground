@@ -1,0 +1,29 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: python-api-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      component: python-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: go-api-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      component: go-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ts-api-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      component: ts-api

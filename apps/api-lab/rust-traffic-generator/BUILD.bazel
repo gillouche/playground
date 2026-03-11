@@ -1,0 +1,6 @@
+load("//tools:rust_defs.bzl", "rust_application")
+
+rust_application(
+    name = "rust-traffic-generator",
+    srcs = glob(["src/**/*.rs"]),
+)

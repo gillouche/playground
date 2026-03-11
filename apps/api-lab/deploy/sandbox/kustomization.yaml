@@ -1,0 +1,5 @@
+resources:
+  - python-api
+  - go-api
+  - ts-api
+  - rust-traffic-generator

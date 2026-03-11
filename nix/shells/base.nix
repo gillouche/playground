@@ -15,8 +15,8 @@
   ];
 
   shellHook = ''
-    echo "🛠️  Base Shell Tools Loaded (git, ytt, curl, jq, bazel, python)"
-    echo "Bazel: $(bazel --version)"
-    echo "Python: $(python --version)"
+    if [ -z "$_BASE_SHELL_LOADED" ]; then
+      export _BASE_SHELL_LOADED=1
+    fi
   '';
 }

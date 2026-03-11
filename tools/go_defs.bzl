@@ -8,7 +8,7 @@ Usage in BUILD.bazel:
     load("//tools:go_defs.bzl", "go_application")
 """
 
-load("@rules_go//go:defs.bzl", "go_binary", "go_library", "go_test")
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
@@ -23,7 +23,7 @@ def go_application(
         data = [],
         env = {},
         cgo = False,
-        base_image = "@distroless_base_linux_arm64",
+        base_image = "@go_base_linux_arm64",
         image_repository = "",
         visibility = ["//visibility:public"]):
     """

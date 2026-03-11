@@ -60,6 +60,11 @@ repos:
         args: [--ignore-missing-imports]
         additional_dependencies: [types-requests, types-PyYAML]
         files: ^apps/demo-app/traffic-generator-service/.*\.py$
+      - id: mypy
+        name: mypy (api-lab/python-api)
+        args: [--ignore-missing-imports]
+        additional_dependencies: [types-requests, types-PyYAML, types-redis]
+        files: ^apps/api-lab/python-api/.*\.py$
 
   # =============================================================================
   # Go - GolangCI-Lint & Go Imports
@@ -73,31 +78,39 @@ repos:
       - id: go-imports
         name: goimports
         files: ^apps/.*\.go$
+
+  - repo: local
+    hooks:
       - id: go-unit-tests
         name: go test
+        language: system
+        entry: bash -c 'for mod in $(find apps -name go.mod -exec dirname {} \;); do echo "Testing $mod..." && (cd "$mod" && go test ./...); done'
         files: ^apps/.*\.go$
-        # entry: bash -c 'cd "$(dirname "$1")" && go test ./...' (implied)
-
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v1.63.4
-    hooks:
+        pass_filenames: false
       - id: golangci-lint
         name: golangci-lint
+        language: system
+        entry: bash -c 'for mod in $(find apps -name go.mod -exec dirname {} \;); do echo "Linting $mod..." && (cd "$mod" && golangci-lint run ./...); done'
         files: ^apps/.*\.go$
+        pass_filenames: false
 
   # =============================================================================
   # Rust - Cargo
   # =============================================================================
-  - repo: https://github.com/backplane/pre-commit-rust-hooks
-    rev: v1.2.1
+  - repo: local
     hooks:
-      - id: fmt
+      - id: rustfmt
         name: rustfmt
+        language: system
+        entry: bash -c 'for manifest in $(find apps -name Cargo.toml -exec dirname {} \;); do echo "Formatting $manifest..." && (cd "$manifest" && cargo fmt --check); done'
         files: ^apps/.*\.rs$
+        pass_filenames: false
       - id: clippy
         name: clippy
-        args: ["--", "-D", "warnings"]
+        language: system
+        entry: bash -c 'for manifest in $(find apps -name Cargo.toml -exec dirname {} \;); do echo "Linting $manifest..." && (cd "$manifest" && cargo clippy -- -D warnings); done'
         files: ^apps/.*\.rs$
+        pass_filenames: false
 
   # =============================================================================
   # TypeScript / JavaScript - Prettier

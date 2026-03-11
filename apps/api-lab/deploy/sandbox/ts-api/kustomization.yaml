@@ -1,0 +1,15 @@
+resources:
+  - ../../../ts-api/deploy/base
+  - ts-api-rollout.yaml
+patches:
+  - path: ts-api-configmap.yaml
+images:
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/ts-api
+    newName: ts-api
+    newTag: latest
+labels:
+  - pairs:
+      environment: sandbox
+      app: api-lab
+    includeSelectors: false
+    includeTemplates: true

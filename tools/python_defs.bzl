@@ -28,6 +28,7 @@ def python_application(
         unit_tests = [],
         integration_tests = [],
         test_deps = [],
+        test_args = [],
         data = [],
         env = {},
         base_image = "@python_base_linux_arm64",
@@ -47,6 +48,7 @@ def python_application(
         unit_tests: Unit test files
         integration_tests: Integration test files
         test_deps: Additional test dependencies
+        test_args: Extra args to pass to pytest (e.g., ["-o", "asyncio_mode=auto"])
         data: Data files to include
         env: Environment variables for the binary
         base_image: OCI base image (default: python_base for ARM64)
@@ -93,7 +95,7 @@ def python_application(
             srcs = ["//tools:pytest_runner.py"] + unit_tests + srcs,
             main = "//tools:pytest_runner.py",
             # Let pytest discover tests in current directory
-            args = ["-v", "--import-mode=importlib", "."],
+            args = ["-v", "--import-mode=importlib"] + test_args + ["."],
             deps = deps + test_deps,
             # Add "." for current package and "src" for source imports
             imports = [".", "src"],
@@ -107,7 +109,7 @@ def python_application(
             name = name + "_integration_test",
             srcs = ["//tools:pytest_runner.py"] + integration_tests + srcs,
             main = "//tools:pytest_runner.py",
-            args = ["-v", "--import-mode=importlib", "."],
+            args = ["-v", "--import-mode=importlib"] + test_args + ["."],
             deps = deps + test_deps,
             imports = [".", "src"],
             size = "medium",

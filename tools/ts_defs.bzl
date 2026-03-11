@@ -23,7 +23,7 @@ def typescript_application(
         test_deps = [],
         data = [],
         env = {},
-        base_image = "@distroless_base_linux_arm64",
+        base_image = "@typescript_base_linux_arm64",
         image_repository = "",
         visibility = ["//visibility:public"]):
     """

@@ -44,13 +44,68 @@
           # CI shell: All tools for CI
           ci = import ./shells/ci.nix { inherit pkgs; };
 
-          # Default: Base + dev tools (pre-commit kept out of CI)
-          default = pkgs.mkShell {
-            inputsFrom = [ self.devShells.${system}.base ];
-            packages = [
-              (pkgs.python314.withPackages (ps: [ ps.pyyaml ]))
-              pkgs.pre-commit
+          # Default: All toolchains + pre-commit (so all pre-commit hooks work)
+          # shellHook prepends python314 to PATH so it takes priority over pre-commit's python
+          default = let
+            python314Env = pkgs.python314.withPackages (ps: [ ps.pyyaml ]);
+          in pkgs.mkShell {
+            inputsFrom = [
+              self.devShells.${system}.go
+              self.devShells.${system}.node
+              self.devShells.${system}.rust
             ];
+            packages = [
+              pkgs.pre-commit
+              python314Env
+              pkgs.uv
+              pkgs.jdk  # keytool for Java truststore creation
+            ];
+            shellHook = ''
+              export PATH="${python314Env}/bin:$PATH"
+
+              # Configure CA bundle for internal Nexus proxy (homelab root CA)
+              PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+              CA_BUNDLE="$PROJECT_ROOT/ca-bundle.pem"
+              ROOT_CA="$PROJECT_ROOT/homelab-root-ca.crt"
+              if [ -f "$CA_BUNDLE" ]; then
+                export SSL_CERT_FILE="$CA_BUNDLE"
+                export REQUESTS_CA_BUNDLE="$CA_BUNDLE"
+                export NODE_EXTRA_CA_CERTS="$CA_BUNDLE"
+              fi
+
+              # Create Java truststore for Bazel's JVM: system CAs + homelab root CA
+              if [ -f "$ROOT_CA" ]; then
+                TRUSTSTORE="$PROJECT_ROOT/.truststore.jks"
+                if [ ! -f "$TRUSTSTORE" ] || [ "$ROOT_CA" -nt "$TRUSTSTORE" ]; then
+                  rm -f "$TRUSTSTORE"
+                  # Start from the JDK's default cacerts (includes public CAs)
+                  JAVA_CACERTS="$(dirname "$(dirname "$(readlink -f "$(which java)")")")/lib/security/cacerts"
+                  if [ -f "$JAVA_CACERTS" ]; then
+                    cp "$JAVA_CACERTS" "$TRUSTSTORE"
+                    chmod u+w "$TRUSTSTORE"
+                  fi
+                  # Add the homelab root CA
+                  keytool -importcert -noprompt -trustcacerts \
+                    -alias "homelab-root-ca" \
+                    -file "$ROOT_CA" \
+                    -keystore "$TRUSTSTORE" \
+                    -storepass changeit 2>/dev/null || true
+                fi
+                if [ -f "$TRUSTSTORE" ]; then
+                  cat > "$PROJECT_ROOT/.bazelrc.ci" << EOF
+startup --host_jvm_args=-Djavax.net.ssl.trustStore=$TRUSTSTORE
+startup --host_jvm_args=-Djavax.net.ssl.trustStorePassword=changeit
+EOF
+                fi
+              elif [ -f /etc/ssl/certs/java/cacerts ]; then
+                cat > "$PROJECT_ROOT/.bazelrc.ci" << 'CIEOF'
+startup --host_jvm_args=-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts
+startup --host_jvm_args=-Djavax.net.ssl.trustStorePassword=changeit
+CIEOF
+              fi
+
+              echo "Dev shell loaded: Python $(python --version 2>&1 | cut -d' ' -f2), Go $(go version 2>&1 | cut -d' ' -f3), Node $(node --version), Rust $(rustc --version 2>&1 | cut -d' ' -f2), Bazel $(bazel --version 2>&1 | head -1 | cut -d' ' -f2)"
+            '';
           };
         }
       );

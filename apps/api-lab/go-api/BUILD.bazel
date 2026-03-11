@@ -1,0 +1,61 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+
+go_library(
+    name = "generated_lib",
+    srcs = glob(["generated/*.go"]),
+    importpath = "github.com/gillouche/playground/apps/api-lab/go-api/generated",
+    visibility = ["//visibility:private"],
+    deps = ["@com_github_google_uuid//:uuid"],
+)
+
+go_library(
+    name = "go-api_lib",
+    srcs = glob(["*.go"]),
+    importpath = "github.com/gillouche/playground/apps/api-lab/go-api",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":generated_lib",
+        "@com_github_google_uuid//:uuid",
+    ],
+)
+
+go_binary(
+    name = "go-api",
+    embed = [":go-api_lib"],
+    pure = "on",
+    visibility = ["//visibility:public"],
+)
+
+pkg_tar(
+    name = "go-api_bin_layer",
+    srcs = [":go-api"],
+    package_dir = "/app",
+)
+
+oci_image(
+    name = "go-api_image",
+    base = "@go_base_linux_arm64",
+    entrypoint = ["/app/go-api"],
+    labels = {
+        "org.opencontainers.image.source": "https://github.com/gillouche/playground",
+        "org.opencontainers.image.title": "go-api",
+    },
+    tars = [":go-api_bin_layer"],
+    visibility = ["//visibility:public"],
+)
+
+oci_push(
+    name = "go-api_push",
+    image = ":go-api_image",
+    repository = "nexus.gillouche.homelab/docker-hosted/api-lab/go-api",
+    visibility = ["//visibility:public"],
+)
+
+oci_load(
+    name = "go-api_load",
+    image = ":go-api_image",
+    repo_tags = ["go-api:latest"],
+    visibility = ["//visibility:public"],
+)

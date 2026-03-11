@@ -1,0 +1,13 @@
+load("//tools:ts_defs.bzl", "typescript_application")
+
+# TypeScript compilation must be defined separately
+# This macro only creates OCI image targets
+# TODO: Add ts_project compilation rules
+
+typescript_application(
+    name = "ts-api",
+    srcs = glob(
+        ["dist/**/*.js"],
+        allow_empty = True,
+    ),
+)

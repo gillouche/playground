@@ -1,0 +1,48 @@
+patches:
+  - path: python-api-configmap.yaml
+  - path: go-api-configmap.yaml
+  - path: ts-api-configmap.yaml
+  - path: rust-traffic-generator-configmap.yaml
+
+resources:
+  - ../base
+  - ../rollouts-base
+  - ../../python-api/deploy/base
+  - python-api-egress-networkpolicy.yaml
+  - python-api-ingress.yaml
+  - python-api-rollout.yaml
+  - python-api-servicemonitor.yaml
+  - python-api-scaledobject.yaml
+  - python-api-credentials.yaml
+  - ../../go-api/deploy/base
+  - go-api-ingress.yaml
+  - go-api-rollout.yaml
+  - go-api-servicemonitor.yaml
+  - go-api-scaledobject.yaml
+  - ../../ts-api/deploy/base
+  - ts-api-ingress.yaml
+  - ts-api-rollout.yaml
+  - ts-api-servicemonitor.yaml
+  - ts-api-scaledobject.yaml
+  - ../../rust-traffic-generator/deploy/base
+  - monitoring-grafana-dashboard.yaml
+
+images:
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/python-api
+    newTag: "latest"
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/go-api
+    newTag: "latest"
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/ts-api
+    newTag: "latest"
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/rust-traffic-generator
+    newTag: "latest"
+
+labels:
+  - pairs:
+      environment: dev
+      app: api-lab
+    includeSelectors: false
+    includeTemplates: true
+
+commonAnnotations:
+  owner: gillouche

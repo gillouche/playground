@@ -22,7 +22,7 @@ def rust_application(
         data = [],
         env = {},
         edition = "2021",
-        base_image = "@distroless_base_linux_arm64",
+        base_image = "@rust_base_linux_arm64",
         image_repository = "",
         visibility = ["//visibility:public"]):
     """

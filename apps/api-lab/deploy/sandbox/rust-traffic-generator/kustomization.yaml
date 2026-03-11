@@ -1,0 +1,5 @@
+resources:
+  - ../../../rust-traffic-generator/deploy/base
+patches:
+  - path: patch.yaml
+  - path: rust-traffic-generator-configmap.yaml

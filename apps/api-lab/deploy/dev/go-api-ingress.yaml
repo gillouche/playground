@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-api
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+  labels:
+    app: api-lab
+    component: go-api
+    environment: dev
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - go-api.api-lab.dev.k3s.gillouche.homelab
+  rules:
+    - host: go-api.api-lab.dev.k3s.gillouche.homelab
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: go-api
+                port:
+                  number: 8080

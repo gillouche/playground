@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ts-api-config
+  labels:
+    component: ts-api
+data:
+  ENVIRONMENT: dev
+  APP: api-lab
+  COMPONENT: ts-api
+  APP_VERSION: dev
+  COMPONENT_VERSION: latest
+  GIT_TAG: latest
+  GIT_COMMIT: latest
+  LOG_LEVEL: DEBUG

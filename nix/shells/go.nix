@@ -7,9 +7,12 @@ pkgs.mkShell {
     go
     gopls
     gotools  # goimports, etc.
+    golangci-lint
   ]);
 
   shellHook = base.shellHook + ''
-    echo "Go $(go version)"
+    if [ -z "$_GO_SHELL_LOADED" ]; then
+      export _GO_SHELL_LOADED=1
+    fi
   '';
 }

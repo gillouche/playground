@@ -1,0 +1,33 @@
+metadata:
+  app: api-lab
+  version: v0.0.1
+  created_at: '2026-03-11T00:00:00+00:00'
+images:
+  python-api:
+    tag: v0.0.1
+    commit: initial
+    full_tag: api-lab/python-api/v0.0.1
+    image:
+      ref: nexus.gillouche.homelab/docker-hosted/api-lab/python-api:v0.0.1
+      digest: unknown
+  go-api:
+    tag: v0.0.1
+    commit: initial
+    full_tag: api-lab/go-api/v0.0.1
+    image:
+      ref: nexus.gillouche.homelab/docker-hosted/api-lab/go-api:v0.0.1
+      digest: unknown
+  ts-api:
+    tag: v0.0.1
+    commit: initial
+    full_tag: api-lab/ts-api/v0.0.1
+    image:
+      ref: nexus.gillouche.homelab/docker-hosted/api-lab/ts-api:v0.0.1
+      digest: unknown
+  rust-traffic-generator:
+    tag: v0.0.1
+    commit: initial
+    full_tag: api-lab/rust-traffic-generator/v0.0.1
+    image:
+      ref: nexus.gillouche.homelab/docker-hosted/api-lab/rust-traffic-generator:v0.0.1
+      digest: unknown
