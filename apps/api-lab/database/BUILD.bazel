@@ -1,6 +1,16 @@
 load("@pip_apilab//:requirements.bzl", "requirement")
 load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 
+py_library(
+    name = "migrate_lib",
+    srcs = ["migrate.py"],
+    data = glob(["migrations/*.sql"]),
+    visibility = ["//apps/api-lab:__subpackages__"],
+    deps = [
+        requirement("asyncpg"),
+    ],
+)
+
 py_binary(
     name = "migrate",
     srcs = ["migrate.py"],

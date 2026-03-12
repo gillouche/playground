@@ -21,6 +21,7 @@ py_test(
         "system",
     ],
     deps = [
+        "//apps/api-lab/database:migrate_lib",
         dev_requirement("pytest"),
         dev_requirement("pytest-asyncio"),
         dev_requirement("httpx"),

@@ -7,9 +7,7 @@ Database schema is managed by the database migration project.
 
 import json
 import os
-import sys
 import uuid
-from pathlib import Path
 
 import asyncpg
 import grpc
@@ -17,9 +15,6 @@ import httpx
 import pytest
 import pytest_asyncio
 import redis.asyncio as aioredis
-
-# Make the database migration runner importable
-sys.path.insert(0, str(Path(__file__).parent.parent / "database"))
 from migrate import migrate as run_migrations
 
 # Configuration via environment variables
