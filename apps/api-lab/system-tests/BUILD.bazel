@@ -1,0 +1,31 @@
+load("@pip_apilab//:requirements.bzl", "requirement")
+load("@pip_apilab_dev//:requirements.bzl", dev_requirement = "requirement")
+load("@rules_python//python:defs.bzl", "py_test")
+
+py_test(
+    name = "system-tests",
+    size = "large",
+    srcs = ["//tools:pytest_runner.py"] + glob(["**/*.py"]),
+    args = [
+        "-v",
+        "--import-mode=importlib",
+        "-o",
+        "asyncio_mode=auto",
+        ".",
+    ],
+    imports = ["."],
+    main = "//tools:pytest_runner.py",
+    tags = [
+        "manual",
+        "requires-network",
+        "system",
+    ],
+    deps = [
+        dev_requirement("pytest"),
+        dev_requirement("pytest-asyncio"),
+        dev_requirement("httpx"),
+        requirement("asyncpg"),
+        requirement("redis"),
+        requirement("grpcio"),
+    ],
+)

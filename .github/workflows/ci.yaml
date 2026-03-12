@@ -9,6 +9,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: none
@@ -112,15 +116,107 @@ jobs:
           { set +x; } 2>/dev/null
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
           nix develop ./nix#ci --command bazel \
-            run --config=ci //apps/${{ matrix.service.app }}/${{ matrix.service.service }}:${{ matrix.service.service }}_push \
+            run --config=ci \
+            //apps/${{ matrix.service.app }}/${{ matrix.service.service }}:${{ matrix.service.service }}_push \
             -- --tag latest --tag "$SHORT_SHA"
         env:
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
 
+  system-test-api-lab:
+    name: api-lab/system-tests
+    needs: [security-check, build-and-test]
+    if: >-
+      needs.security-check.outputs.is_safe == 'true' &&
+      needs.build-and-test.result == 'success'
+    runs-on: playground-runner
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Nix Cache Profile
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
+        with:
+          profile: nix
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
+      - name: Setup Nix Environment
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+
+      - name: Inject Nexus CA into Docker Daemon
+        run: |
+          sudo mkdir -p /etc/docker/certs.d/nexus.gillouche.homelab
+          sudo cp /usr/local/share/ca-certificates/nexus-ca.crt /etc/docker/certs.d/nexus.gillouche.homelab/ca.crt
+
+      - name: Login to Nexus registry
+        run: |
+          { set +x; } 2>/dev/null
+          echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab \
+            -u "${{ secrets.NEXUS_USERNAME }}" \
+            --password-stdin
+
+      - name: Start infrastructure
+        run: |
+          COMPOSE="docker compose -f infra/sandbox/localhost/docker-compose.yaml"
+          $COMPOSE up -d postgres redis
+          until $COMPOSE exec -T postgres pg_isready -U playground; do
+            sleep 2
+          done
+          until $COMPOSE exec -T redis redis-cli -a playground ping \
+            | grep PONG; do sleep 2; done
+
+      - name: Create test database
+        run: |
+          docker compose -f infra/sandbox/localhost/docker-compose.yaml exec -T postgres \
+            psql -U playground -c "CREATE DATABASE api_lab" || true
+
+      - name: Start services
+        run: |
+          { set +x; } 2>/dev/null
+          export POSTGRES_HOST=localhost POSTGRES_DATABASE=api_lab
+          export POSTGRES_USER=playground POSTGRES_PASSWORD=playground
+          export REDIS_HOST=localhost REDIS_PASSWORD=playground
+          export ENABLE_TRACING=false
+
+          nix develop ./nix#ci --command bazel run --config=ci //apps/api-lab/python-rest-api &
+          nix develop ./nix#ci --command bazel run --config=ci //apps/api-lab/python-grpc-api &
+          export REST_API_URL=http://localhost:8080
+          nix develop ./nix#ci --command bazel run \
+            --config=ci //apps/api-lab/graphql-gateway &
+
+          until curl -sf http://localhost:8080/healthz; do sleep 2; done
+          until curl -sf http://localhost:8083/healthz; do sleep 2; done
+          sleep 3
+
+      - name: Run system tests
+        run: |
+          { set +x; } 2>/dev/null
+          export API_BASE_URL=http://localhost:8080
+          export GRAPHQL_BASE_URL=http://localhost:8083
+          export GRPC_HOST=localhost:50051
+          export POSTGRES_HOST=localhost POSTGRES_DATABASE=api_lab
+          export POSTGRES_USER=playground POSTGRES_PASSWORD=playground
+          export REDIS_HOST=localhost REDIS_PORT=6379 REDIS_PASSWORD=playground
+          nix develop ./nix#ci --command bazel test --config=ci \
+            --test_tag_filters=system \
+            --test_env=API_BASE_URL --test_env=GRAPHQL_BASE_URL --test_env=GRPC_HOST \
+            --test_env=POSTGRES_HOST --test_env=POSTGRES_DATABASE \
+            --test_env=POSTGRES_USER --test_env=POSTGRES_PASSWORD \
+            --test_env=REDIS_HOST --test_env=REDIS_PORT --test_env=REDIS_PASSWORD \
+            //apps/api-lab/system-tests:system-tests
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f infra/sandbox/localhost/docker-compose.yaml down -v || true
+
   finalize:
     name: Finalize
-    needs: [security-check, build-and-test]
+    needs: [security-check, build-and-test, system-test-api-lab]
     if: always() && needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
     timeout-minutes: 10

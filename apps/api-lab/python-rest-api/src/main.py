@@ -12,12 +12,10 @@ logger = logging.getLogger("api-lab.rest")
 
 
 @asynccontextmanager
-async def lifespan(application: FastAPI):
+async def lifespan(_application: FastAPI):
     from cache.redis_cache import RedisCache
     from config import app_config
     from database.engine import async_session_factory, engine
-    from observability.metrics import setup_metrics
-    from observability.tracing import setup_tracing
     from routers import health as health_module
     from routers import rest as rest_module
     from services.book_service import BookService
@@ -32,9 +30,6 @@ async def lifespan(application: FastAPI):
 
     rest_module.set_book_service(book_service)
     health_module.set_cache(cache)
-
-    setup_metrics(application)
-    setup_tracing(application)
 
     logger.info("api-lab python-rest-api started successfully")
 
@@ -53,11 +48,16 @@ def _create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    from observability.metrics import setup_metrics
+    from observability.tracing import setup_tracing
     from routers.health import router as health_router
     from routers.rest import router as rest_router
 
     application.include_router(rest_router)
     application.include_router(health_router)
+
+    setup_metrics(application)
+    setup_tracing(application)
 
     return application
 
