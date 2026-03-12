@@ -31,43 +31,12 @@ jobs:
       - uses: gillouche/homelab-ci/actions/security-gate@main
         id: gate
 
-  discover-services:
-    name: Discover Services
+  demo-app:
+    name: demo-app
     needs: security-check
     if: needs.security-check.outputs.is_safe == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      matrix: ${{ steps.services.outputs.matrix }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-          persist-credentials: false
-
-      - name: Find all services
-        id: services
-        run: |
-          SERVICES=$(find apps -mindepth 3 -maxdepth 3 -type f -name BUILD.bazel | while read -r f; do
-            dir=$(dirname "$f")
-            app=$(basename "$(dirname "$dir")")
-            service=$(basename "$dir")
-            jq -n -c --arg app "$app" --arg service "$service" '{app: $app, service: $service}'
-          done | jq -sc '.')
-          echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
-          echo "Found services: $SERVICES"
-
-  build-and-test:
-    name: ${{ matrix.service.app }}/${{ matrix.service.service }}
-    needs: [security-check, discover-services]
-    if: needs.security-check.outputs.is_safe == 'true' && needs.discover-services.outputs.matrix != '[]'
     runs-on: playground-runner
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        service: ${{ fromJson(needs.discover-services.outputs.matrix) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -88,7 +57,8 @@ jobs:
       - name: Inject Nexus CA into Docker Daemon
         run: |
           sudo mkdir -p /etc/docker/certs.d/nexus.gillouche.homelab
-          sudo cp /usr/local/share/ca-certificates/nexus-ca.crt /etc/docker/certs.d/nexus.gillouche.homelab/ca.crt
+          sudo cp /usr/local/share/ca-certificates/nexus-ca.crt \
+            /etc/docker/certs.d/nexus.gillouche.homelab/ca.crt
 
       - name: Login to Nexus registry
         run: |
@@ -97,27 +67,70 @@ jobs:
             -u "${{ secrets.NEXUS_USERNAME }}" \
             --password-stdin
 
-      - name: Build
+      - name: Build & Test
         run: |
           { set +x; } 2>/dev/null
-          nix develop ./nix#ci --command bazel \
-            build --config=ci //apps/${{ matrix.service.app }}/${{ matrix.service.service }}/...
+          nix develop ./nix#ci --command bazel build --config=ci \
+            //apps/demo-app/...
+          nix develop ./nix#ci --command bazel test --config=ci \
+            //apps/demo-app/... \
+            || { rc=$?; if [ $rc -eq 4 ]; then \
+            echo "No test targets found, skipping"; else exit $rc; fi; }
 
-      - name: Test
+  api-lab:
+    name: api-lab
+    needs: security-check
+    if: needs.security-check.outputs.is_safe == 'true'
+    runs-on: playground-runner
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Nix Cache Profile
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
+        with:
+          profile: nix
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
+      - name: Setup Nix Environment
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+
+      - name: Inject Nexus CA into Docker Daemon
+        run: |
+          sudo mkdir -p /etc/docker/certs.d/nexus.gillouche.homelab
+          sudo cp /usr/local/share/ca-certificates/nexus-ca.crt \
+            /etc/docker/certs.d/nexus.gillouche.homelab/ca.crt
+
+      - name: Login to Nexus registry
         run: |
           { set +x; } 2>/dev/null
-          nix develop ./nix#ci --command bazel \
-            test --config=ci //apps/${{ matrix.service.app }}/${{ matrix.service.service }}/... \
-            || { rc=$?; if [ $rc -eq 4 ]; then echo "No test targets found, skipping"; else exit $rc; fi; }
+          echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab \
+            -u "${{ secrets.NEXUS_USERNAME }}" \
+            --password-stdin
 
-      - name: Push image (Main Only)
+      - name: Build & Test
+        run: |
+          { set +x; } 2>/dev/null
+          nix develop ./nix#ci --command bazel build --config=ci \
+            //apps/api-lab/...
+          nix develop ./nix#ci --command bazel test --config=ci \
+            --test_tag_filters=-system \
+            //apps/api-lab/... \
+            || { rc=$?; if [ $rc -eq 4 ]; then \
+            echo "No test targets found, skipping"; else exit $rc; fi; }
+
+      - name: Push images (Main Only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           { set +x; } 2>/dev/null
           SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
-          nix develop ./nix#ci --command bazel \
-            run --config=ci \
-            //apps/${{ matrix.service.app }}/${{ matrix.service.service }}:${{ matrix.service.service }}_push \
+          nix develop ./nix#ci --command bazel run --config=ci \
+            //apps/api-lab/go-api:go-api_push \
             -- --tag latest --tag "$SHORT_SHA"
         env:
           NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
@@ -125,10 +138,10 @@ jobs:
 
   system-test-api-lab:
     name: api-lab/system-tests
-    needs: [security-check, build-and-test]
+    needs: [security-check, api-lab]
     if: >-
       needs.security-check.outputs.is_safe == 'true' &&
-      needs.build-and-test.result == 'success'
+      needs.api-lab.result == 'success'
     runs-on: playground-runner
     timeout-minutes: 15
     steps:
@@ -151,7 +164,8 @@ jobs:
       - name: Inject Nexus CA into Docker Daemon
         run: |
           sudo mkdir -p /etc/docker/certs.d/nexus.gillouche.homelab
-          sudo cp /usr/local/share/ca-certificates/nexus-ca.crt /etc/docker/certs.d/nexus.gillouche.homelab/ca.crt
+          sudo cp /usr/local/share/ca-certificates/nexus-ca.crt \
+            /etc/docker/certs.d/nexus.gillouche.homelab/ca.crt
 
       - name: Login to Nexus registry
         run: |
@@ -172,8 +186,17 @@ jobs:
 
       - name: Create test database
         run: |
-          docker compose -f infra/sandbox/localhost/docker-compose.yaml exec -T postgres \
+          docker compose -f infra/sandbox/localhost/docker-compose.yaml \
+            exec -T postgres \
             psql -U playground -c "CREATE DATABASE api_lab" || true
+
+      - name: Run database migrations
+        run: |
+          { set +x; } 2>/dev/null
+          export POSTGRES_HOST=localhost POSTGRES_DATABASE=api_lab
+          export POSTGRES_USER=playground POSTGRES_PASSWORD=playground
+          nix develop ./nix#ci --command bazel run --config=ci \
+            //apps/api-lab/database:migrate
 
       - name: Start services
         run: |
@@ -183,8 +206,10 @@ jobs:
           export REDIS_HOST=localhost REDIS_PASSWORD=playground
           export ENABLE_TRACING=false
 
-          nix develop ./nix#ci --command bazel run --config=ci //apps/api-lab/python-rest-api &
-          nix develop ./nix#ci --command bazel run --config=ci //apps/api-lab/python-grpc-api &
+          nix develop ./nix#ci --command bazel run --config=ci \
+            //apps/api-lab/python-rest-api &
+          nix develop ./nix#ci --command bazel run --config=ci \
+            //apps/api-lab/python-grpc-api &
           export REST_API_URL=http://localhost:8080
           nix develop ./nix#ci --command bazel run \
             --config=ci //apps/api-lab/graphql-gateway &
@@ -201,22 +226,31 @@ jobs:
           export GRPC_HOST=localhost:50051
           export POSTGRES_HOST=localhost POSTGRES_DATABASE=api_lab
           export POSTGRES_USER=playground POSTGRES_PASSWORD=playground
-          export REDIS_HOST=localhost REDIS_PORT=6379 REDIS_PASSWORD=playground
+          export REDIS_HOST=localhost REDIS_PORT=6379
+          export REDIS_PASSWORD=playground
           nix develop ./nix#ci --command bazel test --config=ci \
             --test_tag_filters=system \
-            --test_env=API_BASE_URL --test_env=GRAPHQL_BASE_URL --test_env=GRPC_HOST \
-            --test_env=POSTGRES_HOST --test_env=POSTGRES_DATABASE \
-            --test_env=POSTGRES_USER --test_env=POSTGRES_PASSWORD \
-            --test_env=REDIS_HOST --test_env=REDIS_PORT --test_env=REDIS_PASSWORD \
+            --test_env=API_BASE_URL \
+            --test_env=GRAPHQL_BASE_URL \
+            --test_env=GRPC_HOST \
+            --test_env=POSTGRES_HOST \
+            --test_env=POSTGRES_DATABASE \
+            --test_env=POSTGRES_USER \
+            --test_env=POSTGRES_PASSWORD \
+            --test_env=REDIS_HOST \
+            --test_env=REDIS_PORT \
+            --test_env=REDIS_PASSWORD \
             //apps/api-lab/system-tests:system-tests
 
       - name: Cleanup
         if: always()
-        run: docker compose -f infra/sandbox/localhost/docker-compose.yaml down -v || true
+        run: |
+          docker compose -f infra/sandbox/localhost/docker-compose.yaml \
+            down -v || true
 
   finalize:
     name: Finalize
-    needs: [security-check, build-and-test, system-test-api-lab]
+    needs: [security-check, demo-app, api-lab, system-test-api-lab]
     if: always() && needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
     timeout-minutes: 10
@@ -228,7 +262,11 @@ jobs:
           persist-credentials: false
 
       - name: Setup Nix Cache Profile
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.result == 'success'
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          needs.api-lab.result == 'success' &&
+          needs.demo-app.result == 'success'
         uses: gillouche/homelab-ci/actions/setup-aws-profile@main
         with:
           profile: nix
@@ -236,25 +274,37 @@ jobs:
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Setup Nix Environment
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.result == 'success'
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          needs.api-lab.result == 'success' &&
+          needs.demo-app.result == 'success'
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
 
       - name: Push to Nix Cache (Main Only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.result == 'success'
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          needs.api-lab.result == 'success' &&
+          needs.demo-app.result == 'success'
         run: |
           { set +x; } 2>/dev/null
           echo "Pushing build artifacts to Nix Cache..."
-          nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http&profile=nix" \
+          nix copy --to \
+            "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http&profile=nix" \
             ./nix#ci
 
       - name: Send Success Notification
-        if: needs.build-and-test.result == 'success'
+        if: >-
+          needs.api-lab.result == 'success' &&
+          needs.demo-app.result == 'success'
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: success
           title: CI Pipeline Result
-          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          url: >-
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           message: "Build completed successfully"
           fields: |
             [
@@ -266,13 +316,16 @@ jobs:
             ]
 
       - name: Send Failure Notification
-        if: needs.build-and-test.result != 'success'
+        if: >-
+          needs.api-lab.result != 'success' ||
+          needs.demo-app.result != 'success'
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: failure
           title: CI Pipeline Result
-          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          url: >-
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           message: "Build failed"
           fields: |
             [

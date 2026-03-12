@@ -65,6 +65,9 @@ export REDIS_HOST=localhost
 export REDIS_PASSWORD=playground
 export ENABLE_TRACING=false
 
+echo "Running database migrations..."
+bazel run //apps/api-lab/database:migrate
+
 echo "Starting python-rest-api..."
 bazel run //apps/api-lab/python-rest-api &
 REST_PID=$!

@@ -1,0 +1,33 @@
+load("@pip_apilab//:requirements.bzl", "requirement")
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
+
+py_binary(
+    name = "migrate",
+    srcs = ["migrate.py"],
+    data = glob(["migrations/*.sql"]),
+    visibility = ["//apps/api-lab:__subpackages__"],
+    deps = [
+        requirement("asyncpg"),
+    ],
+)
+
+py_test(
+    name = "migration-test",
+    size = "medium",
+    srcs = ["migration_test.py"],
+    data = glob(["migrations/*.sql"]),
+    tags = [
+        "manual",
+        "requires-network",
+        "system",
+    ],
+    deps = [
+        requirement("asyncpg"),
+    ],
+)
+
+filegroup(
+    name = "migrations",
+    srcs = glob(["migrations/*.sql"]),
+    visibility = ["//apps/api-lab:__subpackages__"],
+)

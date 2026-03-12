@@ -15,7 +15,6 @@ py_library(
         requirement("sqlalchemy"),
         requirement("asyncpg"),
         requirement("redis"),
-        requirement("alembic"),
         requirement("prometheus-client"),
         requirement("opentelemetry-api"),
         requirement("opentelemetry-sdk"),

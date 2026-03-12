@@ -2,11 +2,14 @@
 
 These tests run against real running services with real PostgreSQL and Redis.
 They skip automatically if services are not reachable.
+Database schema is managed by the database migration project.
 """
 
 import json
 import os
+import sys
 import uuid
+from pathlib import Path
 
 import asyncpg
 import grpc
@@ -14,6 +17,10 @@ import httpx
 import pytest
 import pytest_asyncio
 import redis.asyncio as aioredis
+
+# Make the database migration runner importable
+sys.path.insert(0, str(Path(__file__).parent.parent / "database"))
+from migrate import migrate as run_migrations
 
 # Configuration via environment variables
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8080")
@@ -32,43 +39,6 @@ REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "playground")
 
 _services_checked = False
 _services_available = False
-
-CREATE_TABLES_SQL = """
-DO $$ BEGIN
-    CREATE TYPE reservation_status AS ENUM ('ACTIVE', 'RETURNED', 'OVERDUE');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
-
-CREATE TABLE IF NOT EXISTS books (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    isbn VARCHAR(13) UNIQUE NOT NULL,
-    title TEXT NOT NULL,
-    author TEXT NOT NULL,
-    genre VARCHAR(100) NOT NULL,
-    published_year INTEGER NOT NULL,
-    total_copies INTEGER NOT NULL,
-    available_copies INTEGER NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now(),
-    CONSTRAINT check_available_copies_non_negative CHECK (available_copies >= 0)
-);
-CREATE INDEX IF NOT EXISTS ix_books_isbn ON books (isbn);
-CREATE INDEX IF NOT EXISTS ix_books_author ON books (author);
-
-CREATE TABLE IF NOT EXISTS reservations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    book_id UUID NOT NULL REFERENCES books(id),
-    user_id VARCHAR(255) NOT NULL,
-    reserved_at TIMESTAMPTZ DEFAULT now(),
-    due_date TIMESTAMPTZ NOT NULL,
-    returned_at TIMESTAMPTZ,
-    status reservation_status DEFAULT 'ACTIVE'
-);
-CREATE INDEX IF NOT EXISTS ix_reservations_user_id ON reservations (user_id);
-CREATE INDEX IF NOT EXISTS ix_reservations_status ON reservations (status);
-CREATE INDEX IF NOT EXISTS ix_reservations_book_id ON reservations (book_id);
-"""
 
 
 async def _check_service(url: str) -> bool:
@@ -121,12 +91,8 @@ async def ensure_and_clean():
                 missing.append(f"gRPC ({GRPC_HOST})")
             pytest.skip(f"Services not reachable: {', '.join(missing)}")
 
-        # Ensure tables exist (idempotent, only on first run)
-        conn = await _db_connect()
-        try:
-            await conn.execute(CREATE_TABLES_SQL)
-        finally:
-            await conn.close()
+        # Apply database migrations (idempotent, only on first run)
+        await run_migrations()
 
     if not _services_available:
         pytest.skip("Services not reachable")
