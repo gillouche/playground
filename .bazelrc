@@ -30,6 +30,7 @@ try-import %workspace%/.bazelrc.ci
 build:ci --remote_cache=http://bazel-remote-cache.seaweedfs.svc.cluster.local:8080
 build:ci --remote_upload_local_results=true
 build:ci --remote_cache_async
+build:ci --remote_local_fallback
 
 # Parallelism and resource settings for CI
 build:ci --jobs=auto

@@ -176,18 +176,19 @@ jobs:
 
       - name: Start infrastructure
         run: |
-          COMPOSE="docker compose -f infra/sandbox/localhost/docker-compose.yaml"
-          $COMPOSE up -d postgres redis
-          until $COMPOSE exec -T postgres pg_isready -U playground; do
+          if docker compose version &>/dev/null; then
+            COMPOSE="docker compose"
+          else
+            COMPOSE="docker-compose"
+          fi
+          COMPOSE_CMD="$COMPOSE -f infra/sandbox/localhost/docker-compose.yaml"
+          $COMPOSE_CMD up -d postgres redis
+          until $COMPOSE_CMD exec -T postgres pg_isready -U playground; do
             sleep 2
           done
-          until $COMPOSE exec -T redis redis-cli -a playground ping \
+          until $COMPOSE_CMD exec -T redis redis-cli -a playground ping \
             | grep PONG; do sleep 2; done
-
-      - name: Create test database
-        run: |
-          docker compose -f infra/sandbox/localhost/docker-compose.yaml \
-            exec -T postgres \
+          $COMPOSE_CMD exec -T postgres \
             psql -U playground -c "CREATE DATABASE api_lab" || true
 
       - name: Run database migrations
@@ -245,8 +246,13 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          docker compose -f infra/sandbox/localhost/docker-compose.yaml \
-            down -v || true
+          if docker compose version &>/dev/null; then
+            docker compose -f infra/sandbox/localhost/docker-compose.yaml \
+              down -v || true
+          else
+            docker-compose -f infra/sandbox/localhost/docker-compose.yaml \
+              down -v || true
+          fi
 
   finalize:
     name: Finalize
