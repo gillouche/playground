@@ -61,10 +61,25 @@ repos:
         additional_dependencies: [types-requests, types-PyYAML]
         files: ^apps/demo-app/traffic-generator-service/.*\.py$
       - id: mypy
-        name: mypy (api-lab/python-api)
+        name: mypy (api-lab/python-common)
         args: [--ignore-missing-imports]
         additional_dependencies: [types-requests, types-PyYAML, types-redis]
-        files: ^apps/api-lab/python-api/.*\.py$
+        files: ^apps/api-lab/python-common/.*\.py$
+      - id: mypy
+        name: mypy (api-lab/python-rest-api)
+        args: [--ignore-missing-imports]
+        additional_dependencies: [types-requests, types-PyYAML, types-redis]
+        files: ^apps/api-lab/python-rest-api/.*\.py$
+      - id: mypy
+        name: mypy (api-lab/python-grpc-api)
+        args: [--ignore-missing-imports]
+        additional_dependencies: [types-requests, types-PyYAML, types-redis]
+        files: ^apps/api-lab/python-grpc-api/.*\.py$
+      - id: mypy
+        name: mypy (api-lab/graphql-gateway)
+        args: [--ignore-missing-imports]
+        additional_dependencies: [types-requests, types-PyYAML, types-redis]
+        files: ^apps/api-lab/graphql-gateway/.*\.py$
 
   # =============================================================================
   # Go - GolangCI-Lint & Go Imports

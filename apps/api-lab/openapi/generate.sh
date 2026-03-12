@@ -39,7 +39,7 @@ echo "Generating from: $SPEC"
 
 generate_python() {
     echo "==> Python: generating models and interface..."
-    local out_dir="$API_LAB_DIR/python-api/src/generated"
+    local out_dir="$API_LAB_DIR/python-common/src/generated"
     mkdir -p "$out_dir"
 
     # Generate Pydantic models from OpenAPI spec

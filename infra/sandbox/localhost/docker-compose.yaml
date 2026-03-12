@@ -43,6 +43,16 @@ services:
     volumes:
       - mongodb-data:/data/db
 
+  # Jaeger for OpenTelemetry trace visualization
+  jaeger:
+    image: nexus.gillouche.homelab/docker-hub/jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
 volumes:
   postgres-data:
   mongodb-data:

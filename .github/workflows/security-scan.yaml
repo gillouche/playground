@@ -22,7 +22,7 @@ jobs:
     outputs:
       is_safe: ${{ steps.gate.outputs.is_safe }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: gillouche/homelab-ci/actions/security-gate@main
         id: gate
 
@@ -36,7 +36,7 @@ jobs:
       matrix: ${{ steps.services.outputs.matrix }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -79,7 +79,7 @@ jobs:
         service: ${{ fromJson(needs.discover-services.outputs.matrix) }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -111,7 +111,7 @@ jobs:
         run: echo "${{ matrix.service.name }}" > vulnerable-service.txt
 
       - name: Upload Vulnerability Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         if: always()
         with:
           name: vulnerable-${{ matrix.service.name }}
@@ -127,14 +127,14 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           persist-credentials: false
 
       - name: Download Vulnerability Artifacts
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v4.3.0
         with:
           pattern: vulnerable-*
           path: issues

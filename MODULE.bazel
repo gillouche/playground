@@ -86,22 +86,22 @@ pip.parse(
     experimental_index_url = "https://nexus.gillouche.homelab/repository/pypi-proxy/simple",
 )
 
-# API Lab Python API dependencies
+# API Lab shared Python dependencies (all Python services in api-lab)
 pip.parse(
-    hub_name = "pip_apilab_python_api",
+    hub_name = "pip_apilab",
     python_version = "3.14",
     requirements_by_platform = {
-        "//apps/api-lab/python-api:requirements_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
+        "//apps/api-lab:requirements_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
     experimental_index_url = "https://nexus.gillouche.homelab/repository/pypi-proxy/simple",
 )
 
-# API Lab Python API dev dependencies (for tests)
+# API Lab shared Python dev dependencies (for tests)
 pip.parse(
-    hub_name = "pip_apilab_python_api_dev",
+    hub_name = "pip_apilab_dev",
     python_version = "3.14",
     requirements_by_platform = {
-        "//apps/api-lab/python-api:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
+        "//apps/api-lab:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
     experimental_index_url = "https://nexus.gillouche.homelab/repository/pypi-proxy/simple",
 )
@@ -114,8 +114,8 @@ use_repo(
     "pip_infra_check_service_dev",
     "pip_traffic_generator_service",
     "pip_traffic_generator_service_dev",
-    "pip_apilab_python_api",
-    "pip_apilab_python_api_dev",
+    "pip_apilab",
+    "pip_apilab_dev",
 )
 
 # OCI base images - multi-platform (ARM64 for Raspberry Pi, AMD64 for local testing)

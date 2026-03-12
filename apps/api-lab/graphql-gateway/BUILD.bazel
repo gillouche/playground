@@ -1,0 +1,29 @@
+load("@pip_apilab//:requirements.bzl", "requirement")
+load("@pip_apilab_dev//:requirements.bzl", dev_requirement = "requirement")
+load("//tools:python_defs.bzl", "python_application")
+
+python_application(
+    name = "graphql-gateway",
+    srcs = glob(["src/**/*.py"]),
+    integration_tests = glob(["tests/integration/**/test_*.py"]),
+    test_args = [
+        "-o",
+        "asyncio_mode=auto",
+    ],
+    test_deps = [
+        dev_requirement("pytest"),
+        dev_requirement("pytest-asyncio"),
+        dev_requirement("pytest-cov"),
+        dev_requirement("httpx"),
+    ],
+    unit_tests = glob(
+        ["tests/unit/**/test_*.py"],
+        allow_empty = True,
+    ),
+    deps = [
+        requirement("fastapi"),
+        requirement("uvicorn"),
+        requirement("strawberry-graphql"),
+        requirement("httpx"),
+    ],
+)
