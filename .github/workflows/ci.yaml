@@ -80,7 +80,7 @@ jobs:
 
       - name: Publish test results
         if: always()
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         with:
           name: demo-app tests
           path: bazel-testlogs/**/test.xml
@@ -136,7 +136,7 @@ jobs:
 
       - name: Publish test results
         if: always()
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         with:
           name: api-lab tests
           path: bazel-testlogs/**/test.xml
@@ -264,7 +264,7 @@ jobs:
 
       - name: Publish test results
         if: always()
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         with:
           name: api-lab system tests
           path: bazel-testlogs/**/test.xml
