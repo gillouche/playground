@@ -1,0 +1,22 @@
+flowchart TB
+    PUSH[Push / PR] --> SEC[Security Check]
+
+    SEC --> DEMO[demo-app<br/>Build & Test]
+    SEC --> API[api-lab<br/>Build & Test]
+
+    API --> SYS[system-test-api-lab<br/>Docker Compose infra<br/>Run migrations<br/>Start services<br/>pytest]
+
+    DEMO --> FIN[Finalize]
+    SYS --> FIN
+
+    FIN --> CACHE[Push Nix Cache<br/>main only]
+    FIN --> DISCORD[Discord Notification]
+
+    subgraph Nightly
+        CRON[Cron 02:00 UTC] --> TRIVY[Trivy Security Scan<br/>All OCI images]
+    end
+
+    subgraph On Tag Push
+        TAG[Tag Push] --> RETAG[Retag image<br/>SHA to version]
+        RETAG --> NOTIFY[Discord Notification]
+    end

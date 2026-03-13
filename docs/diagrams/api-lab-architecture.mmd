@@ -1,0 +1,47 @@
+graph TB
+    subgraph Clients
+        REST_CLIENT[REST Client]
+        GRPC_CLIENT[gRPC Client]
+        GQL_CLIENT[GraphQL Client]
+        TRAFFIC[Rust Traffic Generator]
+    end
+
+    subgraph API Lab Services
+        REST[Python REST API<br/>FastAPI :8080]
+        GRPC[Python gRPC API<br/>asyncio :50051]
+        GQL[GraphQL Gateway<br/>Strawberry :8083]
+        GO[Go API<br/>Chi :8081<br/>planned]
+        TS[TypeScript API<br/>Fastify :8082<br/>planned]
+    end
+
+    subgraph Shared
+        SVC[BookService<br/>Business Logic]
+        CACHE[Redis Cache<br/>TTL-based]
+        DB[(PostgreSQL<br/>books, reservations)]
+    end
+
+    subgraph Observability
+        PROM[Prometheus<br/>Metrics]
+        OTEL[OpenTelemetry<br/>Traces]
+    end
+
+    REST_CLIENT --> REST
+    GRPC_CLIENT --> GRPC
+    GQL_CLIENT --> GQL
+    TRAFFIC --> REST
+    TRAFFIC --> GO
+    TRAFFIC --> TS
+
+    GQL -->|HTTP| REST
+
+    REST --> SVC
+    GRPC --> SVC
+
+    SVC --> CACHE
+    SVC --> DB
+    CACHE --> DB
+
+    REST --> PROM
+    REST --> OTEL
+    GRPC --> PROM
+    GQL --> PROM

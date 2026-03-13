@@ -1,0 +1,30 @@
+graph TB
+    subgraph Demo App Services
+        GREET[Greeting Service<br/>FastAPI :8080]
+        INFRA[Infra Check Service<br/>FastAPI :8080]
+        TGEN[Traffic Generator<br/>httpx async]
+    end
+
+    subgraph Infrastructure
+        PG[(PostgreSQL)]
+        REDIS[(Redis)]
+        KAFKA[Kafka]
+        MONGO[(MongoDB)]
+    end
+
+    subgraph Observability
+        PROM[Prometheus]
+        JAEGER[Jaeger<br/>Tracing]
+    end
+
+    TGEN -->|HTTP requests| GREET
+
+    INFRA --> PG
+    INFRA --> REDIS
+    INFRA --> KAFKA
+    INFRA --> MONGO
+
+    GREET --> PROM
+    GREET --> JAEGER
+    INFRA --> PROM
+    TGEN --> JAEGER

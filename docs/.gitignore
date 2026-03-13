@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+site/
+
+content/assets/diagrams/*.svg
+content/apps/api-lab/api-reference/rest-api.md
+content/apps/api-lab/api-reference/grpc-api.md
+content/apps/api-lab/api-reference/graphql-api.md

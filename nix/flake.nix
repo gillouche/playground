@@ -59,6 +59,7 @@
               python314Env
               pkgs.uv
               pkgs.jdk  # keytool for Java truststore creation
+              pkgs.mermaid-cli  # mmdc for diagram generation
             ];
             shellHook = ''
               export PATH="${python314Env}/bin:$PATH"
