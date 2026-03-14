@@ -13,6 +13,7 @@ See libs/templates/typescript-service for a complete example.
 
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("//tools:transitions.bzl", "transition_rule")
 
 def typescript_application(
         name,
@@ -83,16 +84,23 @@ def typescript_application(
             visibility = visibility,
         )
 
+        transition_rule(
+            name = name + "_image_arm64",
+            actual = ":" + name + "_image",
+            platform = "//tools/platforms:linux_arm64",
+            visibility = visibility,
+        )
+
         oci_push(
             name = name + "_push",
-            image = ":" + name + "_image",
+            image = ":" + name + "_image_arm64",
             repository = image_repository,
             visibility = visibility,
         )
 
         oci_load(
             name = name + "_load",
-            image = ":" + name + "_image",
+            image = ":" + name + "_image_arm64",
             repo_tags = ["{}:latest".format(name)],
             visibility = visibility,
         )

@@ -33,8 +33,7 @@ for component in */; do
         echo "Building $component..."
         echo "======================================"
 
-        # Build and load the Docker image
-        bazel run "${target}:build_docker"
+        bazel run "${target}:${component}_load"
 
         echo "Loading $component image to minikube..."
         minikube image load "${component}:latest"

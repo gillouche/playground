@@ -2,22 +2,28 @@
 
 ## System Tests
 
-End-to-end tests that validate all three API protocols (REST, gRPC, GraphQL) and cross-protocol data consistency.
+End-to-end tests that validate all three API protocols (REST, gRPC, GraphQL) and cross-protocol data consistency. The test runner supports two targets: docker compose (local) and minikube.
 
-### Running Locally
+### Local (Docker Compose)
 
 ```bash
-cd apps/api-lab
-./system-tests/run.sh
+./apps/api-lab/system-tests/run.sh local
 ```
 
-This script:
+Starts PostgreSQL and Redis via Docker Compose, runs services via `bazel run`, executes the test suite, and cleans up. Use `--keep` to leave infrastructure running after tests.
 
-1. Starts PostgreSQL and Redis via Docker Compose
-2. Runs database migrations
-3. Starts the REST API, gRPC API, and GraphQL gateway
-4. Executes the pytest system test suite
-5. Cleans up
+### Minikube
+
+```bash
+./apps/api-lab/system-tests/run.sh minikube
+```
+
+Port-forwards to services already deployed in minikube and runs the same test suite. Requires infrastructure deployed to `playground-infra-sandbox` and api-lab services deployed to `playground-api-lab-sandbox`:
+
+```bash
+kubectl apply -k infra/sandbox/minikube/
+kubectl apply -k apps/api-lab/deploy/sandbox/
+```
 
 ### Test Suites
 

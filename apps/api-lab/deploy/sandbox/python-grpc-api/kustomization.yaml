@@ -1,0 +1,16 @@
+resources:
+  - ../../../python-grpc-api/deploy/base
+  - python-grpc-api-deployment.yaml
+  - python-grpc-api-secrets.yaml
+patches:
+  - path: python-grpc-api-configmap.yaml
+images:
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/python-grpc-api
+    newName: python-grpc-api
+    newTag: latest
+labels:
+  - pairs:
+      environment: sandbox
+      app: api-lab
+    includeSelectors: false
+    includeTemplates: true

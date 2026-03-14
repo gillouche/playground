@@ -169,7 +169,7 @@ def python_application(
 
         oci_load(
             name = name + "_load",
-            image = ":" + name + "_image",
+            image = ":" + name + "_image_arm64",
             repo_tags = ["{}:latest".format(name)],
             visibility = visibility,
         )

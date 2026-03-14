@@ -1,0 +1,16 @@
+resources:
+  - ../../../graphql-gateway/deploy/base
+  - graphql-gateway-deployment.yaml
+  - graphql-gateway-secrets.yaml
+patches:
+  - path: graphql-gateway-configmap.yaml
+images:
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/graphql-gateway
+    newName: graphql-gateway
+    newTag: latest
+labels:
+  - pairs:
+      environment: sandbox
+      app: api-lab
+    includeSelectors: false
+    includeTemplates: true

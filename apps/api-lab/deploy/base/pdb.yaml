@@ -27,3 +27,13 @@ spec:
   selector:
     matchLabels:
       component: ts-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: graphql-gateway-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      component: graphql-gateway

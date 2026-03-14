@@ -1,6 +1,7 @@
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("//tools:transitions.bzl", "transition_rule")
 
 go_library(
     name = "generated_lib",
@@ -46,16 +47,23 @@ oci_image(
     visibility = ["//visibility:public"],
 )
 
+transition_rule(
+    name = "go-api_image_arm64",
+    actual = ":go-api_image",
+    platform = "//tools/platforms:linux_arm64",
+    visibility = ["//visibility:public"],
+)
+
 oci_push(
     name = "go-api_push",
-    image = ":go-api_image",
+    image = ":go-api_image_arm64",
     repository = "nexus.gillouche.homelab/docker-hosted/api-lab/go-api",
     visibility = ["//visibility:public"],
 )
 
 oci_load(
     name = "go-api_load",
-    image = ":go-api_image",
+    image = ":go-api_image_arm64",
     repo_tags = ["go-api:latest"],
     visibility = ["//visibility:public"],
 )
