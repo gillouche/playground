@@ -51,6 +51,7 @@ transition_rule(
     name = "go-api_image_arm64",
     actual = ":go-api_image",
     platform = "//tools/platforms:linux_arm64",
+    tags = ["manual"],
     visibility = ["//visibility:public"],
 )
 
@@ -58,6 +59,7 @@ oci_push(
     name = "go-api_push",
     image = ":go-api_image_arm64",
     repository = "nexus.gillouche.homelab/docker-hosted/api-lab/go-api",
+    tags = ["manual"],
     visibility = ["//visibility:public"],
 )
 
@@ -65,5 +67,6 @@ oci_load(
     name = "go-api_load",
     image = ":go-api_image_arm64",
     repo_tags = ["go-api:latest"],
+    tags = ["manual"],
     visibility = ["//visibility:public"],
 )

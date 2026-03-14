@@ -35,12 +35,12 @@ repos:
         name: ruff (lint)
         args: [--fix, --exit-non-zero-on-fix]
         types: [python]
-        files: ^apps/.*\.py$
+        files: ^(apps|tools)/.*\.py$
 
       - id: ruff-format
         name: ruff (format)
         types: [python]
-        files: ^apps/.*\.py$
+        files: ^(apps|tools)/.*\.py$
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.14.1

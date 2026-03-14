@@ -88,6 +88,7 @@ def typescript_application(
             name = name + "_image_arm64",
             actual = ":" + name + "_image",
             platform = "//tools/platforms:linux_arm64",
+            tags = ["manual"],
             visibility = visibility,
         )
 
@@ -95,6 +96,7 @@ def typescript_application(
             name = name + "_push",
             image = ":" + name + "_image_arm64",
             repository = image_repository,
+            tags = ["manual"],
             visibility = visibility,
         )
 
@@ -102,5 +104,6 @@ def typescript_application(
             name = name + "_load",
             image = ":" + name + "_image_arm64",
             repo_tags = ["{}:latest".format(name)],
+            tags = ["manual"],
             visibility = visibility,
         )

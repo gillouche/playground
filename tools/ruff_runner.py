@@ -16,6 +16,7 @@ import os
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 
 def _find_ruff_binary():
@@ -28,13 +29,13 @@ def _find_ruff_binary():
     # Walk the runfiles looking for bin/ruff
     for dirpath, dirnames, filenames in os.walk(runfiles):
         if "ruff" in filenames:
-            candidate = os.path.join(dirpath, "ruff")
+            candidate = Path(dirpath) / "ruff"
             # Skip Python files, we want the actual binary
             if (
                 os.access(candidate, os.X_OK)
                 and not candidate.endswith(".py")
                 and "site-packages" not in dirpath
-                and os.path.basename(dirpath) == "bin"
+                and Path(dirpath).name == "bin"
             ):
                 return candidate
         # Limit depth to avoid excessive walking
@@ -68,9 +69,10 @@ if __name__ == "__main__":
 
     if ruff_bin:
         result = subprocess.run(
-            [ruff_bin, "check"] + args,
+            [ruff_bin, "check", *args],
             capture_output=True,
             text=True,
+            check=False,
         )
         output = (result.stdout or "") + (result.stderr or "")
         if output:

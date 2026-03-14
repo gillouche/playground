@@ -79,13 +79,13 @@ jobs:
             echo "No test targets found, skipping"; else exit $rc; fi; }
 
       - name: Publish test results
-        if: always()
+        if: always() && hashFiles('bazel-testlogs/**/test.xml') != ''
         uses: dorny/test-reporter@v2
         with:
           name: demo-app tests
           path: bazel-testlogs/**/test.xml
           reporter: java-junit
-          fail-on-error: false
+          fail-on-error: true
 
   api-lab:
     name: api-lab
@@ -135,13 +135,18 @@ jobs:
             echo "No test targets found, skipping"; else exit $rc; fi; }
 
       - name: Publish test results
-        if: always()
+        if: always() && hashFiles('bazel-testlogs/**/test.xml') != ''
         uses: dorny/test-reporter@v2
         with:
           name: api-lab tests
           path: bazel-testlogs/**/test.xml
           reporter: java-junit
-          fail-on-error: false
+          fail-on-error: true
+
+      - name: API Coverage Report
+        if: always()
+        continue-on-error: true
+        run: python3 apps/api-lab/tools/api_coverage.py --github-summary
 
       - name: Push images (Main Only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -263,13 +268,13 @@ jobs:
             //apps/api-lab/system-tests:system-tests
 
       - name: Publish test results
-        if: always()
+        if: always() && hashFiles('bazel-testlogs/**/test.xml') != ''
         uses: dorny/test-reporter@v2
         with:
           name: api-lab system tests
           path: bazel-testlogs/**/test.xml
           reporter: java-junit
-          fail-on-error: false
+          fail-on-error: true
 
       - name: Cleanup
         if: always()
