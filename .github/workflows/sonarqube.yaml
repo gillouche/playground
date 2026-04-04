@@ -21,7 +21,7 @@ jobs:
     outputs:
       is_safe: ${{ steps.gate.outputs.is_safe }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: gillouche/homelab-ci/actions/security-gate@main
         id: gate
 
@@ -35,7 +35,7 @@ jobs:
       matrix: ${{ steps.services.outputs.matrix }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -72,7 +72,7 @@ jobs:
         service: ${{ fromJson(needs.discover-services.outputs.matrix) }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
