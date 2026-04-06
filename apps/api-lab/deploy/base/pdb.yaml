@@ -31,6 +31,16 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
+  name: python-grpc-api-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      component: python-grpc-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
   name: graphql-gateway-pdb
 spec:
   minAvailable: 1

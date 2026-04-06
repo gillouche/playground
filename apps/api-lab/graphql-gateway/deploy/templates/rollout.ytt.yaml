@@ -1,38 +1,49 @@
+#@ load("@ytt:data", "data")
+
+#@ if data.values.env == "sandbox":
+apiVersion: apps/v1
+kind: Deployment
+#@ else:
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
+#@ end
 metadata:
-  name: python-api
+  name: graphql-gateway
   labels:
-    component: python-api
-    app: api-lab
-    environment: dev
+    component: graphql-gateway
+    app: #@ data.values.app
+    environment: #@ data.values.env
 spec:
   replicas: 1
+  #@ if data.values.env != "sandbox":
   revisionHistoryLimit: 3
+  #@ end
   selector:
     matchLabels:
-      component: python-api
+      component: graphql-gateway
+  #@ if data.values.env != "sandbox":
   strategy:
     canary:
       analysis:
         templates:
-        - templateName: success-rate
-        - templateName: error-rate
+          - templateName: success-rate
+          - templateName: error-rate
         args:
-        - name: service
-          value: python-api
+          - name: service
+            value: graphql-gateway
       steps:
       - setWeight: 20
-      - pause:
-          duration: 30s
+      - pause: {duration: 30s}
       - setWeight: 100
+  #@ end
   template:
     metadata:
       labels:
-        component: python-api
-        app: api-lab
-        environment: dev
+        component: graphql-gateway
+        app: #@ data.values.app
+        environment: #@ data.values.env
     spec:
+      #@ if data.values.env != "sandbox":
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -46,10 +57,16 @@ spec:
                 operator: In
                 values:
                 - rpi
+      #@ end
       containers:
-      - name: python-api
-        image: nexus.gillouche.homelab/docker-hosted/api-lab/python-api
+      - name: graphql-gateway
+        image: nexus.gillouche.homelab/docker-hosted/api-lab/graphql-gateway
+        #@ if data.values.env == "sandbox":
+        imagePullPolicy: Never
+        #@ else:
         imagePullPolicy: IfNotPresent
+        #@ end
+        #@ if data.values.env != "sandbox":
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -59,11 +76,10 @@ spec:
         volumeMounts:
         - name: tmp
           mountPath: /tmp
+        #@ end
         envFrom:
         - configMapRef:
-            name: python-api-config
-        - secretRef:
-            name: python-api-credentials
+            name: graphql-gateway-config
         env:
         - name: PYTHONUNBUFFERED
           value: "1"
@@ -76,15 +92,15 @@ spec:
             fieldRef:
               fieldPath: status.podIP
         ports:
-        - containerPort: 8080
+        - containerPort: 8083
           name: http
         resources:
           requests:
-            memory: 256Mi
-            cpu: 100m
+            memory: "256Mi"
+            cpu: "100m"
           limits:
-            memory: 1Gi
-            cpu: 500m
+            memory: "1Gi"
+            cpu: "500m"
         livenessProbe:
           httpGet:
             path: /healthz
@@ -95,7 +111,7 @@ spec:
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /ready
+            path: /healthz
             port: http
           initialDelaySeconds: 5
           periodSeconds: 5
@@ -107,6 +123,8 @@ spec:
             port: http
           failureThreshold: 30
           periodSeconds: 10
+      #@ if data.values.env != "sandbox":
       volumes:
       - name: tmp
         emptyDir: {}
+      #@ end

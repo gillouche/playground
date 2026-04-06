@@ -1,0 +1,28 @@
+#@ load("@ytt:data", "data")
+
+#@ if data.values.env != "sandbox":
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: #@ data.values.component
+  labels:
+    component: #@ data.values.component
+    app: #@ data.values.app
+    environment: #@ data.values.env
+spec:
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: #@ data.values.component
+  minReplicaCount: 1
+  maxReplicaCount: 1
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://monitoring-kube-prometheus-prometheus.monitoring:9090
+        metricName: grpc_requests_per_second
+        query: #@ "sum(rate(grpc_server_handled_total{component=\"" + data.values.component + "\"}[2m]))"
+        threshold: "100"
+#@ end

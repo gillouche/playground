@@ -1,0 +1,34 @@
+#@ load("@ytt:data", "data")
+
+#@ def get_host(service):
+#@   return service + ".playground-infra-" + data.values.env + ".svc.cluster.local"
+#@ end
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: python-grpc-api-config
+  labels:
+    component: python-grpc-api
+data:
+  ENVIRONMENT: #@ data.values.env
+  APP: #@ data.values.app
+  COMPONENT: #@ data.values.component
+  APP_VERSION: #@ data.values.app_version
+  COMPONENT_VERSION: #@ data.values.component_version
+  GIT_TAG: #@ data.values.git_tag
+  GIT_COMMIT: #@ data.values.git_commit
+  #@ if data.values.env == "dev":
+  LOG_LEVEL: DEBUG
+  #@ else:
+  LOG_LEVEL: INFO
+  #@ end
+  POSTGRES_HOST: #@ get_host("postgres")
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: api_lab
+  POSTGRES_USER: api_lab
+  REDIS_HOST: #@ get_host("redis")
+  REDIS_PORT: "6379"
+  GRPC_PORT: "50051"
+  ENABLE_TRACING: #@ "false" if data.values.env == "sandbox" else "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring.svc.cluster.local:4317

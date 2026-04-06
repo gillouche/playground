@@ -1,0 +1,9 @@
+# @data/values
+---
+app: api-lab
+component: graphql-gateway
+env: "dev"
+git_tag: "unknown"
+git_commit: "unknown"
+app_version: "unknown"
+component_version: "unknown"

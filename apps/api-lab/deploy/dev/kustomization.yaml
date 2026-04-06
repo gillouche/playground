@@ -1,5 +1,7 @@
 patches:
   - path: python-api-configmap.yaml
+  - path: python-grpc-api-configmap.yaml
+  - path: graphql-gateway-configmap.yaml
   - path: go-api-configmap.yaml
   - path: ts-api-configmap.yaml
   - path: rust-traffic-generator-configmap.yaml
@@ -14,6 +16,15 @@ resources:
   - python-api-servicemonitor.yaml
   - python-api-scaledobject.yaml
   - python-api-credentials.yaml
+  - ../../python-grpc-api/deploy/base
+  - python-grpc-api-rollout.yaml
+  - python-grpc-api-scaledobject.yaml
+  - ../../graphql-gateway/deploy/base
+  - graphql-gateway-rollout.yaml
+  - graphql-gateway-ingress.yaml
+  - graphql-gateway-servicemonitor.yaml
+  - graphql-gateway-scaledobject.yaml
+  - graphql-gateway-egress-networkpolicy.yaml
   - ../../go-api/deploy/base
   - go-api-ingress.yaml
   - go-api-rollout.yaml
@@ -29,6 +40,10 @@ resources:
 
 images:
   - name: nexus.gillouche.homelab/docker-hosted/api-lab/python-api
+    newTag: "latest"
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/python-grpc-api
+    newTag: "latest"
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/graphql-gateway
     newTag: "latest"
   - name: nexus.gillouche.homelab/docker-hosted/api-lab/go-api
     newTag: "latest"

@@ -1,18 +1,20 @@
+#@ load("@ytt:data", "data")
+
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: python-api
+  name: #@ data.values.component
   labels:
-    app: api-lab
-    component: python-api
-    environment: dev
+    app: #@ data.values.app
+    component: #@ data.values.component
+    environment: #@ data.values.env
     release: monitoring
 spec:
   jobLabel: component
   selector:
     matchLabels:
-      app: api-lab
-      component: python-api
+      app: #@ data.values.app
+      component: #@ data.values.component
   endpoints:
   - port: http
     path: /metrics
@@ -23,4 +25,4 @@ spec:
   - environment
   namespaceSelector:
     matchNames:
-    - playground-apps-dev-api-lab
+    - #@ "playground-apps-" + data.values.env + "-" + data.values.app

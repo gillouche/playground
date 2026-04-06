@@ -24,6 +24,20 @@ images:
     image:
       ref: nexus.gillouche.homelab/docker-hosted/api-lab/ts-api:v0.0.1
       digest: unknown
+  python-grpc-api:
+    tag: v0.0.1
+    commit: initial
+    full_tag: api-lab/python-grpc-api/v0.0.1
+    image:
+      ref: nexus.gillouche.homelab/docker-hosted/api-lab/python-grpc-api:v0.0.1
+      digest: unknown
+  graphql-gateway:
+    tag: v0.0.1
+    commit: initial
+    full_tag: api-lab/graphql-gateway/v0.0.1
+    image:
+      ref: nexus.gillouche.homelab/docker-hosted/api-lab/graphql-gateway:v0.0.1
+      digest: unknown
   rust-traffic-generator:
     tag: v0.0.1
     commit: initial
