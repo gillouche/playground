@@ -173,7 +173,7 @@ use_repo(oci, "rust_base", "rust_base_linux_arm64", "rust_base_linux_amd64")
 
 # Go SDK - hermetic download (no host Go needed)
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
-go_sdk.download(version = "1.24.4")
+go_sdk.download(version = "1.24.13")
 
 # Go third-party dependencies (managed by gazelle)
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
