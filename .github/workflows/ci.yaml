@@ -223,6 +223,14 @@ jobs:
           nix develop ./nix#ci --command bazel run --config=ci \
             //apps/api-lab/database:migrate
 
+      - name: Build services
+        run: |
+          { set +x; } 2>/dev/null
+          nix develop ./nix#ci --command bazel build --config=ci \
+            //apps/api-lab/python-rest-api \
+            //apps/api-lab/python-grpc-api \
+            //apps/api-lab/graphql-gateway
+
       - name: Start services
         run: |
           { set +x; } 2>/dev/null
@@ -233,11 +241,13 @@ jobs:
 
           nix develop ./nix#ci --command bazel run --config=ci \
             //apps/api-lab/python-rest-api &
+          sleep 2
           nix develop ./nix#ci --command bazel run --config=ci \
             //apps/api-lab/python-grpc-api &
+          sleep 2
           export REST_API_URL=http://localhost:8080
-          nix develop ./nix#ci --command bazel run \
-            --config=ci //apps/api-lab/graphql-gateway &
+          nix develop ./nix#ci --command bazel run --config=ci \
+            //apps/api-lab/graphql-gateway &
 
           until curl -sf http://localhost:8080/healthz; do sleep 2; done
           until curl -sf http://localhost:8083/healthz; do sleep 2; done
