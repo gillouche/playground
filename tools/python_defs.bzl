@@ -31,6 +31,7 @@ def python_application(
         test_args = [],
         data = [],
         env = {},
+        extra_imports = [],
         base_image = "@python_base_linux_arm64",
         image_repository = "",
         visibility = ["//visibility:public"]):
@@ -51,6 +52,7 @@ def python_application(
         test_args: Extra args to pass to pytest (e.g., ["-o", "asyncio_mode=auto"])
         data: Data files to include
         env: Environment variables for the binary
+        extra_imports: Additional import paths relative to the package (e.g., ["src/generated"])
         base_image: OCI base image (default: python_base for ARM64)
         image_repository: Nexus repository path (auto-inferred from package path)
         visibility: Bazel visibility
@@ -74,7 +76,7 @@ def python_application(
         name = name + "_lib",
         srcs = srcs,
         deps = deps,
-        imports = ["src"],
+        imports = ["src"] + extra_imports,
         data = data,
         visibility = visibility,
     )
@@ -94,11 +96,9 @@ def python_application(
             name = name + "_unit_test",
             srcs = ["//tools:pytest_runner.py"] + unit_tests + srcs,
             main = "//tools:pytest_runner.py",
-            # Let pytest discover tests in current directory
             args = ["-v", "--import-mode=importlib"] + test_args + ["."],
             deps = deps + test_deps,
-            # Add "." for current package and "src" for source imports
-            imports = [".", "src"],
+            imports = [".", "src"] + extra_imports,
             size = "small",
             tags = ["unit"],
             visibility = visibility,
@@ -111,7 +111,7 @@ def python_application(
             main = "//tools:pytest_runner.py",
             args = ["-v", "--import-mode=importlib"] + test_args + ["."],
             deps = deps + test_deps,
-            imports = [".", "src"],
+            imports = [".", "src"] + extra_imports,
             size = "medium",
             tags = ["integration"],
             visibility = visibility,

@@ -16,6 +16,7 @@ async def lifespan(_application: FastAPI):
     from cache.redis_cache import RedisCache
     from config import app_config
     from database.engine import async_session_factory, engine
+    from observability.tracing import shutdown_tracing
     from routers import health as health_module
     from routers import rest as rest_module
     from services.book_service import BookService
@@ -36,6 +37,7 @@ async def lifespan(_application: FastAPI):
     yield
 
     logger.info("Shutting down api-lab python-rest-api...")
+    shutdown_tracing()
     await cache.disconnect()
     await engine.dispose()
     logger.info("Shutdown complete")
@@ -57,7 +59,7 @@ def _create_app() -> FastAPI:
     application.include_router(health_router)
 
     setup_metrics(application)
-    setup_tracing(application)
+    setup_tracing(application, service_name="python-rest-api")
 
     return application
 

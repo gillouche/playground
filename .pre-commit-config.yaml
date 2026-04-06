@@ -36,11 +36,13 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
         types: [python]
         files: ^(apps|tools)/.*\.py$
+        exclude: /generated/
 
       - id: ruff-format
         name: ruff (format)
         types: [python]
         files: ^(apps|tools)/.*\.py$
+        exclude: /generated/
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.14.1

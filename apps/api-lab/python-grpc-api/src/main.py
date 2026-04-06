@@ -13,10 +13,13 @@ async def serve():
     from cache.redis_cache import RedisCache
     from config import app_config, grpc_config
     from database.engine import async_session_factory, engine
+    from observability.tracing import setup_tracing, shutdown_tracing
     from services.book_service import BookService
 
     logger.info("Starting api-lab python-grpc-api...")
     logger.info("Environment: %s", app_config.environment)
+
+    setup_tracing(app=None, service_name="python-grpc-api", enable_grpc_server=True)
 
     cache = RedisCache()
     await cache.connect()
@@ -40,6 +43,7 @@ async def serve():
 
     logger.info("Shutting down api-lab python-grpc-api...")
     await server.stop(grace=5)
+    shutdown_tracing()
     await cache.disconnect()
     await engine.dispose()
     logger.info("Shutdown complete")

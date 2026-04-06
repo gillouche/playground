@@ -78,6 +78,81 @@ def parse_proto(path):
     return methods
 
 
+def analyze_python_rest(src_dir, endpoints):
+    results = {}
+    src_path = Path(src_dir)
+
+    if src_path.is_file():
+        py_files = [src_path]
+    elif src_path.is_dir():
+        py_files = list(src_path.rglob("*.py"))
+    else:
+        return {e["operation_id"]: NA for e in endpoints}
+
+    if not py_files:
+        return {e["operation_id"]: NA for e in endpoints}
+
+    combined_content = ""
+    for f in py_files:
+        combined_content += f.read_text()
+
+    python_method_map = {
+        "listBooks": "list_books",
+        "createBook": "create_book",
+        "getBook": "get_book",
+        "updateBook": "update_book",
+        "deleteBook": "delete_book",
+        "getInventory": "get_inventory",
+        "createReservations": "reserve_books",
+        "listReservations": "list_reservations",
+        "getReservation": "get_reservation",
+        "returnReservation": "return_reservation",
+        "healthCheck": "healthz",
+        "readinessCheck": "ready",
+        "serviceInfo": "info",
+    }
+
+    decorator_patterns = [
+        r"@router\.get\b",
+        r"@router\.post\b",
+        r"@router\.put\b",
+        r"@router\.delete\b",
+        r"@router\.patch\b",
+        r"@app\.get\b",
+        r"@app\.post\b",
+        r"@app\.put\b",
+        r"@app\.delete\b",
+        r"@app\.patch\b",
+    ]
+    has_router_decorators = any(re.search(p, combined_content) for p in decorator_patterns)
+
+    for ep in endpoints:
+        op_id = ep["operation_id"]
+        py_name = python_method_map.get(op_id)
+        if py_name and re.search(rf"async def {re.escape(py_name)}\b", combined_content):
+            results[op_id] = DONE
+        elif has_router_decorators:
+            results[op_id] = STUB
+        else:
+            results[op_id] = NA
+    return results
+
+
+def analyze_python_grpc(grpc_server_path, grpc_methods):
+    results = {}
+    try:
+        content = Path(grpc_server_path).read_text()
+    except FileNotFoundError:
+        return {m: NA for m in grpc_methods}
+
+    for method in grpc_methods:
+        if re.search(rf"async def {re.escape(method)}\b", content):
+            results[method] = DONE
+        else:
+            results[method] = STUB
+    return results
+
+
 def analyze_go_rest(main_go_path, endpoints):
     results = {}
     try:
@@ -114,14 +189,45 @@ def analyze_go_rest(main_go_path, endpoints):
     return results
 
 
-def analyze_go_grpc(main_go_path):
-    try:
-        content = Path(main_go_path).read_text()
-    except FileNotFoundError:
-        return None
-    if re.search(r'^\s*"google\.golang\.org/grpc', content, re.MULTILINE):
-        return True
-    return None
+def analyze_go_grpc(go_dir, grpc_methods):
+    results = {}
+    go_dir_path = Path(go_dir)
+
+    grpc_server_candidates = list(go_dir_path.rglob("grpc_server.go")) + list(
+        go_dir_path.rglob("grpc.go")
+    )
+    proto_stub_candidates = list(go_dir_path.rglob("*_grpc.pb.go"))
+
+    if not grpc_server_candidates and not proto_stub_candidates:
+        main_go = go_dir_path / "main.go"
+        try:
+            main_content = main_go.read_text()
+            has_grpc_import = bool(
+                re.search(r'^\s*"google\.golang\.org/grpc', main_content, re.MULTILINE)
+            )
+        except FileNotFoundError:
+            has_grpc_import = False
+
+        if has_grpc_import:
+            return {m: STUB for m in grpc_methods}
+        return {m: NA for m in grpc_methods}
+
+    combined_content = ""
+    for f in grpc_server_candidates:
+        combined_content += f.read_text()
+
+    for method in grpc_methods:
+        if re.search(rf"func\s+\([^)]+\)\s+{re.escape(method)}\b", combined_content):
+            not_impl_pattern = (
+                rf"func\s+\([^)]+\)\s+{re.escape(method)}\b[^{{]*\{{[^}}]*[Nn]ot[Ii]mplemented"
+            )
+            if re.search(not_impl_pattern, combined_content, re.DOTALL):
+                results[method] = STUB
+            else:
+                results[method] = DONE
+        else:
+            results[method] = STUB
+    return results
 
 
 def analyze_ts_rest(index_ts_path, endpoints):
@@ -160,14 +266,52 @@ def analyze_ts_rest(index_ts_path, endpoints):
     return results
 
 
-def analyze_ts_grpc(index_ts_path):
-    try:
-        content = Path(index_ts_path).read_text()
-    except FileNotFoundError:
-        return None
-    if re.search(r"""(from\s+['"]@grpc/grpc-js|require\s*\(\s*['"]@grpc/grpc-js)""", content):
-        return True
-    return None
+def analyze_ts_grpc(ts_src_dir, grpc_methods):
+    ts_dir_path = Path(ts_src_dir)
+
+    grpc_server_candidates = (
+        list(ts_dir_path.rglob("grpc_server.ts"))
+        + list(ts_dir_path.rglob("grpc-server.ts"))
+        + list(ts_dir_path.rglob("grpc.ts"))
+    )
+    proto_stub_candidates = list(ts_dir_path.rglob("*_grpc_pb.js")) + list(
+        ts_dir_path.rglob("*_grpc_pb.d.ts")
+    )
+
+    if not grpc_server_candidates and not proto_stub_candidates:
+        index_ts = ts_dir_path / "index.ts"
+        try:
+            index_content = index_ts.read_text()
+            has_grpc_import = bool(
+                re.search(
+                    r"""(from\s+['"]@grpc/grpc-js|require\s*\(\s*['"]@grpc/grpc-js)""",
+                    index_content,
+                )
+            )
+        except FileNotFoundError:
+            has_grpc_import = False
+
+        if has_grpc_import:
+            return {m: STUB for m in grpc_methods}
+        return {m: NA for m in grpc_methods}
+
+    combined_content = ""
+    for f in grpc_server_candidates:
+        combined_content += f.read_text()
+
+    results = {}
+    for method in grpc_methods:
+        if re.search(rf"async\s+{re.escape(method)}\b", combined_content) or re.search(
+            rf"\b{re.escape(method)}\s*\(", combined_content
+        ):
+            not_impl_pattern = rf"{re.escape(method)}[^{{]*\{{[^}}]*[Nn]ot[Ii]mplemented"
+            if re.search(not_impl_pattern, combined_content, re.DOTALL):
+                results[method] = STUB
+            else:
+                results[method] = DONE
+        else:
+            results[method] = STUB
+    return results
 
 
 def format_status(status, use_color):
@@ -213,8 +357,20 @@ def compute_summary(rest_rows, grpc_rows, languages):
         grpc_applicable = sum(1 for r in grpc_rows if r["status"].get(lang) != NA)
         total_done = rest_done + grpc_done
         total_applicable = rest_applicable + grpc_applicable
-        pct = round(total_done / total_applicable * 100) if total_applicable else 0
-        summary[lang] = {"done": total_done, "total": total_applicable, "percentage": pct}
+        rest_pct = round(rest_done / rest_applicable * 100) if rest_applicable else 0
+        grpc_pct = round(grpc_done / grpc_applicable * 100) if grpc_applicable else 0
+        overall_pct = round(total_done / total_applicable * 100) if total_applicable else 0
+        summary[lang] = {
+            "rest_done": rest_done,
+            "rest_total": rest_applicable,
+            "rest_percentage": rest_pct,
+            "grpc_done": grpc_done,
+            "grpc_total": grpc_applicable,
+            "grpc_percentage": grpc_pct,
+            "done": total_done,
+            "total": total_applicable,
+            "percentage": overall_pct,
+        }
     return summary
 
 
@@ -223,15 +379,14 @@ def render_markdown(rest_rows, grpc_rows, languages, summary):
     lines.append("## API Implementation Coverage\n")
 
     lines.append("### Summary\n")
-    lines.append("| Language | Progress | Coverage |")
-    lines.append("|----------|----------|----------|")
+    lines.append("| Language | REST % | gRPC % | Overall % |")
+    lines.append("|----------|--------|--------|-----------|")
     for lang in languages:
         s = summary[lang]
-        bar_filled = round(s["percentage"] / 5)
-        bar = "\u2588" * bar_filled + "\u2591" * (20 - bar_filled)
-        lines.append(
-            f"| **{lang}** | `{bar}` | **{s['done']}/{s['total']}** ({s['percentage']}%) |"
-        )
+        rest_str = f"{s['rest_done']}/{s['rest_total']} ({s['rest_percentage']}%)"
+        grpc_str = f"{s['grpc_done']}/{s['grpc_total']} ({s['grpc_percentage']}%)"
+        overall_str = f"{s['done']}/{s['total']} ({s['percentage']}%)"
+        lines.append(f"| **{lang}** | {rest_str} | {grpc_str} | **{overall_str}** |")
 
     lines.append("\n### REST Endpoints\n")
     lines.append("| Endpoint | " + " | ".join(languages) + " |")
@@ -260,16 +415,22 @@ def build_coverage_data(repo_root):
     api_lab = Path(repo_root) / "apps" / "api-lab"
     openapi_path = api_lab / "openapi" / "openapi.yaml"
     proto_path = api_lab / "openapi" / "proto" / "library" / "v1" / "library.proto"
+    python_rest_src = api_lab / "python-rest-api" / "src"
+    python_grpc_server = api_lab / "python-grpc-api" / "src" / "grpc_server.py"
     go_main = api_lab / "go-api" / "main.go"
+    go_dir = api_lab / "go-api"
     ts_index = api_lab / "ts-api" / "src" / "index.ts"
+    ts_src_dir = api_lab / "ts-api" / "src"
 
     endpoints = parse_openapi(openapi_path)
     grpc_methods = parse_proto(proto_path)
 
+    python_rest = analyze_python_rest(python_rest_src, endpoints)
+    python_grpc = analyze_python_grpc(python_grpc_server, grpc_methods)
     go_rest = analyze_go_rest(go_main, endpoints)
-    go_has_grpc = analyze_go_grpc(go_main)
+    go_grpc = analyze_go_grpc(go_dir, grpc_methods)
     ts_rest = analyze_ts_rest(ts_index, endpoints)
-    ts_has_grpc = analyze_ts_grpc(ts_index)
+    ts_grpc = analyze_ts_grpc(ts_src_dir, grpc_methods)
 
     languages = ["Python", "Go", "TypeScript"]
 
@@ -284,7 +445,7 @@ def build_coverage_data(repo_root):
                 "name": display,
                 "operation_id": op_id,
                 "status": {
-                    "Python": DONE,
+                    "Python": python_rest.get(op_id, STUB),
                     "Go": go_rest.get(op_id, STUB),
                     "TypeScript": ts_rest.get(op_id, STUB),
                 },
@@ -297,9 +458,9 @@ def build_coverage_data(repo_root):
             {
                 "name": method,
                 "status": {
-                    "Python": DONE,
-                    "Go": STUB if go_has_grpc else NA,
-                    "TypeScript": STUB if ts_has_grpc else NA,
+                    "Python": python_grpc.get(method, STUB),
+                    "Go": go_grpc.get(method, NA),
+                    "TypeScript": ts_grpc.get(method, NA),
                 },
             }
         )
@@ -380,10 +541,16 @@ def main():
     render_table("gRPC Methods (from library.proto):", grpc_rows, languages, use_color)
 
     print("\nSummary:")
+    if use_color:
+        print(f"  {'Language':<14} {'REST %':<12} {'gRPC %':<12} {'Overall %'}")
+    else:
+        print(f"  {'Language':<14} {'REST %':<12} {'gRPC %':<12} {'Overall %'}")
     for lang in languages:
         s = summary[lang]
-        status_str = f"{s['done']}/{s['total']} ({s['percentage']:3d}%)"
-        print(f"  {lang + ':':<14} {status_str}")
+        rest_str = f"{s['rest_done']}/{s['rest_total']} ({s['rest_percentage']:3d}%)"
+        grpc_str = f"{s['grpc_done']}/{s['grpc_total']} ({s['grpc_percentage']:3d}%)"
+        overall_str = f"{s['done']}/{s['total']} ({s['percentage']:3d}%)"
+        print(f"  {lang + ':':<14} {rest_str:<12} {grpc_str:<12} {overall_str}")
 
     print()
 

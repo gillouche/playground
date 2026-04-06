@@ -6,6 +6,7 @@ from typing import Any
 import strawberry
 from client import LibraryClient
 from strawberry.fastapi import GraphQLRouter
+from tracing_extension import OpenTelemetryExtension
 
 # These will be set during app startup
 _client: LibraryClient | None = None
@@ -204,7 +205,9 @@ class Mutation:
         return _to_reservation_type(result) if result else None
 
 
-graphql_schema = strawberry.Schema(query=Query, mutation=Mutation)
+graphql_schema = strawberry.Schema(
+    query=Query, mutation=Mutation, extensions=[OpenTelemetryExtension]
+)
 
 
 def create_graphql_router(graphiql: bool = True) -> GraphQLRouter:

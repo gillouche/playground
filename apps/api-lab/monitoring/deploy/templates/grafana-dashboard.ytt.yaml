@@ -78,6 +78,59 @@
 #@         "targets": [{"expr": "api_lab_active_reservations{environment=\"" + env + "\"}", "legendFormat": "Active", "refId": "A"}],
 #@         "title": "Active Reservations",
 #@         "type": "stat"
+#@       },
+#@       {
+#@         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+#@         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28},
+#@         "id": 9,
+#@         "targets": [{"expr": "sum by (grpc_method) (rate(grpc_server_handled_total{grpc_service=~\"library.v1.LibraryService\", environment=\"" + env + "\"}[1m]))", "legendFormat": "{{grpc_method}}", "refId": "A"}],
+#@         "title": "gRPC Requests Per Second",
+#@         "type": "timeseries"
+#@       },
+#@       {
+#@         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+#@         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+#@         "id": 10,
+#@         "targets": [{"expr": "histogram_quantile(0.95, sum by (le, grpc_method) (rate(grpc_server_handling_seconds_bucket{grpc_service=~\"library.v1.LibraryService\", environment=\"" + env + "\"}[1m])))", "legendFormat": "P95 {{grpc_method}}", "refId": "A"}],
+#@         "title": "gRPC Latency (P95)",
+#@         "type": "timeseries"
+#@       },
+#@       {
+#@         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+#@         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 36},
+#@         "id": 11,
+#@         "targets": [{"expr": "sum(rate(grpc_server_handled_total{grpc_code!=\"OK\", grpc_service=~\"library.v1.LibraryService\", environment=\"" + env + "\"}[1m])) / sum(rate(grpc_server_handled_total{grpc_service=~\"library.v1.LibraryService\", environment=\"" + env + "\"}[1m]))", "legendFormat": "Error Rate", "refId": "A"}],
+#@         "title": "gRPC Error Rate",
+#@         "type": "timeseries"
+#@       },
+#@       {
+#@         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+#@         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 36},
+#@         "id": 12,
+#@         "targets": [{"expr": "sum by (handler) (rate(http_requests_total{component=\"graphql-gateway\", environment=\"" + env + "\"}[1m]))", "legendFormat": "{{handler}}", "refId": "A"}],
+#@         "title": "GraphQL Gateway RPS",
+#@         "type": "timeseries"
+#@       },
+#@       {
+#@         "datasource": {"type": "prometheus", "uid": "${datasource}"},
+#@         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 44},
+#@         "id": 13,
+#@         "targets": [
+#@           {"expr": "sum(rate(api_lab_cache_hits_total{environment=\"" + env + "\"}[1m])) / (sum(rate(api_lab_cache_hits_total{environment=\"" + env + "\"}[1m])) + sum(rate(api_lab_cache_misses_total{environment=\"" + env + "\"}[1m])))", "legendFormat": "Hit Ratio", "refId": "A"},
+#@           {"expr": "histogram_quantile(0.95, sum by (le) (rate(api_lab_cache_op_duration_seconds_bucket{environment=\"" + env + "\"}[1m])))", "legendFormat": "P95 Cache Op", "refId": "B"}
+#@         ],
+#@         "title": "Cache Hit Ratio & Latency",
+#@         "type": "timeseries"
+#@       },
+#@       {
+#@         "gridPos": {"h": 4, "w": 12, "x": 12, "y": 44},
+#@         "id": 14,
+#@         "options": {
+#@           "mode": "html",
+#@           "content": "<a href=\"/explore?orgId=1&left=%7B%22datasource%22:%22tempo%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22queryType%22:%22traceqlSearch%22,%22filters%22:%5B%7B%22id%22:%22service-name%22,%22tag%22:%22resource.service.name%22,%22operator%22:%22%3D%22,%22value%22:%5B%22python-rest-api%22,%22python-grpc-api%22,%22graphql-gateway%22%5D,%22valueType%22:%22string%22,%22scope%22:%22resource%22%7D%5D%7D%5D%7D\" target=\"_blank\">Explore Traces in Tempo</a>"
+#@         },
+#@         "title": "Trace Explorer",
+#@         "type": "text"
 #@       }
 #@     ],
 #@     "refresh": "5s",

@@ -21,9 +21,11 @@ python_application(
         allow_empty = True,
     ),
     deps = [
+        "//apps/api-lab/python-common",
         requirement("fastapi"),
         requirement("uvicorn"),
         requirement("strawberry-graphql"),
         requirement("httpx"),
+        requirement("prometheus-fastapi-instrumentator"),
     ],
 )

@@ -6,7 +6,9 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
+from observability.logging import setup_logging
 
+setup_logging()
 logger = logging.getLogger("api-lab.graphql-gateway")
 
 
@@ -29,11 +31,17 @@ async def lifespan(_application: FastAPI):
     yield
 
     logger.info("Shutting down api-lab graphql-gateway...")
+    from observability.tracing import shutdown_tracing
+
+    shutdown_tracing()
     await client.disconnect()
     logger.info("Shutdown complete")
 
 
 def _create_app() -> FastAPI:
+    from observability.metrics import setup_metrics
+    from observability.tracing import setup_tracing
+
     application = FastAPI(
         title="Library GraphQL Gateway",
         version="1.0.0",
@@ -58,6 +66,9 @@ def _create_app() -> FastAPI:
             "environment": env,
         }
 
+    setup_metrics(application)
+    setup_tracing(application, service_name="graphql-gateway", enable_httpx=True)
+
     return application
 
 
@@ -70,10 +81,9 @@ def handle_signal(sig, _frame):
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
     signal.signal(signal.SIGTERM, handle_signal)
     signal.signal(signal.SIGINT, handle_signal)
-    uvicorn.run(app, host="0.0.0.0", port=8083)  # nosec B104 - bind all interfaces in container
+    uvicorn.run(app, host="0.0.0.0", port=8083)
 
 
 if __name__ == "__main__":

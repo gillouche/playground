@@ -99,25 +99,40 @@ jobs:
             cd "$SERVICE_PATH"
 
             # Python projects
+            REQS_DIR="."
             if [ -f "requirements_lock.txt" ] || [ -f "requirements.txt" ]; then
-              echo "Detected Python project"
+              REQS_DIR="."
+            elif [ -f "../requirements_lock.txt" ] || [ -f "../requirements.txt" ]; then
+              REQS_DIR=".."
+            fi
+
+            if [ "$REQS_DIR" != "." ] || [ -f "requirements_lock.txt" ] || [ -f "requirements.txt" ]; then
+              echo "Detected Python project (requirements in $REQS_DIR)"
               if [ -d "tests" ]; then
                 # Create virtual environment using uv (more reliable in Nix environments)
                 uv venv .venv
                 source .venv/bin/activate
 
                 # Install dependencies using uv
-                if [ -f "requirements_dev_lock.txt" ]; then
-                  uv pip install -r requirements_dev_lock.txt -q
-                elif [ -f "requirements_lock.txt" ]; then
-                  uv pip install -r requirements_lock.txt -q
-                elif [ -f "requirements.txt" ]; then
-                  uv pip install -r requirements.txt -q
+                if [ -f "$REQS_DIR/requirements_dev_lock.txt" ]; then
+                  uv pip install -r "$REQS_DIR/requirements_dev_lock.txt" -q
+                elif [ -f "$REQS_DIR/requirements_lock.txt" ]; then
+                  uv pip install -r "$REQS_DIR/requirements_lock.txt" -q
+                elif [ -f "$REQS_DIR/requirements.txt" ]; then
+                  uv pip install -r "$REQS_DIR/requirements.txt" -q
+                fi
+
+                PYTHONPATH_EXTRA=""
+                if [ -d "../python-common/src" ]; then
+                  PYTHONPATH_EXTRA="../python-common/src:../python-common/src/generated:"
+                fi
+                if [ -d "src/generated" ]; then
+                  PYTHONPATH_EXTRA="${PYTHONPATH_EXTRA}src/generated:"
                 fi
 
                 # Run pytest with coverage
                 set +e
-                PYTHONPATH=src:. pytest tests/ \
+                PYTHONPATH="${PYTHONPATH_EXTRA}src:." pytest tests/ \
                   --cov=src \
                   --cov-report=xml:coverage.xml \
                   --cov-report=term \
@@ -183,7 +198,7 @@ jobs:
               "-Dsonar.host.url=$SONAR_HOST_URL"
               "-Dsonar.token=$SONAR_TOKEN"
               "-Dsonar.qualitygate.wait=true"
-              "-Dsonar.exclusions=**/.venv/**,**/node_modules/**,**/__pycache__/**"
+              "-Dsonar.exclusions=**/.venv/**,**/node_modules/**,**/__pycache__/**,**/generated/**"
             )
 
             if [ -d "$SERVICE_PATH/tests" ]; then
