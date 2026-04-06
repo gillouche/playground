@@ -13,7 +13,10 @@ py_test(
         "asyncio_mode=auto",
         ".",
     ],
-    imports = ["."],
+    imports = [
+        ".",
+        "../python-grpc-api/src/generated",
+    ],
     main = "//tools:pytest_runner.py",
     tags = [
         "manual",
@@ -22,11 +25,13 @@ py_test(
     ],
     deps = [
         "//apps/api-lab/database:migrate_lib",
+        "//apps/api-lab/python-grpc-api:python-grpc-api_lib",
         dev_requirement("pytest"),
         dev_requirement("pytest-asyncio"),
         dev_requirement("httpx"),
         requirement("asyncpg"),
         requirement("redis"),
         requirement("grpcio"),
+        requirement("protobuf"),
     ],
 )

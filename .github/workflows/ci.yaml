@@ -215,67 +215,61 @@ jobs:
           $COMPOSE_CMD exec -T postgres \
             psql -U playground -c "CREATE DATABASE api_lab" || true
 
-      - name: Run database migrations
+      - name: Build, migrate, start services, and run system tests
         run: |
           { set +x; } 2>/dev/null
-          export POSTGRES_HOST=localhost POSTGRES_DATABASE=api_lab
-          export POSTGRES_USER=playground POSTGRES_PASSWORD=playground
-          nix develop ./nix#ci --command bazel run --config=ci \
-            //apps/api-lab/database:migrate
-
-      - name: Build services
-        run: |
-          { set +x; } 2>/dev/null
-          nix develop ./nix#ci --command bazel build --config=ci \
-            //apps/api-lab/python-rest-api \
-            //apps/api-lab/python-grpc-api \
-            //apps/api-lab/graphql-gateway
-
-      - name: Start services
-        run: |
-          { set +x; } 2>/dev/null
-          export POSTGRES_HOST=localhost POSTGRES_DATABASE=api_lab
-          export POSTGRES_USER=playground POSTGRES_PASSWORD=playground
-          export REDIS_HOST=localhost REDIS_PASSWORD=playground
-          export ENABLE_TRACING=false
-
-          nix develop ./nix#ci --command bazel run --config=ci \
-            //apps/api-lab/python-rest-api &
-          sleep 2
-          nix develop ./nix#ci --command bazel run --config=ci \
-            //apps/api-lab/python-grpc-api &
-          sleep 2
-          export REST_API_URL=http://localhost:8080
-          nix develop ./nix#ci --command bazel run --config=ci \
-            //apps/api-lab/graphql-gateway &
-
-          until curl -sf http://localhost:8080/healthz; do sleep 2; done
-          until curl -sf http://localhost:8083/healthz; do sleep 2; done
-          sleep 3
-
-      - name: Run system tests
-        run: |
-          { set +x; } 2>/dev/null
-          export API_BASE_URL=http://localhost:8080
-          export GRAPHQL_BASE_URL=http://localhost:8083
-          export GRPC_HOST=localhost:50051
           export POSTGRES_HOST=localhost POSTGRES_DATABASE=api_lab
           export POSTGRES_USER=playground POSTGRES_PASSWORD=playground
           export REDIS_HOST=localhost REDIS_PORT=6379
           export REDIS_PASSWORD=playground
-          nix develop ./nix#ci --command bazel test --config=ci \
-            --test_tag_filters=system \
-            --test_env=API_BASE_URL \
-            --test_env=GRAPHQL_BASE_URL \
-            --test_env=GRPC_HOST \
-            --test_env=POSTGRES_HOST \
-            --test_env=POSTGRES_DATABASE \
-            --test_env=POSTGRES_USER \
-            --test_env=POSTGRES_PASSWORD \
-            --test_env=REDIS_HOST \
-            --test_env=REDIS_PORT \
-            --test_env=REDIS_PASSWORD \
-            //apps/api-lab/system-tests:system-tests
+          export ENABLE_TRACING=false
+          export REST_API_URL=http://localhost:8080
+          export API_BASE_URL=http://localhost:8080
+          export GRAPHQL_BASE_URL=http://localhost:8083
+          export GRPC_HOST=localhost:50051
+
+          nix develop ./nix#ci --command bash -c '
+            set -e
+
+            echo "=== Building all targets ==="
+            bazel build --config=ci \
+              //apps/api-lab/database:migrate \
+              //apps/api-lab/python-rest-api \
+              //apps/api-lab/python-grpc-api \
+              //apps/api-lab/graphql-gateway \
+              //apps/api-lab/system-tests:system-tests
+
+            echo "=== Running database migrations ==="
+            bazel run --config=ci //apps/api-lab/database:migrate
+
+            echo "=== Starting services ==="
+            bazel run --config=ci //apps/api-lab/python-rest-api &
+            bazel run --config=ci //apps/api-lab/python-grpc-api &
+            REST_API_URL=http://localhost:8080 \
+              bazel run --config=ci //apps/api-lab/graphql-gateway &
+
+            echo "Waiting for REST API..."
+            until curl -sf http://localhost:8080/healthz; do sleep 2; done
+            echo "Waiting for GraphQL gateway..."
+            until curl -sf http://localhost:8083/healthz; do sleep 2; done
+            echo "Waiting for gRPC..."
+            sleep 3
+
+            echo "=== Running system tests ==="
+            bazel test --config=ci \
+              --test_tag_filters=system \
+              --test_env=API_BASE_URL \
+              --test_env=GRAPHQL_BASE_URL \
+              --test_env=GRPC_HOST \
+              --test_env=POSTGRES_HOST \
+              --test_env=POSTGRES_DATABASE \
+              --test_env=POSTGRES_USER \
+              --test_env=POSTGRES_PASSWORD \
+              --test_env=REDIS_HOST \
+              --test_env=REDIS_PORT \
+              --test_env=REDIS_PASSWORD \
+              //apps/api-lab/system-tests:system-tests
+          '
 
       - name: Publish test results
         if: always() && hashFiles('bazel-testlogs/**/test.xml') != ''

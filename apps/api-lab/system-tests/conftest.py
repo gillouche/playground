@@ -5,7 +5,6 @@ They skip automatically if services are not reachable.
 Database schema is managed by the database migration project.
 """
 
-import json
 import os
 import uuid
 
@@ -15,6 +14,7 @@ import httpx
 import pytest
 import pytest_asyncio
 import redis.asyncio as aioredis
+from library.v1 import library_pb2_grpc
 from migrate import migrate as run_migrations
 
 # Configuration via environment variables
@@ -162,13 +162,9 @@ async def create_sample_book(rest_client):
     return _create
 
 
-async def grpc_call(channel, method: str, request: dict | None = None):
-    """Call a gRPC method with JSON request/response on the LibraryService."""
-    return await channel.unary_unary(
-        f"/library.v1.LibraryService/{method}",
-        request_serializer=lambda x: json.dumps(x, default=str).encode(),
-        response_deserializer=lambda x: json.loads(x),
-    )(request or {})
+@pytest_asyncio.fixture
+async def grpc_stub(grpc_channel):
+    return library_pb2_grpc.LibraryServiceStub(grpc_channel)
 
 
 async def graphql_query(client, query: str, variables: dict | None = None):

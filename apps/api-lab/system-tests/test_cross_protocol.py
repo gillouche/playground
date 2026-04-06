@@ -1,11 +1,12 @@
 """System tests verifying data consistency across REST, gRPC, and GraphQL."""
 
 import pytest
-from conftest import graphql_query, grpc_call
+from conftest import graphql_query
+from library.v1 import library_pb2
 
 
 @pytest.mark.asyncio
-async def test_create_rest_query_graphql_and_grpc(rest_client, graphql_client, grpc_channel):
+async def test_create_rest_query_graphql_and_grpc(rest_client, graphql_client, grpc_stub):
     """Create a book via REST, verify it's visible via GraphQL and gRPC."""
     resp = await rest_client.post(
         "/api/v1/books",
@@ -21,7 +22,6 @@ async def test_create_rest_query_graphql_and_grpc(rest_client, graphql_client, g
     assert resp.status_code == 201
     rest_book = resp.json()
 
-    # Verify via GraphQL
     gql_result = await graphql_query(
         graphql_client,
         f"""
@@ -36,14 +36,13 @@ async def test_create_rest_query_graphql_and_grpc(rest_client, graphql_client, g
     assert gql_book["isbn"] == "9780000800001"
     assert gql_book["title"] == "Cross Protocol"
 
-    # Verify via gRPC
-    grpc_book = await grpc_call(grpc_channel, "GetBook", {"book_id": rest_book["id"]})
-    assert grpc_book["isbn"] == "9780000800001"
-    assert grpc_book["title"] == "Cross Protocol"
+    grpc_book = await grpc_stub.GetBook(library_pb2.GetBookRequest(book_id=rest_book["id"]))
+    assert grpc_book.isbn == "9780000800001"
+    assert grpc_book.title == "Cross Protocol"
 
 
 @pytest.mark.asyncio
-async def test_reserve_grpc_verify_rest_and_graphql(rest_client, graphql_client, grpc_channel):
+async def test_reserve_grpc_verify_rest_and_graphql(rest_client, graphql_client, grpc_stub):
     """Reserve via gRPC, verify reservation visible via REST and GraphQL."""
     resp = await rest_client.post(
         "/api/v1/books",
@@ -58,20 +57,15 @@ async def test_reserve_grpc_verify_rest_and_graphql(rest_client, graphql_client,
     )
     book = resp.json()
 
-    # Reserve via gRPC
-    reserve_result = await grpc_call(
-        grpc_channel,
-        "ReserveBooks",
-        {"user_id": "cross_user", "book_ids": [book["id"]]},
+    reserve_result = await grpc_stub.ReserveBooks(
+        library_pb2.ReserveBooksRequest(user_id="cross_user", book_ids=[book["id"]])
     )
-    res_id = reserve_result["reservations"][0]["id"]
+    res_id = reserve_result.reservations[0].id
 
-    # Verify via REST
     rest_res = await rest_client.get(f"/api/v1/reservations/{res_id}")
     assert rest_res.status_code == 200
     assert rest_res.json()["status"] == "ACTIVE"
 
-    # Verify via GraphQL
     gql_result = await graphql_query(
         graphql_client,
         f"""
@@ -87,7 +81,7 @@ async def test_reserve_grpc_verify_rest_and_graphql(rest_client, graphql_client,
 
 
 @pytest.mark.asyncio
-async def test_full_cross_protocol_lifecycle(rest_client, graphql_client, grpc_channel):
+async def test_full_cross_protocol_lifecycle(rest_client, graphql_client, grpc_stub):
     """REST create -> gRPC reserve -> GraphQL query -> REST return -> verify all."""
     resp = await rest_client.post(
         "/api/v1/books",
@@ -102,15 +96,11 @@ async def test_full_cross_protocol_lifecycle(rest_client, graphql_client, grpc_c
     )
     book = resp.json()
 
-    # Reserve via gRPC
-    reserve_result = await grpc_call(
-        grpc_channel,
-        "ReserveBooks",
-        {"user_id": "life_user", "book_ids": [book["id"]]},
+    reserve_result = await grpc_stub.ReserveBooks(
+        library_pb2.ReserveBooksRequest(user_id="life_user", book_ids=[book["id"]])
     )
-    res_id = reserve_result["reservations"][0]["id"]
+    res_id = reserve_result.reservations[0].id
 
-    # Query status via GraphQL
     gql_result = await graphql_query(
         graphql_client,
         f"""
@@ -123,17 +113,17 @@ async def test_full_cross_protocol_lifecycle(rest_client, graphql_client, grpc_c
     )
     assert gql_result["data"]["reservation"]["status"] == "ACTIVE"
 
-    # Return via REST
     return_resp = await rest_client.post(f"/api/v1/reservations/{res_id}/return")
     assert return_resp.status_code == 200
     assert return_resp.json()["status"] == "RETURNED"
 
-    # Verify all protocols see RETURNED
     rest_res = await rest_client.get(f"/api/v1/reservations/{res_id}")
     assert rest_res.json()["status"] == "RETURNED"
 
-    grpc_res = await grpc_call(grpc_channel, "GetReservation", {"reservation_id": res_id})
-    assert grpc_res["status"] == "RETURNED"
+    grpc_res = await grpc_stub.GetReservation(
+        library_pb2.GetReservationRequest(reservation_id=res_id)
+    )
+    assert grpc_res.status == library_pb2.RESERVATION_STATUS_RETURNED
 
     gql_result = await graphql_query(
         graphql_client,
