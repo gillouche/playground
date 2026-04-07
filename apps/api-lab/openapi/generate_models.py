@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
@@ -79,10 +80,8 @@ def _generate_models(spec: dict) -> str:
         "# Generated from openapi.yaml — DO NOT EDIT MANUALLY",
         "# Regenerated automatically by Bazel at build time.",
         "",
-        "from __future__ import annotations",
-        "",
-        "import uuid  # noqa: TC003 - required at runtime for Pydantic",
-        "from datetime import datetime  # noqa: TC003 - required at runtime for Pydantic",
+        "import uuid",
+        "from datetime import datetime",
         "from enum import Enum",
         "",
         "from pydantic import BaseModel",
@@ -102,8 +101,10 @@ def _generate_models(spec: dict) -> str:
         else:
             bases.append((name, schema))
 
-    # Generate enums (extract from properties that have enum values)
     enum_types = _find_enum_types(schemas)
+    for name, schema in enums:
+        if name not in enum_types and "enum" in schema:
+            enum_types[name] = schema["enum"]
     lines.extend(_generate_enum_lines(enum_types))
 
     lines.append("# " + "-" * 75)
@@ -134,7 +135,41 @@ def _generate_models(spec: dict) -> str:
         )
         lines.append("")
 
+    lines.extend(_generate_query_models())
+
     return "\n".join(lines)
+
+
+def _generate_query_models() -> list[str]:
+    """Generate query parameter models for list endpoints."""
+    return [
+        "",
+        "# " + "-" * 75,
+        "# Query parameter models",
+        "# " + "-" * 75,
+        "",
+        "",
+        "class ListBooksQuery(BaseModel):",
+        "    available_only: bool = False",
+        "    genre: str | None = None",
+        "    author: str | None = None",
+        "    search: str | None = None",
+        "    limit: int = 20",
+        "    continuation_token: str | None = None",
+        '    sort_by: str = "created_at"',
+        '    sort_order: str = "asc"',
+        "",
+        "",
+        "class ListReservationsQuery(BaseModel):",
+        "    user_id: uuid.UUID | None = None",
+        "    status: str | None = None",
+        "    book_id: uuid.UUID | None = None",
+        "    limit: int = 20",
+        "    continuation_token: str | None = None",
+        '    sort_by: str = "reserved_at"',
+        '    sort_order: str = "desc"',
+        "",
+    ]
 
 
 def _generate_enum_lines(enum_types: dict[str, list[str]]) -> list[str]:
@@ -179,6 +214,41 @@ def _derive_enum_name(schema_name: str, prop_name: str) -> str:
     return f"{schema_name}{prop_name.title().replace('_', '')}"
 
 
+@dataclass
+class _ModelGenContext:
+    spec: dict
+    enum_types: dict | None
+    model_name: str
+
+
+def _generate_property_line(
+    prop_name: str, prop_schema: dict, is_required: bool, ctx: _ModelGenContext
+) -> str:
+    """Generate a single property line for a Pydantic model class."""
+    is_nullable = isinstance(prop_schema.get("type"), list) and "null" in prop_schema["type"]
+
+    if ctx.enum_types and "enum" in prop_schema:
+        enum_name = _derive_enum_name(ctx.model_name, prop_name)
+        if enum_name in ctx.enum_types:
+            py_type = enum_name
+            if is_nullable:
+                py_type = f"{py_type} | None"
+        else:
+            py_type = _python_type(prop_schema, ctx.spec, nullable=is_nullable)
+    else:
+        py_type = _python_type(prop_schema, ctx.spec, nullable=is_nullable)
+
+    default_val = prop_schema.get("default")
+    if default_val is not None:
+        return f"    {prop_name}: {py_type} = {default_val!r}"
+    if not is_required and not is_nullable:
+        py_type = f"{py_type} | None"
+        return f"    {prop_name}: {py_type} = None"
+    if is_nullable and not is_required:
+        return f"    {prop_name}: {py_type} = None"
+    return f"    {prop_name}: {py_type}"
+
+
 def _generate_model_class(
     name: str, schema: dict, spec: dict, parent: str | None, enum_types: dict | None = None
 ) -> list[str]:
@@ -190,7 +260,6 @@ def _generate_model_class(
     lines = [f"class {name}({base}):"]
 
     if not props and parent:
-        # Derived class with no extra properties — add from_attributes config
         lines.append('    model_config = {"from_attributes": True}')
         return lines
 
@@ -198,32 +267,13 @@ def _generate_model_class(
         lines.append("    pass")
         return lines
 
+    ctx = _ModelGenContext(spec=spec, enum_types=enum_types, model_name=name)
     for prop_name, prop_schema in props.items():
         is_required = prop_name in required
-        is_nullable = isinstance(prop_schema.get("type"), list) and "null" in prop_schema["type"]
+        lines.append(_generate_property_line(prop_name, prop_schema, is_required, ctx))
 
-        # Use enum type if this property has enum values
-        if enum_types and "enum" in prop_schema:
-            enum_name = _derive_enum_name(name, prop_name)
-            if enum_name in enum_types:
-                py_type = enum_name
-                if is_nullable:
-                    py_type = f"{py_type} | None"
-            else:
-                py_type = _python_type(prop_schema, spec, nullable=is_nullable)
-        else:
-            py_type = _python_type(prop_schema, spec, nullable=is_nullable)
-
-        if not is_required and not is_nullable:
-            py_type = f"{py_type} | None"
-            lines.append(f"    {prop_name}: {py_type} = None")
-        elif is_nullable and not is_required:
-            lines.append(f"    {prop_name}: {py_type} = None")
-        else:
-            lines.append(f"    {prop_name}: {py_type}")
-
-    # Add from_attributes for ORM-backed models (Response types and Inventory)
-    if parent or name in ("InventoryResponse",):
+    orm_models = {"Book", "Reservation"}
+    if parent or name in orm_models:
         lines.append("")
         lines.append('    model_config = {"from_attributes": True}')
 
@@ -346,10 +396,21 @@ def _derive_section(path: str) -> str:
     return "Other"
 
 
+def _resolve_param(param: dict, spec: dict) -> dict:
+    """Resolve a parameter, following $ref if present."""
+    if "$ref" in param:
+        _, resolved = _resolve_ref(spec, param["$ref"])
+        return resolved
+    return param
+
+
 def _build_params(op: dict, spec: dict) -> list[str]:
     """Build parameter list for a method."""
     params = []
-    for param in op.get("parameters", []):
+    for raw_param in op.get("parameters", []):
+        param = _resolve_param(raw_param, spec)
+        if param.get("in") == "header":
+            continue
         name = param["name"]
         schema = param.get("schema", {})
         py_type = _python_type(schema, spec)
@@ -359,7 +420,6 @@ def _build_params(op: dict, spec: dict) -> list[str]:
         else:
             params.append(f"{name}: {py_type}")
 
-    # Request body
     rb = op.get("requestBody", {})
     for _mime, media in rb.get("content", {}).items():
         schema = media.get("schema", {})

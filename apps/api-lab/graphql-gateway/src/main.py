@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from observability.logging import setup_logging
 
 setup_logging()
@@ -65,6 +66,15 @@ def _create_app() -> FastAPI:
             "component": "graphql-gateway",
             "environment": env,
         }
+
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[],
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+        expose_headers=["X-Request-Id"],
+    )
 
     setup_metrics(application)
     setup_tracing(application, service_name="graphql-gateway", enable_httpx=True)

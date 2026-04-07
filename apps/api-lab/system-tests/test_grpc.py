@@ -58,6 +58,31 @@ async def test_list_books_with_data(grpc_stub):
     )
     response = await grpc_stub.ListBooks(library_pb2.ListBooksRequest())
     assert len(response.books) == 2
+    assert response.next_page_token == ""
+
+
+@pytest.mark.asyncio
+async def test_list_books_pagination(grpc_stub):
+    for i in range(3):
+        await grpc_stub.CreateBook(
+            library_pb2.CreateBookRequest(
+                isbn=f"978000060009{i}",
+                title=f"Page Book {i}",
+                author="Author",
+                genre="Fiction",
+                published_year=2024,
+                total_copies=1,
+            )
+        )
+
+    response = await grpc_stub.ListBooks(library_pb2.ListBooksRequest(page_size=2))
+    assert len(response.books) == 2
+    assert response.next_page_token != ""
+
+    response2 = await grpc_stub.ListBooks(
+        library_pb2.ListBooksRequest(page_size=2, page_token=response.next_page_token)
+    )
+    assert len(response2.books) == 1
 
 
 @pytest.mark.asyncio
@@ -106,23 +131,8 @@ async def test_get_book_not_found(grpc_stub):
 
 
 @pytest.mark.asyncio
-async def test_get_inventory(grpc_stub):
-    await grpc_stub.CreateBook(
-        library_pb2.CreateBookRequest(
-            isbn="9780000600041",
-            title="Inventory Book",
-            author="Author",
-            genre="Fiction",
-            published_year=2024,
-            total_copies=3,
-        )
-    )
-    result = await grpc_stub.GetInventory(library_pb2.GetInventoryRequest())
-    assert len(result.books) >= 1
-
-
-@pytest.mark.asyncio
 async def test_reserve_and_return(grpc_stub):
+    user_id = str(uuid.uuid4())
     book = await grpc_stub.CreateBook(
         library_pb2.CreateBookRequest(
             isbn="9780000600051",
@@ -134,7 +144,7 @@ async def test_reserve_and_return(grpc_stub):
         )
     )
     reserve_result = await grpc_stub.ReserveBooks(
-        library_pb2.ReserveBooksRequest(user_id="grpc_user", book_ids=[book.id])
+        library_pb2.ReserveBooksRequest(user_id=user_id, book_ids=[book.id])
     )
     reservations = reserve_result.reservations
     assert len(reservations) == 1
@@ -151,6 +161,8 @@ async def test_reserve_and_return(grpc_stub):
 
 @pytest.mark.asyncio
 async def test_reserve_unavailable(grpc_stub):
+    user_id1 = str(uuid.uuid4())
+    user_id2 = str(uuid.uuid4())
     book = await grpc_stub.CreateBook(
         library_pb2.CreateBookRequest(
             isbn="9780000600061",
@@ -162,17 +174,18 @@ async def test_reserve_unavailable(grpc_stub):
         )
     )
     await grpc_stub.ReserveBooks(
-        library_pb2.ReserveBooksRequest(user_id="user1", book_ids=[book.id])
+        library_pb2.ReserveBooksRequest(user_id=user_id1, book_ids=[book.id])
     )
     with pytest.raises(grpc.aio.AioRpcError) as exc_info:
         await grpc_stub.ReserveBooks(
-            library_pb2.ReserveBooksRequest(user_id="user2", book_ids=[book.id])
+            library_pb2.ReserveBooksRequest(user_id=user_id2, book_ids=[book.id])
         )
     assert exc_info.value.code() == grpc.StatusCode.FAILED_PRECONDITION
 
 
 @pytest.mark.asyncio
 async def test_list_reservations(grpc_stub):
+    user_id = str(uuid.uuid4())
     book = await grpc_stub.CreateBook(
         library_pb2.CreateBookRequest(
             isbn="9780000600071",
@@ -184,7 +197,7 @@ async def test_list_reservations(grpc_stub):
         )
     )
     await grpc_stub.ReserveBooks(
-        library_pb2.ReserveBooksRequest(user_id="user1", book_ids=[book.id])
+        library_pb2.ReserveBooksRequest(user_id=user_id, book_ids=[book.id])
     )
     result = await grpc_stub.ListReservations(library_pb2.ListReservationsRequest())
     assert len(result.reservations) >= 1
@@ -192,6 +205,7 @@ async def test_list_reservations(grpc_stub):
 
 @pytest.mark.asyncio
 async def test_get_reservation(grpc_stub):
+    user_id = str(uuid.uuid4())
     book = await grpc_stub.CreateBook(
         library_pb2.CreateBookRequest(
             isbn="9780000600081",
@@ -203,11 +217,11 @@ async def test_get_reservation(grpc_stub):
         )
     )
     reserve_result = await grpc_stub.ReserveBooks(
-        library_pb2.ReserveBooksRequest(user_id="user1", book_ids=[book.id])
+        library_pb2.ReserveBooksRequest(user_id=user_id, book_ids=[book.id])
     )
     res_id = reserve_result.reservations[0].id
     result = await grpc_stub.GetReservation(
         library_pb2.GetReservationRequest(reservation_id=res_id)
     )
     assert result.id == res_id
-    assert result.user_id == "user1"
+    assert result.user_id == user_id

@@ -17,6 +17,10 @@ class RedisCache:
     def __init__(self):
         self._redis: aioredis.Redis | None = None
 
+    @property
+    def client(self) -> aioredis.Redis | None:
+        return self._redis
+
     async def connect(self):
         self._redis = aioredis.from_url(redis_config.url, decode_responses=True)
         logger.info("Connected to Redis")

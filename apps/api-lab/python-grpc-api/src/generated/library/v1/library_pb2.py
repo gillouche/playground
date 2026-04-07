@@ -22,10 +22,11 @@ _runtime_version.ValidateProtobufRuntimeVersion(
 _sym_db = _symbol_database.Default()
 
 
+from google.protobuf import field_mask_pb2 as google_dot_protobuf_dot_field__mask__pb2
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18library/v1/library.proto\x12\nlibrary.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf6\x01\n\x04\x42ook\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04isbn\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x0e\n\x06\x61uthor\x18\x04 \x01(\t\x12\r\n\x05genre\x18\x05 \x01(\t\x12\x16\n\x0epublished_year\x18\x06 \x01(\x05\x12\x14\n\x0ctotal_copies\x18\x07 \x01(\x05\x12\x18\n\x10\x61vailable_copies\x18\x08 \x01(\x05\x12.\n\ncreated_at\x18\t \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nupdated_at\x18\n \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xfa\x01\n\x0bReservation\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07\x62ook_id\x18\x02 \x01(\t\x12\x0f\n\x07user_id\x18\x03 \x01(\t\x12/\n\x0breserved_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x64ue_date\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12/\n\x0breturned_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12-\n\x06status\x18\x07 \x01(\x0e\x32\x1d.library.v1.ReservationStatus\"Y\n\x10ListBooksRequest\x12\x16\n\x0e\x61vailable_only\x18\x01 \x01(\x08\x12\r\n\x05genre\x18\x02 \x01(\t\x12\x0e\n\x06\x61uthor\x18\x03 \x01(\t\x12\x0e\n\x06search\x18\x04 \x01(\t\"4\n\x11ListBooksResponse\x12\x1f\n\x05\x62ooks\x18\x01 \x03(\x0b\x32\x10.library.v1.Book\"!\n\x0eGetBookRequest\x12\x0f\n\x07\x62ook_id\x18\x01 \x01(\t\"}\n\x11\x43reateBookRequest\x12\x0c\n\x04isbn\x18\x01 \x01(\t\x12\r\n\x05title\x18\x02 \x01(\t\x12\x0e\n\x06\x61uthor\x18\x03 \x01(\t\x12\r\n\x05genre\x18\x04 \x01(\t\x12\x16\n\x0epublished_year\x18\x05 \x01(\x05\x12\x14\n\x0ctotal_copies\x18\x06 \x01(\x05\"\xf8\x01\n\x11UpdateBookRequest\x12\x0f\n\x07\x62ook_id\x18\x01 \x01(\t\x12\x11\n\x04isbn\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x12\n\x05title\x18\x03 \x01(\tH\x01\x88\x01\x01\x12\x13\n\x06\x61uthor\x18\x04 \x01(\tH\x02\x88\x01\x01\x12\x12\n\x05genre\x18\x05 \x01(\tH\x03\x88\x01\x01\x12\x1b\n\x0epublished_year\x18\x06 \x01(\x05H\x04\x88\x01\x01\x12\x19\n\x0ctotal_copies\x18\x07 \x01(\x05H\x05\x88\x01\x01\x42\x07\n\x05_isbnB\x08\n\x06_titleB\t\n\x07_authorB\x08\n\x06_genreB\x11\n\x0f_published_yearB\x0f\n\r_total_copies\"$\n\x11\x44\x65leteBookRequest\x12\x0f\n\x07\x62ook_id\x18\x01 \x01(\t\"\x14\n\x12\x44\x65leteBookResponse\"\x15\n\x13GetInventoryRequest\"7\n\x14GetInventoryResponse\x12\x1f\n\x05\x62ooks\x18\x01 \x03(\x0b\x32\x10.library.v1.Book\"8\n\x13ReserveBooksRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x10\n\x08\x62ook_ids\x18\x02 \x03(\t\"E\n\x14ReserveBooksResponse\x12-\n\x0creservations\x18\x01 \x03(\x0b\x32\x17.library.v1.Reservation\"2\n\x18ReturnReservationRequest\x12\x16\n\x0ereservation_id\x18\x01 \x01(\t\"K\n\x17ListReservationsRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x0f\n\x07\x62ook_id\x18\x03 \x01(\t\"I\n\x18ListReservationsResponse\x12-\n\x0creservations\x18\x01 \x03(\x0b\x32\x17.library.v1.Reservation\"/\n\x15GetReservationRequest\x12\x16\n\x0ereservation_id\x18\x01 \x01(\t*\x97\x01\n\x11ReservationStatus\x12\"\n\x1eRESERVATION_STATUS_UNSPECIFIED\x10\x00\x12\x1d\n\x19RESERVATION_STATUS_ACTIVE\x10\x01\x12\x1f\n\x1bRESERVATION_STATUS_RETURNED\x10\x02\x12\x1e\n\x1aRESERVATION_STATUS_OVERDUE\x10\x03\x32\x85\x06\n\x0eLibraryService\x12H\n\tListBooks\x12\x1c.library.v1.ListBooksRequest\x1a\x1d.library.v1.ListBooksResponse\x12\x37\n\x07GetBook\x12\x1a.library.v1.GetBookRequest\x1a\x10.library.v1.Book\x12=\n\nCreateBook\x12\x1d.library.v1.CreateBookRequest\x1a\x10.library.v1.Book\x12=\n\nUpdateBook\x12\x1d.library.v1.UpdateBookRequest\x1a\x10.library.v1.Book\x12K\n\nDeleteBook\x12\x1d.library.v1.DeleteBookRequest\x1a\x1e.library.v1.DeleteBookResponse\x12Q\n\x0cGetInventory\x12\x1f.library.v1.GetInventoryRequest\x1a .library.v1.GetInventoryResponse\x12Q\n\x0cReserveBooks\x12\x1f.library.v1.ReserveBooksRequest\x1a .library.v1.ReserveBooksResponse\x12R\n\x11ReturnReservation\x12$.library.v1.ReturnReservationRequest\x1a\x17.library.v1.Reservation\x12]\n\x10ListReservations\x12#.library.v1.ListReservationsRequest\x1a$.library.v1.ListReservationsResponse\x12L\n\x0eGetReservation\x12!.library.v1.GetReservationRequest\x1a\x17.library.v1.ReservationBQZOgithub.com/gillouche/playground/apps/api-lab/openapi/proto/library/v1;libraryv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x18library/v1/library.proto\x12\nlibrary.v1\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x87\x02\n\x04\x42ook\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04isbn\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x0e\n\x06\x61uthor\x18\x04 \x01(\t\x12\r\n\x05genre\x18\x05 \x01(\t\x12\x16\n\x0epublished_year\x18\x06 \x01(\x05\x12\x14\n\x0ctotal_copies\x18\x07 \x01(\x05\x12\x18\n\x10\x61vailable_copies\x18\x08 \x01(\x05\x12.\n\ncreated_at\x18\t \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nupdated_at\x18\n \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07version\x18\x0b \x01(\x05\"\xfa\x01\n\x0bReservation\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07\x62ook_id\x18\x02 \x01(\t\x12\x0f\n\x07user_id\x18\x03 \x01(\t\x12/\n\x0breserved_at\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x64ue_date\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12/\n\x0breturned_at\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12-\n\x06status\x18\x07 \x01(\x0e\x32\x1d.library.v1.ReservationStatus\"\xd7\x01\n\x10ListBooksRequest\x12\x16\n\x0e\x61vailable_only\x18\x01 \x01(\x08\x12\r\n\x05genre\x18\x02 \x01(\t\x12\x0e\n\x06\x61uthor\x18\x03 \x01(\t\x12\x0e\n\x06search\x18\x04 \x01(\t\x12\x11\n\tpage_size\x18\x05 \x01(\x05\x12\x12\n\npage_token\x18\x06 \x01(\t\x12*\n\x07sort_by\x18\x07 \x01(\x0e\x32\x19.library.v1.BookSortField\x12)\n\nsort_order\x18\x08 \x01(\x0e\x32\x15.library.v1.SortOrder\"M\n\x11ListBooksResponse\x12\x1f\n\x05\x62ooks\x18\x01 \x03(\x0b\x32\x10.library.v1.Book\x12\x17\n\x0fnext_page_token\x18\x02 \x01(\t\"!\n\x0eGetBookRequest\x12\x0f\n\x07\x62ook_id\x18\x01 \x01(\t\"\x96\x01\n\x11\x43reateBookRequest\x12\x0c\n\x04isbn\x18\x01 \x01(\t\x12\r\n\x05title\x18\x02 \x01(\t\x12\x0e\n\x06\x61uthor\x18\x03 \x01(\t\x12\r\n\x05genre\x18\x04 \x01(\t\x12\x16\n\x0epublished_year\x18\x05 \x01(\x05\x12\x14\n\x0ctotal_copies\x18\x06 \x01(\x05\x12\x17\n\x0fidempotency_key\x18\x07 \x01(\t\"\xc3\x02\n\x11UpdateBookRequest\x12\x0f\n\x07\x62ook_id\x18\x01 \x01(\t\x12\x11\n\x04isbn\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x12\n\x05title\x18\x03 \x01(\tH\x01\x88\x01\x01\x12\x13\n\x06\x61uthor\x18\x04 \x01(\tH\x02\x88\x01\x01\x12\x12\n\x05genre\x18\x05 \x01(\tH\x03\x88\x01\x01\x12\x1b\n\x0epublished_year\x18\x06 \x01(\x05H\x04\x88\x01\x01\x12\x19\n\x0ctotal_copies\x18\x07 \x01(\x05H\x05\x88\x01\x01\x12/\n\x0bupdate_mask\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.FieldMask\x12\x18\n\x10\x65xpected_version\x18\t \x01(\x05\x42\x07\n\x05_isbnB\x08\n\x06_titleB\t\n\x07_authorB\x08\n\x06_genreB\x11\n\x0f_published_yearB\x0f\n\r_total_copies\"$\n\x11\x44\x65leteBookRequest\x12\x0f\n\x07\x62ook_id\x18\x01 \x01(\t\"\x14\n\x12\x44\x65leteBookResponse\"Q\n\x13ReserveBooksRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12\x10\n\x08\x62ook_ids\x18\x02 \x03(\t\x12\x17\n\x0fidempotency_key\x18\x03 \x01(\t\"E\n\x14ReserveBooksResponse\x12-\n\x0creservations\x18\x01 \x03(\x0b\x32\x17.library.v1.Reservation\"2\n\x18ReturnReservationRequest\x12\x16\n\x0ereservation_id\x18\x01 \x01(\t\"\xef\x01\n\x17ListReservationsRequest\x12\x0f\n\x07user_id\x18\x01 \x01(\t\x12-\n\x06status\x18\x02 \x01(\x0e\x32\x1d.library.v1.ReservationStatus\x12\x0f\n\x07\x62ook_id\x18\x03 \x01(\t\x12\x11\n\tpage_size\x18\x04 \x01(\x05\x12\x12\n\npage_token\x18\x05 \x01(\t\x12\x31\n\x07sort_by\x18\x06 \x01(\x0e\x32 .library.v1.ReservationSortField\x12)\n\nsort_order\x18\x07 \x01(\x0e\x32\x15.library.v1.SortOrder\"b\n\x18ListReservationsResponse\x12-\n\x0creservations\x18\x01 \x03(\x0b\x32\x17.library.v1.Reservation\x12\x17\n\x0fnext_page_token\x18\x02 \x01(\t\"/\n\x15GetReservationRequest\x12\x16\n\x0ereservation_id\x18\x01 \x01(\t*\x97\x01\n\x11ReservationStatus\x12\"\n\x1eRESERVATION_STATUS_UNSPECIFIED\x10\x00\x12\x1d\n\x19RESERVATION_STATUS_ACTIVE\x10\x01\x12\x1f\n\x1bRESERVATION_STATUS_RETURNED\x10\x02\x12\x1e\n\x1aRESERVATION_STATUS_OVERDUE\x10\x03*\xab\x01\n\rBookSortField\x12\x1f\n\x1b\x42OOK_SORT_FIELD_UNSPECIFIED\x10\x00\x12\x19\n\x15\x42OOK_SORT_FIELD_TITLE\x10\x01\x12\x1a\n\x16\x42OOK_SORT_FIELD_AUTHOR\x10\x02\x12\"\n\x1e\x42OOK_SORT_FIELD_PUBLISHED_YEAR\x10\x03\x12\x1e\n\x1a\x42OOK_SORT_FIELD_CREATED_AT\x10\x04*\xae\x01\n\x14ReservationSortField\x12&\n\"RESERVATION_SORT_FIELD_UNSPECIFIED\x10\x00\x12&\n\"RESERVATION_SORT_FIELD_RESERVED_AT\x10\x01\x12#\n\x1fRESERVATION_SORT_FIELD_DUE_DATE\x10\x02\x12!\n\x1dRESERVATION_SORT_FIELD_STATUS\x10\x03*P\n\tSortOrder\x12\x1a\n\x16SORT_ORDER_UNSPECIFIED\x10\x00\x12\x12\n\x0eSORT_ORDER_ASC\x10\x01\x12\x13\n\x0fSORT_ORDER_DESC\x10\x02\x32\xb2\x05\n\x0eLibraryService\x12H\n\tListBooks\x12\x1c.library.v1.ListBooksRequest\x1a\x1d.library.v1.ListBooksResponse\x12\x37\n\x07GetBook\x12\x1a.library.v1.GetBookRequest\x1a\x10.library.v1.Book\x12=\n\nCreateBook\x12\x1d.library.v1.CreateBookRequest\x1a\x10.library.v1.Book\x12=\n\nUpdateBook\x12\x1d.library.v1.UpdateBookRequest\x1a\x10.library.v1.Book\x12K\n\nDeleteBook\x12\x1d.library.v1.DeleteBookRequest\x1a\x1e.library.v1.DeleteBookResponse\x12Q\n\x0cReserveBooks\x12\x1f.library.v1.ReserveBooksRequest\x1a .library.v1.ReserveBooksResponse\x12R\n\x11ReturnReservation\x12$.library.v1.ReturnReservationRequest\x1a\x17.library.v1.Reservation\x12]\n\x10ListReservations\x12#.library.v1.ListReservationsRequest\x1a$.library.v1.ListReservationsResponse\x12L\n\x0eGetReservation\x12!.library.v1.GetReservationRequest\x1a\x17.library.v1.ReservationBQZOgithub.com/gillouche/playground/apps/api-lab/openapi/proto/library/v1;libraryv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,42 +34,44 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'library.v1.library_pb2', _g
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'ZOgithub.com/gillouche/playground/apps/api-lab/openapi/proto/library/v1;libraryv1'
-  _globals['_RESERVATIONSTATUS']._serialized_start=1656
-  _globals['_RESERVATIONSTATUS']._serialized_end=1807
-  _globals['_BOOK']._serialized_start=74
-  _globals['_BOOK']._serialized_end=320
-  _globals['_RESERVATION']._serialized_start=323
-  _globals['_RESERVATION']._serialized_end=573
-  _globals['_LISTBOOKSREQUEST']._serialized_start=575
-  _globals['_LISTBOOKSREQUEST']._serialized_end=664
-  _globals['_LISTBOOKSRESPONSE']._serialized_start=666
-  _globals['_LISTBOOKSRESPONSE']._serialized_end=718
-  _globals['_GETBOOKREQUEST']._serialized_start=720
-  _globals['_GETBOOKREQUEST']._serialized_end=753
-  _globals['_CREATEBOOKREQUEST']._serialized_start=755
-  _globals['_CREATEBOOKREQUEST']._serialized_end=880
-  _globals['_UPDATEBOOKREQUEST']._serialized_start=883
-  _globals['_UPDATEBOOKREQUEST']._serialized_end=1131
-  _globals['_DELETEBOOKREQUEST']._serialized_start=1133
-  _globals['_DELETEBOOKREQUEST']._serialized_end=1169
-  _globals['_DELETEBOOKRESPONSE']._serialized_start=1171
-  _globals['_DELETEBOOKRESPONSE']._serialized_end=1191
-  _globals['_GETINVENTORYREQUEST']._serialized_start=1193
-  _globals['_GETINVENTORYREQUEST']._serialized_end=1214
-  _globals['_GETINVENTORYRESPONSE']._serialized_start=1216
-  _globals['_GETINVENTORYRESPONSE']._serialized_end=1271
-  _globals['_RESERVEBOOKSREQUEST']._serialized_start=1273
-  _globals['_RESERVEBOOKSREQUEST']._serialized_end=1329
-  _globals['_RESERVEBOOKSRESPONSE']._serialized_start=1331
-  _globals['_RESERVEBOOKSRESPONSE']._serialized_end=1400
-  _globals['_RETURNRESERVATIONREQUEST']._serialized_start=1402
-  _globals['_RETURNRESERVATIONREQUEST']._serialized_end=1452
-  _globals['_LISTRESERVATIONSREQUEST']._serialized_start=1454
-  _globals['_LISTRESERVATIONSREQUEST']._serialized_end=1529
-  _globals['_LISTRESERVATIONSRESPONSE']._serialized_start=1531
-  _globals['_LISTRESERVATIONSRESPONSE']._serialized_end=1604
-  _globals['_GETRESERVATIONREQUEST']._serialized_start=1606
-  _globals['_GETRESERVATIONREQUEST']._serialized_end=1653
-  _globals['_LIBRARYSERVICE']._serialized_start=1810
-  _globals['_LIBRARYSERVICE']._serialized_end=2583
+  _globals['_RESERVATIONSTATUS']._serialized_start=2095
+  _globals['_RESERVATIONSTATUS']._serialized_end=2246
+  _globals['_BOOKSORTFIELD']._serialized_start=2249
+  _globals['_BOOKSORTFIELD']._serialized_end=2420
+  _globals['_RESERVATIONSORTFIELD']._serialized_start=2423
+  _globals['_RESERVATIONSORTFIELD']._serialized_end=2597
+  _globals['_SORTORDER']._serialized_start=2599
+  _globals['_SORTORDER']._serialized_end=2679
+  _globals['_BOOK']._serialized_start=108
+  _globals['_BOOK']._serialized_end=371
+  _globals['_RESERVATION']._serialized_start=374
+  _globals['_RESERVATION']._serialized_end=624
+  _globals['_LISTBOOKSREQUEST']._serialized_start=627
+  _globals['_LISTBOOKSREQUEST']._serialized_end=842
+  _globals['_LISTBOOKSRESPONSE']._serialized_start=844
+  _globals['_LISTBOOKSRESPONSE']._serialized_end=921
+  _globals['_GETBOOKREQUEST']._serialized_start=923
+  _globals['_GETBOOKREQUEST']._serialized_end=956
+  _globals['_CREATEBOOKREQUEST']._serialized_start=959
+  _globals['_CREATEBOOKREQUEST']._serialized_end=1109
+  _globals['_UPDATEBOOKREQUEST']._serialized_start=1112
+  _globals['_UPDATEBOOKREQUEST']._serialized_end=1435
+  _globals['_DELETEBOOKREQUEST']._serialized_start=1437
+  _globals['_DELETEBOOKREQUEST']._serialized_end=1473
+  _globals['_DELETEBOOKRESPONSE']._serialized_start=1475
+  _globals['_DELETEBOOKRESPONSE']._serialized_end=1495
+  _globals['_RESERVEBOOKSREQUEST']._serialized_start=1497
+  _globals['_RESERVEBOOKSREQUEST']._serialized_end=1578
+  _globals['_RESERVEBOOKSRESPONSE']._serialized_start=1580
+  _globals['_RESERVEBOOKSRESPONSE']._serialized_end=1649
+  _globals['_RETURNRESERVATIONREQUEST']._serialized_start=1651
+  _globals['_RETURNRESERVATIONREQUEST']._serialized_end=1701
+  _globals['_LISTRESERVATIONSREQUEST']._serialized_start=1704
+  _globals['_LISTRESERVATIONSREQUEST']._serialized_end=1943
+  _globals['_LISTRESERVATIONSRESPONSE']._serialized_start=1945
+  _globals['_LISTRESERVATIONSRESPONSE']._serialized_end=2043
+  _globals['_GETRESERVATIONREQUEST']._serialized_start=2045
+  _globals['_GETRESERVATIONREQUEST']._serialized_end=2092
+  _globals['_LIBRARYSERVICE']._serialized_start=2682
+  _globals['_LIBRARYSERVICE']._serialized_end=3372
 # @@protoc_insertion_point(module_scope)

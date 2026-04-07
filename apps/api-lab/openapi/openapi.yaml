@@ -2,46 +2,121 @@ openapi: 3.1.0
 info:
   title: Library Book Management API
   version: 1.0.0
-  description: API for managing library books, inventory, and reservations.
+  description: |
+    API for managing library books and reservations.
+
+    ## Versioning Strategy
+
+    This API uses URI-based versioning (e.g., `/api/v1/...`). When breaking changes are
+    introduced, a new version prefix will be added (e.g., `/api/v2/...`). Previous versions
+    will enter a sunset period of at least 6 months, during which they remain functional but
+    return a `Sunset` header indicating the deprecation date. Clients should monitor this
+    header and migrate promptly.
+
+    ## Pagination
+
+    List endpoints use cursor-based pagination via `limit` and `continuation_token` query
+    parameters. The response includes a `continuation_token` field (opaque string) and a
+    `has_more` boolean. To fetch the next page, pass the returned `continuation_token` as a
+    query parameter.
+
+    ## Idempotency
+
+    POST endpoints accept an `Idempotency-Key` header (UUID). If a request with the same
+    idempotency key has already been processed, the server returns the original response
+    without creating a duplicate resource. Keys expire after 24 hours.
+
+    ## Rate Limiting
+
+    All endpoints are rate-limited. Every response includes `X-RateLimit-Limit`,
+    `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers. When the limit is exceeded,
+    the server returns 429 Too Many Requests with a `Retry-After` header.
+  contact:
+    name: API Lab Team
+    email: dev@null.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 
 paths:
   /api/v1/books:
     get:
+      tags:
+        - books
       summary: List books
       operationId: listBooks
       parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/ContinuationToken"
+        - name: sort_by
+          in: query
+          description: Field to sort results by.
+          schema:
+            type: string
+            enum:
+              - title
+              - author
+              - published_year
+              - created_at
+            default: created_at
+        - name: sort_order
+          in: query
+          description: Sort direction, ascending or descending.
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
         - name: available_only
           in: query
+          description: When true, return only books with at least one available copy.
           schema:
             type: boolean
         - name: genre
           in: query
+          description: Filter books by genre (exact match, case-insensitive).
           schema:
             type: string
         - name: author
           in: query
+          description: Filter books by author name (partial match, case-insensitive).
           schema:
             type: string
         - name: search
           in: query
+          description: Free-text search across title, author, and ISBN.
           schema:
             type: string
       responses:
         "200":
-          description: List of books
+          description: Paginated list of books.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/BookResponse"
+                $ref: "#/components/schemas/PaginatedBooks"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalServerError"
     post:
+      tags:
+        - books
       summary: Create a book
       operationId: createBook
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -50,50 +125,88 @@ paths:
               $ref: "#/components/schemas/BookCreate"
       responses:
         "201":
-          description: Book created
+          description: Book created.
+          headers:
+            Location:
+              description: URI of the newly created book resource.
+              schema:
+                type: string
+                example: /api/v1/books/550e8400-e29b-41d4-a716-446655440000
+            ETag:
+              $ref: "#/components/headers/ETag"
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BookResponse"
+                $ref: "#/components/schemas/Book"
         "400":
           $ref: "#/components/responses/BadRequest"
         "409":
           $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalServerError"
 
   /api/v1/books/{book_id}:
     get:
+      tags:
+        - books
       summary: Get a book by ID
       operationId: getBook
       parameters:
         - name: book_id
           in: path
           required: true
+          description: Unique identifier of the book.
           schema:
             type: string
             format: uuid
       responses:
         "200":
-          description: Book details
+          description: Book details.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BookResponse"
+                $ref: "#/components/schemas/Book"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalServerError"
     put:
+      tags:
+        - books
       summary: Update a book
       operationId: updateBook
       parameters:
         - name: book_id
           in: path
           required: true
+          description: Unique identifier of the book to update.
           schema:
             type: string
             format: uuid
+        - $ref: "#/components/parameters/IfMatch"
       requestBody:
         required: true
         content:
@@ -102,55 +215,155 @@ paths:
               $ref: "#/components/schemas/BookUpdate"
       responses:
         "200":
-          description: Book updated
+          description: Book updated.
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BookResponse"
+                $ref: "#/components/schemas/Book"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalServerError"
     delete:
+      tags:
+        - books
       summary: Delete a book
       operationId: deleteBook
       parameters:
         - name: book_id
           in: path
           required: true
+          description: Unique identifier of the book to delete.
           schema:
             type: string
             format: uuid
       responses:
         "204":
-          description: Book deleted
+          description: Book deleted.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
         "404":
           $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-
-  /api/v1/inventory:
-    get:
-      summary: Get inventory
-      operationId: getInventory
-      responses:
-        "200":
-          description: Inventory details
+        "409":
+          description: Book has active reservations and cannot be deleted.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InventoryResponse"
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalServerError"
 
   /api/v1/reservations:
+    get:
+      tags:
+        - reservations
+      summary: List reservations
+      operationId: listReservations
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/ContinuationToken"
+        - name: sort_by
+          in: query
+          description: Field to sort results by.
+          schema:
+            type: string
+            enum:
+              - reserved_at
+              - due_date
+              - status
+            default: reserved_at
+        - name: sort_order
+          in: query
+          description: Sort direction, ascending or descending.
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+        - name: user_id
+          in: query
+          description: Filter reservations by the user who created them.
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          description: Filter reservations by their current status.
+          schema:
+            $ref: "#/components/schemas/ReservationStatus"
+        - name: book_id
+          in: query
+          description: Filter reservations for a specific book.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Paginated list of reservations.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedReservations"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
     post:
+      tags:
+        - reservations
       summary: Create reservations
       operationId: createReservations
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -159,118 +372,174 @@ paths:
               $ref: "#/components/schemas/ReservationCreate"
       responses:
         "201":
-          description: Reservations created
+          description: Reservations created.
+          headers:
+            Location:
+              description: URI of the first created reservation resource.
+              schema:
+                type: string
+                example: /api/v1/reservations/660e8400-e29b-41d4-a716-446655440000
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ReservationResponse"
+                  $ref: "#/components/schemas/Reservation"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
-    get:
-      summary: List reservations
-      operationId: listReservations
-      parameters:
-        - name: user_id
-          in: query
-          schema:
-            type: string
-        - name: status
-          in: query
-          schema:
-            type: string
-        - name: book_id
-          in: query
-          schema:
-            type: string
-      responses:
-        "200":
-          description: List of reservations
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/ReservationResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalServerError"
 
-  /api/v1/reservations/{id}:
+  /api/v1/reservations/{reservation_id}:
     get:
+      tags:
+        - reservations
       summary: Get a reservation by ID
       operationId: getReservation
       parameters:
-        - name: id
+        - name: reservation_id
           in: path
           required: true
+          description: Unique identifier of the reservation.
           schema:
             type: string
             format: uuid
       responses:
         "200":
-          description: Reservation details
+          description: Reservation details.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReservationResponse"
+                $ref: "#/components/schemas/Reservation"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalServerError"
-
-  /api/v1/reservations/{id}/return:
-    post:
-      summary: Return a reservation
-      operationId: returnReservation
+    patch:
+      tags:
+        - reservations
+      summary: Update a reservation
+      operationId: updateReservation
       parameters:
-        - name: id
+        - name: reservation_id
           in: path
           required: true
+          description: Unique identifier of the reservation to update.
           schema:
             type: string
             format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservationUpdate"
       responses:
         "200":
-          description: Reservation returned
+          description: Reservation updated.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ReservationResponse"
+                $ref: "#/components/schemas/Reservation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalServerError"
 
   /healthz:
     get:
+      tags:
+        - operations
       summary: Health check
       operationId: healthCheck
       responses:
         "200":
-          description: Service is healthy
+          description: Service is healthy.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /ready:
     get:
+      tags:
+        - operations
       summary: Readiness check
       operationId: readinessCheck
       responses:
         "200":
-          description: Service is ready
+          description: Service is ready.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          description: Service is not ready.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
           content:
             application/json:
               schema:
@@ -278,44 +547,162 @@ paths:
 
   /info:
     get:
+      tags:
+        - operations
       summary: Service info
       operationId: serviceInfo
       responses:
         "200":
-          description: Service information
+          description: Service information.
+          headers:
+            X-Request-Id:
+              $ref: "#/components/headers/X-Request-Id"
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/X-RateLimit-Limit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/X-RateLimit-Remaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/X-RateLimit-Reset"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/InfoResponse"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
 components:
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      description: Maximum number of items to return per page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+        example: 20
+
+    ContinuationToken:
+      name: continuation_token
+      in: query
+      description: Opaque token from a previous response to fetch the next page of results.
+      schema:
+        type: string
+        example: eyJpZCI6ICIxMjM0NTY3ODkwIn0
+
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      description: Unique UUID to ensure the request is processed at most once. Keys expire after 24 hours.
+      schema:
+        type: string
+        format: uuid
+        example: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: ETag value from a previous GET response. The server rejects the update if the resource has been modified since.
+      schema:
+        type: string
+        example: '"1"'
+
+  headers:
+    ETag:
+      description: Entity tag for the current version of the resource, used for optimistic concurrency control.
+      schema:
+        type: string
+        example: '"3"'
+
+    X-Request-Id:
+      description: Unique identifier for the request, useful for tracing and debugging.
+      schema:
+        type: string
+        format: uuid
+        example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+
+    X-RateLimit-Limit:
+      description: Maximum number of requests allowed in the current time window.
+      schema:
+        type: integer
+        example: 100
+
+    X-RateLimit-Remaining:
+      description: Number of requests remaining in the current time window.
+      schema:
+        type: integer
+        example: 87
+
+    X-RateLimit-Reset:
+      description: Unix timestamp (seconds) when the rate limit window resets.
+      schema:
+        type: integer
+        example: 1714003200
+
   schemas:
+    ReservationStatus:
+      type: string
+      description: Current status of a reservation.
+      enum:
+        - ACTIVE
+        - RETURNED
+        - OVERDUE
+      example: ACTIVE
+
     Book:
       type: object
+      description: A book in the library catalog. Use `from_attributes = True` in Pydantic models to construct from ORM objects.
       properties:
         id:
           type: string
           format: uuid
+          description: Unique identifier for the book.
+          example: 550e8400-e29b-41d4-a716-446655440000
         isbn:
           type: string
+          description: International Standard Book Number (ISBN-13).
+          example: "978-0-13-468599-1"
         title:
           type: string
+          description: Title of the book.
+          example: The Pragmatic Programmer
         author:
           type: string
+          description: Full name of the primary author.
+          example: David Thomas
         genre:
           type: string
+          description: Literary genre or category.
+          example: Software Engineering
         published_year:
           type: integer
+          description: Year the book was first published.
+          example: 2019
         total_copies:
           type: integer
+          description: Total number of copies owned by the library.
+          example: 5
         available_copies:
           type: integer
+          description: Number of copies currently available for borrowing.
+          example: 3
+        version:
+          type: integer
+          description: Optimistic concurrency version counter, incremented on each update. Used as the ETag value.
+          default: 1
+          example: 1
         created_at:
           type: string
           format: date-time
+          description: Timestamp when the book record was created.
+          example: "2025-01-15T10:30:00Z"
         updated_at:
           type: string
           format: date-time
+          description: Timestamp when the book record was last updated.
+          example: "2025-03-20T14:45:00Z"
       required:
         - id
         - isbn
@@ -325,24 +712,38 @@ components:
         - published_year
         - total_copies
         - available_copies
+        - version
         - created_at
         - updated_at
 
     BookCreate:
       type: object
+      description: Payload for creating a new book.
       properties:
         isbn:
           type: string
+          description: International Standard Book Number (ISBN-13).
+          example: "978-0-13-468599-1"
         title:
           type: string
+          description: Title of the book.
+          example: The Pragmatic Programmer
         author:
           type: string
+          description: Full name of the primary author.
+          example: David Thomas
         genre:
           type: string
+          description: Literary genre or category.
+          example: Software Engineering
         published_year:
           type: integer
+          description: Year the book was first published.
+          example: 2019
         total_copies:
           type: integer
+          description: Total number of copies to add to the library.
+          example: 5
       required:
         - isbn
         - title
@@ -353,52 +754,94 @@ components:
 
     BookUpdate:
       type: object
+      description: Payload for updating an existing book. All fields are optional; only provided fields are changed.
       properties:
         isbn:
           type: string
+          description: International Standard Book Number (ISBN-13).
+          example: "978-0-13-468599-1"
         title:
           type: string
+          description: Title of the book.
+          example: The Pragmatic Programmer
         author:
           type: string
+          description: Full name of the primary author.
+          example: David Thomas
         genre:
           type: string
+          description: Literary genre or category.
+          example: Software Engineering
         published_year:
           type: integer
+          description: Year the book was first published.
+          example: 2019
         total_copies:
           type: integer
+          description: Total number of copies owned by the library.
+          example: 5
 
-    BookResponse:
-      allOf:
-        - $ref: "#/components/schemas/Book"
+    PaginatedBooks:
+      type: object
+      description: Paginated response wrapper for book listings.
+      properties:
+        items:
+          type: array
+          description: List of books for the current page.
+          items:
+            $ref: "#/components/schemas/Book"
+        continuation_token:
+          type:
+            - string
+            - "null"
+          description: Opaque token to retrieve the next page. Null when there are no more pages.
+          example: eyJpZCI6ICIxMjM0NTY3ODkwIn0
+        has_more:
+          type: boolean
+          description: Whether additional pages of results exist.
+          example: true
+      required:
+        - items
+        - has_more
 
     Reservation:
       type: object
+      description: A book reservation record. Use `from_attributes = True` in Pydantic models to construct from ORM objects.
       properties:
         id:
           type: string
           format: uuid
+          description: Unique identifier for the reservation.
+          example: 660e8400-e29b-41d4-a716-446655440000
         book_id:
           type: string
           format: uuid
+          description: Identifier of the reserved book.
+          example: 550e8400-e29b-41d4-a716-446655440000
         user_id:
           type: string
+          format: uuid
+          description: Identifier of the user who made the reservation.
+          example: 770e8400-e29b-41d4-a716-446655440000
         reserved_at:
           type: string
           format: date-time
+          description: Timestamp when the reservation was created.
+          example: "2025-04-01T09:00:00Z"
         due_date:
           type: string
           format: date-time
+          description: Timestamp by which the book must be returned.
+          example: "2025-04-15T09:00:00Z"
         returned_at:
           type:
             - string
             - "null"
           format: date-time
+          description: Timestamp when the book was returned. Null if not yet returned.
+          example: "2025-04-10T16:30:00Z"
         status:
-          type: string
-          enum:
-            - ACTIVE
-            - RETURNED
-            - OVERDUE
+          $ref: "#/components/schemas/ReservationStatus"
       required:
         - id
         - book_id
@@ -409,96 +852,231 @@ components:
 
     ReservationCreate:
       type: object
+      description: Payload for creating one or more reservations.
       properties:
         user_id:
           type: string
+          format: uuid
+          description: Identifier of the user making the reservation.
+          example: 770e8400-e29b-41d4-a716-446655440000
         book_ids:
           type: array
+          description: List of book identifiers to reserve.
           items:
             type: string
             format: uuid
+          example:
+            - 550e8400-e29b-41d4-a716-446655440000
+            - 880e8400-e29b-41d4-a716-446655440000
       required:
         - user_id
         - book_ids
 
-    ReservationResponse:
-      allOf:
-        - $ref: "#/components/schemas/Reservation"
-
-    InventoryResponse:
+    ReservationUpdate:
       type: object
+      description: Payload for updating a reservation (e.g., marking it as returned).
+      properties:
+        status:
+          $ref: "#/components/schemas/ReservationStatus"
+      required:
+        - status
+
+    PaginatedReservations:
+      type: object
+      description: Paginated response wrapper for reservation listings.
       properties:
         items:
           type: array
+          description: List of reservations for the current page.
           items:
-            $ref: "#/components/schemas/Book"
+            $ref: "#/components/schemas/Reservation"
+        continuation_token:
+          type:
+            - string
+            - "null"
+          description: Opaque token to retrieve the next page. Null when there are no more pages.
+          example: eyJpZCI6ICIxMjM0NTY3ODkwIn0
+        has_more:
+          type: boolean
+          description: Whether additional pages of results exist.
+          example: false
       required:
         - items
+        - has_more
 
     ErrorResponse:
       type: object
+      description: Standard error response body.
       properties:
         detail:
           type: string
+          description: Human-readable error message.
+          example: Book with the given ISBN already exists.
         status_code:
           type: integer
+          description: HTTP status code matching the response.
+          example: 409
+        request_id:
+          type: string
+          format: uuid
+          description: Identifier of the request that caused the error, if available.
+          example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
       required:
         - detail
         - status_code
 
     HealthResponse:
       type: object
+      description: Health or readiness probe response.
       properties:
         status:
           type: string
+          description: Current health status of the service.
+          example: ok
       required:
         - status
 
     InfoResponse:
       type: object
+      description: Runtime information about the service instance.
       properties:
         hostname:
           type: string
+          description: Hostname of the pod or machine running the service.
+          example: api-lab-7b8c9d-xk2mn
         app_version:
           type: string
+          description: Semantic version of the deployed application.
+          example: 1.2.0
         environment:
           type: string
+          description: Deployment environment name.
+          example: production
         app:
           type: string
+          description: Application name label.
+          example: api-lab
         component:
           type: string
+          description: Component name within the application.
+          example: rest-api
         node:
           type: string
+          description: Kubernetes node name where the pod is running.
+          example: k3s-worker-01
         pod_ip:
           type: string
+          description: IP address of the pod.
+          example: 10.42.0.15
         log_level:
           type: string
+          description: Current logging level.
+          example: info
         git_tag:
           type: string
+          description: Git tag of the deployed build.
+          example: v1.2.0
         git_commit:
           type: string
+          description: Git commit SHA of the deployed build.
+          example: abc1234def5678
+      required:
+        - hostname
+        - app_version
+        - environment
 
   responses:
     BadRequest:
-      description: Bad request
+      description: The request was malformed or contained invalid parameters.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     NotFound:
-      description: Resource not found
+      description: The requested resource was not found.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     Conflict:
-      description: Conflict
+      description: The request conflicts with the current state of the resource.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    PreconditionFailed:
+      description: The If-Match header did not match the current ETag of the resource.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: Rate limit exceeded. Retry after the duration indicated by the Retry-After header.
+      headers:
+        Retry-After:
+          description: Number of seconds to wait before retrying.
+          schema:
+            type: integer
+            example: 30
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     InternalServerError:
-      description: Internal server error
+      description: An unexpected error occurred on the server.
+      headers:
+        X-Request-Id:
+          $ref: "#/components/headers/X-Request-Id"
+        X-RateLimit-Limit:
+          $ref: "#/components/headers/X-RateLimit-Limit"
+        X-RateLimit-Remaining:
+          $ref: "#/components/headers/X-RateLimit-Remaining"
+        X-RateLimit-Reset:
+          $ref: "#/components/headers/X-RateLimit-Reset"
       content:
         application/json:
           schema:

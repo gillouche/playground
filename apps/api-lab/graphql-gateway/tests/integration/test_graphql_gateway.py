@@ -55,17 +55,57 @@ class TestGraphQLGateway:
 
     async def test_list_books(self, client_with_mock):
         app, mock = client_with_mock
-        mock.list_books.return_value = [_sample_book()]
+        book = _sample_book()
+        mock.list_books.return_value = {
+            "items": [book],
+            "continuation_token": None,
+            "has_more": False,
+        }
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
                 "/graphql",
-                json={"query": "{ books { isbn title } }"},
+                json={"query": "{ books { items { isbn title } continuationToken hasMore } }"},
             )
             assert response.status_code == 200
             data = response.json()["data"]["books"]
-            assert len(data) == 1
-            assert data[0]["isbn"] == "9780134685991"
+            assert len(data["items"]) == 1
+            assert data["items"][0]["isbn"] == "9780134685991"
+            assert data["continuationToken"] is None
+            assert data["hasMore"] is False
+
+    async def test_list_books_with_pagination(self, client_with_mock):
+        app, mock = client_with_mock
+        mock.list_books.return_value = {
+            "items": [],
+            "continuation_token": "next_token",
+            "has_more": True,
+        }
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/graphql",
+                json={
+                    "query": """
+                    {
+                        books(limit: 5, continuationToken: "prev_token") {
+                            items { isbn }
+                            continuationToken
+                            hasMore
+                        }
+                    }
+                    """
+                },
+            )
+            assert response.status_code == 200
+            data = response.json()["data"]["books"]
+            assert data["continuationToken"] == "next_token"
+            assert data["hasMore"] is True
+            mock.list_books.assert_called_once()
+            call_args = mock.list_books.call_args[0]
+            params = call_args[0]
+            assert params.limit == 5
+            assert params.continuation_token == "prev_token"
 
     async def test_create_book_mutation(self, client_with_mock):
         app, mock = client_with_mock

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import grpc
 import pytest
+from generated.models import PaginatedBooks, PaginatedReservations
 from google.protobuf import timestamp_pb2
 from grpc_server import (
     LibraryServiceServicer,
@@ -13,7 +14,7 @@ from grpc_server import (
     _reservation_to_proto,
 )
 from library.v1 import library_pb2
-from services.book_service import DuplicateISBNError
+from services.book_service import ActiveReservationsError, DuplicateISBNError, StaleVersionError
 
 anyio_backend = "asyncio"
 
@@ -28,6 +29,7 @@ def _make_book(**overrides):
     book.published_year = overrides.get("published_year", 1999)
     book.total_copies = overrides.get("total_copies", 5)
     book.available_copies = overrides.get("available_copies", 3)
+    book.version = overrides.get("version", 1)
     book.created_at = overrides.get("created_at", datetime(2025, 1, 1, 0, 0, 0, tzinfo=UTC))
     book.updated_at = overrides.get("updated_at", datetime(2025, 6, 1, 0, 0, 0, tzinfo=UTC))
     return book
@@ -37,7 +39,7 @@ def _make_reservation(**overrides):
     res = MagicMock()
     res.id = overrides.get("id", uuid.uuid4())
     res.book_id = overrides.get("book_id", uuid.uuid4())
-    res.user_id = overrides.get("user_id", "user-42")
+    res.user_id = overrides.get("user_id", uuid.uuid4())
     res.reserved_at = overrides.get("reserved_at", datetime(2025, 3, 1, 10, 0, 0, tzinfo=UTC))
     res.due_date = overrides.get("due_date", datetime(2025, 3, 15, 0, 0, 0, tzinfo=UTC))
     res.returned_at = overrides.get("returned_at")
@@ -163,12 +165,13 @@ class TestReservationToProto:
     def test_all_fields_mapped(self):
         book_id = uuid.uuid4()
         res_id = uuid.uuid4()
-        res = _make_reservation(id=res_id, book_id=book_id, user_id="user-99")
+        user_id = uuid.uuid4()
+        res = _make_reservation(id=res_id, book_id=book_id, user_id=user_id)
         proto = _reservation_to_proto(res)
 
         assert proto.id == str(res_id)
         assert proto.book_id == str(book_id)
-        assert proto.user_id == "user-99"
+        assert proto.user_id == str(user_id)
         assert proto.HasField("reserved_at")
         assert proto.HasField("due_date")
 
@@ -180,7 +183,9 @@ class TestReservationToProto:
 class TestListBooks:
     @pytest.mark.asyncio
     async def test_returns_empty_list(self, servicer, mock_book_service, context):
-        mock_book_service.list_books.return_value = []
+        mock_book_service.list_books.return_value = PaginatedBooks(
+            items=[], continuation_token=None, has_more=False
+        )
         req = library_pb2.ListBooksRequest()
 
         resp = await servicer.ListBooks(req, context)
@@ -191,7 +196,9 @@ class TestListBooks:
     @pytest.mark.asyncio
     async def test_returns_multiple_books(self, servicer, mock_book_service, context):
         books = [_make_book(), _make_book(title="Clean Code")]
-        mock_book_service.list_books.return_value = books
+        mock_book_service.list_books.return_value = PaginatedBooks(
+            items=books, continuation_token=None, has_more=False
+        )
         req = library_pb2.ListBooksRequest()
 
         resp = await servicer.ListBooks(req, context)
@@ -202,7 +209,9 @@ class TestListBooks:
 
     @pytest.mark.asyncio
     async def test_passes_filters_to_service(self, servicer, mock_book_service, context):
-        mock_book_service.list_books.return_value = []
+        mock_book_service.list_books.return_value = PaginatedBooks(
+            items=[], continuation_token=None, has_more=False
+        )
         req = library_pb2.ListBooksRequest(
             available_only=True,
             genre="Fiction",
@@ -212,26 +221,39 @@ class TestListBooks:
 
         await servicer.ListBooks(req, context)
 
-        mock_book_service.list_books.assert_awaited_once_with(
-            available_only=True,
-            genre="Fiction",
-            author="Tolkien",
-            search="ring",
-        )
+        query = mock_book_service.list_books.call_args[0][0]
+        assert query.available_only is True
+        assert query.genre == "Fiction"
+        assert query.author == "Tolkien"
+        assert query.search == "ring"
 
     @pytest.mark.asyncio
     async def test_empty_string_filters_become_none(self, servicer, mock_book_service, context):
-        mock_book_service.list_books.return_value = []
+        mock_book_service.list_books.return_value = PaginatedBooks(
+            items=[], continuation_token=None, has_more=False
+        )
         req = library_pb2.ListBooksRequest(genre="", author="", search="")
 
         await servicer.ListBooks(req, context)
 
-        mock_book_service.list_books.assert_awaited_once_with(
-            available_only=False,
-            genre=None,
-            author=None,
-            search=None,
+        query = mock_book_service.list_books.call_args[0][0]
+        assert query.genre is None
+        assert query.author is None
+        assert query.search is None
+
+    @pytest.mark.asyncio
+    async def test_pagination_token_forwarded(self, servicer, mock_book_service, context):
+        mock_book_service.list_books.return_value = PaginatedBooks(
+            items=[], continuation_token="next", has_more=True
         )
+        req = library_pb2.ListBooksRequest(page_size=5, page_token="prev")
+
+        resp = await servicer.ListBooks(req, context)
+
+        assert resp.next_page_token == "next"
+        query = mock_book_service.list_books.call_args[0][0]
+        assert query.limit == 5
+        assert query.continuation_token == "prev"
 
 
 class TestGetBook:
@@ -403,6 +425,52 @@ class TestUpdateBook:
         assert call_data.author == "New Author"
         assert call_data.total_copies == 20
 
+    @pytest.mark.asyncio
+    async def test_version_mismatch_aborts_with_aborted(self, servicer, mock_book_service, context):
+        mock_book_service.update_book.side_effect = StaleVersionError("Version mismatch")
+        req = library_pb2.UpdateBookRequest(
+            book_id=str(uuid.uuid4()), title="Stale", expected_version=1
+        )
+
+        with pytest.raises(_AbortError):
+            await servicer.UpdateBook(req, context)
+
+        context.abort.assert_awaited_once_with(grpc.StatusCode.ABORTED, "Version mismatch")
+
+    @pytest.mark.asyncio
+    async def test_expected_version_passed_to_service(self, servicer, mock_book_service, context):
+        book = _make_book()
+        mock_book_service.update_book.return_value = book
+        req = library_pb2.UpdateBookRequest(
+            book_id=str(uuid.uuid4()), title="Versioned", expected_version=3
+        )
+
+        await servicer.UpdateBook(req, context)
+
+        call_kwargs = mock_book_service.update_book.call_args[1]
+        assert call_kwargs["expected_version"] == 3
+
+    @pytest.mark.asyncio
+    async def test_field_mask_limits_update_fields(self, servicer, mock_book_service, context):
+        from google.protobuf import field_mask_pb2
+
+        book = _make_book()
+        mock_book_service.update_book.return_value = book
+        req = library_pb2.UpdateBookRequest(
+            book_id=str(uuid.uuid4()),
+            title="Masked",
+            author="Masked Author",
+            genre="Should be ignored",
+            update_mask=field_mask_pb2.FieldMask(paths=["title", "author"]),
+        )
+
+        await servicer.UpdateBook(req, context)
+
+        call_data = mock_book_service.update_book.call_args[0][1]
+        assert call_data.title == "Masked"
+        assert call_data.author == "Masked Author"
+        assert call_data.genre is None
+
 
 class TestDeleteBook:
     @pytest.mark.asyncio
@@ -435,28 +503,20 @@ class TestDeleteBook:
 
         mock_book_service.delete_book.assert_awaited_once_with(uuid.UUID(str(book_id)))
 
-
-class TestGetInventory:
     @pytest.mark.asyncio
-    async def test_returns_available_books(self, servicer, mock_book_service, context):
-        books = [_make_book(), _make_book(available_copies=2)]
-        mock_book_service.get_inventory.return_value = books
-        req = library_pb2.GetInventoryRequest()
+    async def test_active_reservations_aborts_with_failed_precondition(
+        self, servicer, mock_book_service, context
+    ):
+        mock_book_service.delete_book.side_effect = ActiveReservationsError()
+        req = library_pb2.DeleteBookRequest(book_id=str(uuid.uuid4()))
 
-        resp = await servicer.GetInventory(req, context)
+        with pytest.raises(_AbortError):
+            await servicer.DeleteBook(req, context)
 
-        assert isinstance(resp, library_pb2.GetInventoryResponse)
-        assert len(resp.books) == 2
-
-    @pytest.mark.asyncio
-    async def test_empty_inventory(self, servicer, mock_book_service, context):
-        mock_book_service.get_inventory.return_value = []
-        req = library_pb2.GetInventoryRequest()
-
-        resp = await servicer.GetInventory(req, context)
-
-        assert len(resp.books) == 0
-        mock_book_service.get_inventory.assert_awaited_once()
+        context.abort.assert_awaited_once_with(
+            grpc.StatusCode.FAILED_PRECONDITION,
+            "Cannot delete book with active reservations",
+        )
 
 
 class TestReserveBooks:
@@ -465,7 +525,7 @@ class TestReserveBooks:
         reservations = [_make_reservation(), _make_reservation()]
         mock_book_service.reserve_books.return_value = reservations
         book_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
-        req = library_pb2.ReserveBooksRequest(user_id="user-1", book_ids=book_ids)
+        req = library_pb2.ReserveBooksRequest(user_id=str(uuid.uuid4()), book_ids=book_ids)
 
         resp = await servicer.ReserveBooks(req, context)
 
@@ -479,7 +539,7 @@ class TestReserveBooks:
     ):
         mock_book_service.reserve_books.side_effect = ValueError("Book not available")
         book_ids = [str(uuid.uuid4())]
-        req = library_pb2.ReserveBooksRequest(user_id="user-1", book_ids=book_ids)
+        req = library_pb2.ReserveBooksRequest(user_id=str(uuid.uuid4()), book_ids=book_ids)
 
         with pytest.raises(_AbortError):
             await servicer.ReserveBooks(req, context)
@@ -492,12 +552,13 @@ class TestReserveBooks:
     async def test_reservation_create_data_correct(self, servicer, mock_book_service, context):
         mock_book_service.reserve_books.return_value = []
         book_id = uuid.uuid4()
-        req = library_pb2.ReserveBooksRequest(user_id="user-99", book_ids=[str(book_id)])
+        user_id = uuid.uuid4()
+        req = library_pb2.ReserveBooksRequest(user_id=str(user_id), book_ids=[str(book_id)])
 
         await servicer.ReserveBooks(req, context)
 
         call_data = mock_book_service.reserve_books.call_args[0][0]
-        assert call_data.user_id == "user-99"
+        assert call_data.user_id == user_id
         assert uuid.UUID(str(book_id)) in call_data.book_ids
 
 
@@ -556,72 +617,95 @@ class TestListReservations:
     @pytest.mark.asyncio
     async def test_returns_all_when_no_filters(self, servicer, mock_book_service, context):
         reservations = [_make_reservation()]
-        mock_book_service.list_reservations.return_value = reservations
+        mock_book_service.list_reservations.return_value = PaginatedReservations(
+            items=reservations, continuation_token=None, has_more=False
+        )
         req = library_pb2.ListReservationsRequest()
 
         resp = await servicer.ListReservations(req, context)
 
         assert isinstance(resp, library_pb2.ListReservationsResponse)
         assert len(resp.reservations) == 1
-        mock_book_service.list_reservations.assert_awaited_once_with(
-            user_id=None,
-            status=None,
-            book_id=None,
-        )
 
     @pytest.mark.asyncio
     async def test_passes_user_id_filter(self, servicer, mock_book_service, context):
-        mock_book_service.list_reservations.return_value = []
-        req = library_pb2.ListReservationsRequest(user_id="user-5")
+        mock_book_service.list_reservations.return_value = PaginatedReservations(
+            items=[], continuation_token=None, has_more=False
+        )
+        user_id = str(uuid.uuid4())
+        req = library_pb2.ListReservationsRequest(user_id=user_id)
 
         await servicer.ListReservations(req, context)
 
-        call_kwargs = mock_book_service.list_reservations.call_args[1]
-        assert call_kwargs["user_id"] == "user-5"
+        query = mock_book_service.list_reservations.call_args[0][0]
+        assert query.user_id == uuid.UUID(user_id)
 
     @pytest.mark.asyncio
     async def test_passes_status_filter(self, servicer, mock_book_service, context):
-        mock_book_service.list_reservations.return_value = []
-        req = library_pb2.ListReservationsRequest(status="ACTIVE")
+        mock_book_service.list_reservations.return_value = PaginatedReservations(
+            items=[], continuation_token=None, has_more=False
+        )
+        req = library_pb2.ListReservationsRequest(
+            status=library_pb2.RESERVATION_STATUS_ACTIVE,
+        )
 
         await servicer.ListReservations(req, context)
 
-        call_kwargs = mock_book_service.list_reservations.call_args[1]
-        assert call_kwargs["status"] == "ACTIVE"
+        query = mock_book_service.list_reservations.call_args[0][0]
+        assert query.status == "ACTIVE"
 
     @pytest.mark.asyncio
     async def test_passes_book_id_filter(self, servicer, mock_book_service, context):
-        mock_book_service.list_reservations.return_value = []
+        mock_book_service.list_reservations.return_value = PaginatedReservations(
+            items=[], continuation_token=None, has_more=False
+        )
         book_id = uuid.uuid4()
         req = library_pb2.ListReservationsRequest(book_id=str(book_id))
 
         await servicer.ListReservations(req, context)
 
-        call_kwargs = mock_book_service.list_reservations.call_args[1]
-        assert call_kwargs["book_id"] == uuid.UUID(str(book_id))
+        query = mock_book_service.list_reservations.call_args[0][0]
+        assert query.book_id == uuid.UUID(str(book_id))
 
     @pytest.mark.asyncio
     async def test_empty_book_id_becomes_none(self, servicer, mock_book_service, context):
-        mock_book_service.list_reservations.return_value = []
-        req = library_pb2.ListReservationsRequest(user_id="user-1")
+        mock_book_service.list_reservations.return_value = PaginatedReservations(
+            items=[], continuation_token=None, has_more=False
+        )
+        user_id = str(uuid.uuid4())
+        req = library_pb2.ListReservationsRequest(user_id=user_id)
 
         await servicer.ListReservations(req, context)
 
-        call_kwargs = mock_book_service.list_reservations.call_args[1]
-        assert call_kwargs["book_id"] is None
+        query = mock_book_service.list_reservations.call_args[0][0]
+        assert query.book_id is None
 
     @pytest.mark.asyncio
     async def test_empty_strings_become_none(self, servicer, mock_book_service, context):
-        mock_book_service.list_reservations.return_value = []
-        req = library_pb2.ListReservationsRequest(user_id="", status="", book_id="")
+        mock_book_service.list_reservations.return_value = PaginatedReservations(
+            items=[], continuation_token=None, has_more=False
+        )
+        req = library_pb2.ListReservationsRequest(user_id="", book_id="")
 
         await servicer.ListReservations(req, context)
 
-        mock_book_service.list_reservations.assert_awaited_once_with(
-            user_id=None,
-            status=None,
-            book_id=None,
+        query = mock_book_service.list_reservations.call_args[0][0]
+        assert query.user_id is None
+        assert query.book_id is None
+
+    @pytest.mark.asyncio
+    async def test_pagination_params(self, servicer, mock_book_service, context):
+        mock_book_service.list_reservations.return_value = PaginatedReservations(
+            items=[], continuation_token="next_tok", has_more=True
         )
+        req = library_pb2.ListReservationsRequest(page_size=10, page_token="prev_tok")
+
+        resp = await servicer.ListReservations(req, context)
+
+        assert resp.next_page_token == "next_tok"
+        query = mock_book_service.list_reservations.call_args[0][0]
+        assert query.limit == 10
+        assert query.continuation_token == "prev_tok"
 
 
 class TestGetReservation:

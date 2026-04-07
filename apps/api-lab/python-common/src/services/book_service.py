@@ -1,15 +1,22 @@
+import base64
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from cache.redis_cache import BOOK_TTL, BOOKS_ALL_TTL, INVENTORY_TTL, RedisCache
-from database.models import Book, Reservation, ReservationStatus
+from cache.redis_cache import BOOK_TTL, BOOKS_ALL_TTL, RedisCache
+from database.models import Book as BookModel
+from database.models import Reservation as ReservationModel
+from database.models import ReservationStatus
 from generated.models import (
+    Book,
     BookCreate,
-    BookResponse,
     BookUpdate,
+    ListBooksQuery,
+    ListReservationsQuery,
+    PaginatedBooks,
+    PaginatedReservations,
+    Reservation,
     ReservationCreate,
-    ReservationResponse,
 )
 from middleware.circuit_breaker import CircuitBreaker
 from observability.metrics import (
@@ -31,13 +38,101 @@ logger = logging.getLogger("api-lab.service")
 
 LOAN_DURATION_DAYS = 14
 
+BOOK_SORT_COLUMNS = {
+    "created_at": BookModel.created_at,
+    "updated_at": BookModel.updated_at,
+    "title": BookModel.title,
+    "author": BookModel.author,
+    "published_year": BookModel.published_year,
+    "isbn": BookModel.isbn,
+}
+
+RESERVATION_SORT_COLUMNS = {
+    "reserved_at": ReservationModel.reserved_at,
+    "due_date": ReservationModel.due_date,
+    "returned_at": ReservationModel.returned_at,
+    "status": ReservationModel.status,
+}
+
 
 class DuplicateISBNError(Exception):
-    """Raised when attempting to create a book with a duplicate ISBN."""
-
     def __init__(self, isbn: str):
         self.isbn = isbn
         super().__init__(f"A book with ISBN '{isbn}' already exists")
+
+
+class StaleVersionError(Exception):
+    pass
+
+
+class ActiveReservationsError(Exception):
+    def __init__(self):
+        super().__init__("Cannot delete book with active reservations")
+
+
+def _decode_continuation_token(token: str | None) -> int:
+    if not token:
+        return 0
+    try:
+        return int(base64.b64decode(token).decode())
+    except (ValueError, UnicodeDecodeError):
+        return 0
+
+
+def _encode_continuation_token(offset: int) -> str:
+    return base64.b64encode(str(offset).encode()).decode()
+
+
+def _build_list_books_query(query: ListBooksQuery, sort_column, limit: int, offset: int):
+    stmt = select(BookModel)
+    if query.available_only:
+        stmt = stmt.where(BookModel.available_copies > 0)
+    if query.genre:
+        stmt = stmt.where(BookModel.genre == query.genre)
+    if query.author:
+        stmt = stmt.where(BookModel.author.ilike(f"%{query.author}%"))
+    if query.search:
+        try:
+            ts_vector = func.to_tsvector(
+                "english",
+                BookModel.title + " " + BookModel.author + " " + BookModel.isbn,
+            )
+            ts_query = func.plainto_tsquery("english", query.search)
+            stmt = stmt.where(ts_vector.op("@@")(ts_query))
+        except Exception:
+            stmt = stmt.where(
+                or_(
+                    BookModel.title.ilike(f"%{query.search}%"),
+                    BookModel.author.ilike(f"%{query.search}%"),
+                    BookModel.isbn.ilike(f"%{query.search}%"),
+                )
+            )
+
+    if query.sort_order == "desc":
+        stmt = stmt.order_by(sort_column.desc())
+    else:
+        stmt = stmt.order_by(sort_column.asc())
+
+    return stmt.offset(offset).limit(limit + 1)
+
+
+def _build_list_reservations_query(
+    query: ListReservationsQuery, sort_column, limit: int, offset: int
+):
+    stmt = select(ReservationModel)
+    if query.user_id:
+        stmt = stmt.where(ReservationModel.user_id == query.user_id)
+    if query.status:
+        stmt = stmt.where(ReservationModel.status == ReservationStatus(query.status))
+    if query.book_id:
+        stmt = stmt.where(ReservationModel.book_id == query.book_id)
+
+    if query.sort_order == "desc":
+        stmt = stmt.order_by(sort_column.desc())
+    else:
+        stmt = stmt.order_by(sort_column.asc())
+
+    return stmt.offset(offset).limit(limit + 1)
 
 
 class BookService:
@@ -49,62 +144,61 @@ class BookService:
             failure_threshold=5, recovery_timeout=30.0, name="db"
         )
 
-    async def list_books(
-        self,
-        available_only: bool = False,
-        genre: str | None = None,
-        author: str | None = None,
-        search: str | None = None,
-    ) -> list[BookResponse]:
+    async def list_books(self, query: ListBooksQuery | None = None) -> PaginatedBooks:
+        if query is None:
+            query = ListBooksQuery()
         with self._tracer.start_as_current_span("BookService.list_books") as span:
-            span.set_attribute("books.available_only", available_only)
-            if genre:
-                span.set_attribute("books.genre_filter", genre)
-            if author:
-                span.set_attribute("books.author_filter", author)
-            if search:
-                span.set_attribute("books.search_filter", search)
+            span.set_attribute("books.available_only", query.available_only)
+            if query.genre:
+                span.set_attribute("books.genre_filter", query.genre)
+            if query.author:
+                span.set_attribute("books.author_filter", query.author)
+            if query.search:
+                span.set_attribute("books.search_filter", query.search)
 
-            cache_key = f"books:all:{available_only}:{genre}:{author}:{search}"
+            limit = max(1, min(query.limit, 100))
+            offset = _decode_continuation_token(query.continuation_token)
+
+            cache_key = (
+                f"books:all:{query.available_only}:{query.genre}:{query.author}:{query.search}"
+                f":{limit}:{offset}:{query.sort_by}:{query.sort_order}"
+            )
             cached = await self._cache.get(cache_key)
             if cached:
                 cache_hits_total.labels(operation="list_books").inc()
                 span.set_attribute("books.cache_hit", True)
-                results = [BookResponse(**b) for b in cached]
-                span.set_attribute("books.count", len(results))
-                return results
+                cached_result = PaginatedBooks(**cached)
+                span.set_attribute("books.count", len(cached_result.items))
+                return cached_result
             cache_misses_total.labels(operation="list_books").inc()
             span.set_attribute("books.cache_hit", False)
 
+            sort_column = BOOK_SORT_COLUMNS.get(query.sort_by, BookModel.created_at)
+
             async def _db_op():
                 async with self._session_factory() as session:
-                    query = select(Book)
-                    if available_only:
-                        query = query.where(Book.available_copies > 0)
-                    if genre:
-                        query = query.where(Book.genre == genre)
-                    if author:
-                        query = query.where(Book.author.ilike(f"%{author}%"))
-                    if search:
-                        query = query.where(
-                            or_(
-                                Book.title.ilike(f"%{search}%"),
-                                Book.author.ilike(f"%{search}%"),
-                                Book.isbn.ilike(f"%{search}%"),
-                            )
-                        )
-                    result = await session.execute(query)
-                    return result.scalars().all()
+                    stmt = _build_list_books_query(query, sort_column, limit, offset)
+                    db_result = await session.execute(stmt)
+                    return db_result.scalars().all()
 
             with db_query_duration_seconds.labels(operation="list_books").time():
                 books = await self._db_circuit_breaker.call(_db_op)
 
-            responses = [BookResponse.model_validate(b) for b in books]
-            await self._cache.set(cache_key, [r.model_dump() for r in responses], BOOKS_ALL_TTL)
-            span.set_attribute("books.count", len(responses))
-            return responses
+            has_more = len(books) > limit
+            if has_more:
+                books = books[:limit]
 
-    async def get_book(self, book_id: uuid.UUID) -> BookResponse | None:
+            next_token = _encode_continuation_token(offset + limit) if has_more else None
+            items = [Book.model_validate(b) for b in books]
+
+            paginated = PaginatedBooks(
+                items=items, continuation_token=next_token, has_more=has_more
+            )
+            await self._cache.set(cache_key, paginated.model_dump(), BOOKS_ALL_TTL)
+            span.set_attribute("books.count", len(items))
+            return paginated
+
+    async def get_book(self, book_id: uuid.UUID) -> Book | None:
         with self._tracer.start_as_current_span("BookService.get_book") as span:
             span.set_attribute("book.id", str(book_id))
 
@@ -114,14 +208,16 @@ class BookService:
                 cache_hits_total.labels(operation="get_book").inc()
                 span.set_attribute("books.cache_hit", True)
                 span.set_attribute("book.found", True)
-                return BookResponse(**cached)
+                return Book(**cached)
             cache_misses_total.labels(operation="get_book").inc()
             span.set_attribute("books.cache_hit", False)
 
             async def _db_op():
                 async with self._session_factory() as session:
-                    result = await session.execute(select(Book).where(Book.id == book_id))
-                    return result.scalar_one_or_none()
+                    db_result = await session.execute(
+                        select(BookModel).where(BookModel.id == book_id)
+                    )
+                    return db_result.scalar_one_or_none()
 
             with db_query_duration_seconds.labels(operation="get_book").time():
                 book = await self._db_circuit_breaker.call(_db_op)
@@ -129,12 +225,12 @@ class BookService:
             if not book:
                 span.set_attribute("book.found", False)
                 return None
-            response = BookResponse.model_validate(book)
+            response = Book.model_validate(book)
             await self._cache.set(cache_key, response.model_dump(), BOOK_TTL)
             span.set_attribute("book.found", True)
             return response
 
-    async def create_book(self, data: BookCreate) -> BookResponse:
+    async def create_book(self, data: BookCreate) -> Book:
         with self._tracer.start_as_current_span("BookService.create_book") as span:
             span.set_attribute("book.isbn", data.isbn)
             span.set_attribute("book.title", data.title)
@@ -142,7 +238,7 @@ class BookService:
 
             async def _db_op():
                 async with self._session_factory() as session:
-                    book = Book(
+                    new_book = BookModel(
                         isbn=data.isbn,
                         title=data.title,
                         author=data.author,
@@ -150,8 +246,9 @@ class BookService:
                         published_year=data.published_year,
                         total_copies=data.total_copies,
                         available_copies=data.total_copies,
+                        version=1,
                     )
-                    session.add(book)
+                    session.add(new_book)
                     try:
                         await session.commit()
                     except IntegrityError as e:
@@ -159,8 +256,8 @@ class BookService:
                         if "isbn" in str(e.orig).lower() or "unique" in str(e.orig).lower():
                             raise DuplicateISBNError(data.isbn) from e
                         raise
-                    await session.refresh(book)
-                    return book
+                    await session.refresh(new_book)
+                    return new_book
 
             with db_query_duration_seconds.labels(operation="create_book").time():
                 book = await self._db_circuit_breaker.call(_db_op)
@@ -168,27 +265,37 @@ class BookService:
             books_created_total.inc()
             await self._cache.invalidate_books()
             await self._update_gauges()
-            response = BookResponse.model_validate(book)
+            response = Book.model_validate(book)
             span.set_attribute("book.id", str(book.id))
             return response
 
-    async def update_book(self, book_id: uuid.UUID, data: BookUpdate) -> BookResponse | None:
+    async def update_book(
+        self, book_id: uuid.UUID, data: BookUpdate, expected_version: int | None = None
+    ) -> Book | None:
         with self._tracer.start_as_current_span("BookService.update_book") as span:
             span.set_attribute("book.id", str(book_id))
 
             async def _db_op():
                 async with self._session_factory() as session:
-                    result = await session.execute(select(Book).where(Book.id == book_id))
-                    book = result.scalar_one_or_none()
-                    if not book:
+                    db_result = await session.execute(
+                        select(BookModel).where(BookModel.id == book_id)
+                    )
+                    found_book = db_result.scalar_one_or_none()
+                    if not found_book:
                         return None
+                    if expected_version is not None and found_book.version != expected_version:
+                        raise StaleVersionError(
+                            f"Expected version {expected_version}, "
+                            f"but current version is {found_book.version}"
+                        )
                     update_data = data.model_dump(exclude_unset=True)
                     if "total_copies" in update_data:
-                        diff = update_data["total_copies"] - book.total_copies
-                        book.available_copies = max(0, book.available_copies + diff)
+                        diff = update_data["total_copies"] - found_book.total_copies
+                        found_book.available_copies = max(0, found_book.available_copies + diff)
                     for field, value in update_data.items():
-                        setattr(book, field, value)
-                    book.updated_at = datetime.now(UTC)
+                        setattr(found_book, field, value)
+                    found_book.version += 1
+                    found_book.updated_at = datetime.now(UTC)
                     try:
                         await session.commit()
                     except IntegrityError as e:
@@ -196,8 +303,8 @@ class BookService:
                         if "isbn" in str(e.orig).lower() or "unique" in str(e.orig).lower():
                             raise DuplicateISBNError(update_data.get("isbn", "")) from e
                         raise
-                    await session.refresh(book)
-                    return book
+                    await session.refresh(found_book)
+                    return found_book
 
             with db_query_duration_seconds.labels(operation="update_book").time():
                 book = await self._db_circuit_breaker.call(_db_op)
@@ -208,19 +315,32 @@ class BookService:
             await self._cache.invalidate_books()
             await self._update_gauges()
             span.set_attribute("book.found", True)
-            return BookResponse.model_validate(book)
+            return Book.model_validate(book)
 
     async def delete_book(self, book_id: uuid.UUID) -> bool:
         with self._tracer.start_as_current_span("BookService.delete_book") as span:
             span.set_attribute("book.id", str(book_id))
 
-            async def _db_op():
+            async def _db_op() -> bool:
                 async with self._session_factory() as session:
-                    result = await session.execute(select(Book).where(Book.id == book_id))
-                    book = result.scalar_one_or_none()
-                    if not book:
+                    db_result = await session.execute(
+                        select(BookModel).where(BookModel.id == book_id)
+                    )
+                    found_book = db_result.scalar_one_or_none()
+                    if not found_book:
                         return False
-                    await session.delete(book)
+
+                    active_count_result = await session.execute(
+                        select(func.count(ReservationModel.id)).where(
+                            ReservationModel.book_id == book_id,
+                            ReservationModel.status == ReservationStatus.ACTIVE,
+                        )
+                    )
+                    active_count = active_count_result.scalar() or 0
+                    if active_count > 0:
+                        raise ActiveReservationsError()
+
+                    await session.delete(found_book)
                     await session.commit()
                     return True
 
@@ -235,64 +355,38 @@ class BookService:
             span.set_attribute("book.found", True)
             return True
 
-    async def get_inventory(self) -> list[BookResponse]:
-        with self._tracer.start_as_current_span("BookService.get_inventory") as span:
-            cache_key = "inventory"
-            cached = await self._cache.get(cache_key)
-            if cached:
-                cache_hits_total.labels(operation="get_inventory").inc()
-                span.set_attribute("books.cache_hit", True)
-                results = [BookResponse(**b) for b in cached]
-                span.set_attribute("books.count", len(results))
-                return results
-            cache_misses_total.labels(operation="get_inventory").inc()
-            span.set_attribute("books.cache_hit", False)
-
-            async def _db_op():
-                async with self._session_factory() as session:
-                    result = await session.execute(select(Book).where(Book.available_copies > 0))
-                    return result.scalars().all()
-
-            with db_query_duration_seconds.labels(operation="get_inventory").time():
-                books = await self._db_circuit_breaker.call(_db_op)
-
-            responses = [BookResponse.model_validate(b) for b in books]
-            await self._cache.set(cache_key, [r.model_dump() for r in responses], INVENTORY_TTL)
-            span.set_attribute("books.count", len(responses))
-            return responses
-
-    async def reserve_books(self, data: ReservationCreate) -> list[ReservationResponse]:
+    async def reserve_books(self, data: ReservationCreate) -> list[Reservation]:
         with self._tracer.start_as_current_span("BookService.reserve_books") as span:
             span.set_attribute("reservation.user_id", str(data.user_id))
             span.set_attribute("reservation.book_count", len(data.book_ids))
 
             async def _db_op():
                 async with self._session_factory() as session:
-                    reservations = []
-                    for book_id in data.book_ids:
-                        result = await session.execute(
-                            select(Book).where(Book.id == book_id).with_for_update()
+                    new_reservations = []
+                    for bid in data.book_ids:
+                        db_result = await session.execute(
+                            select(BookModel).where(BookModel.id == bid).with_for_update()
                         )
-                        book = result.scalar_one_or_none()
-                        if not book:
-                            raise ValueError(f"Book {book_id} not found")
-                        if book.available_copies <= 0:
+                        found_book = db_result.scalar_one_or_none()
+                        if not found_book:
+                            raise ValueError(f"Book {bid} not found")
+                        if found_book.available_copies <= 0:
                             raise ValueError(
-                                f"Book '{book.title}' is not available for reservation"
+                                f"Book '{found_book.title}' is not available for reservation"
                             )
-                        book.available_copies -= 1
-                        reservation = Reservation(
-                            book_id=book_id,
+                        found_book.available_copies -= 1
+                        new_reservation = ReservationModel(
+                            book_id=bid,
                             user_id=data.user_id,
                             due_date=datetime.now(UTC) + timedelta(days=LOAN_DURATION_DAYS),
                             status=ReservationStatus.ACTIVE,
                         )
-                        session.add(reservation)
-                        reservations.append(reservation)
+                        session.add(new_reservation)
+                        new_reservations.append(new_reservation)
                     await session.commit()
-                    for r in reservations:
+                    for r in new_reservations:
                         await session.refresh(r)
-                    return reservations
+                    return new_reservations
 
             with db_query_duration_seconds.labels(operation="reserve_books").time():
                 reservations = await self._db_circuit_breaker.call(_db_op)
@@ -300,34 +394,36 @@ class BookService:
             reservations_created_total.inc(len(reservations))
             await self._cache.invalidate_books()
             await self._update_gauges()
-            responses = [ReservationResponse.model_validate(r) for r in reservations]
+            responses = [Reservation.model_validate(r) for r in reservations]
             span.set_attribute("books.count", len(responses))
             return responses
 
-    async def return_reservation(self, reservation_id: uuid.UUID) -> ReservationResponse | None:
+    async def return_reservation(self, reservation_id: uuid.UUID) -> Reservation | None:
         with self._tracer.start_as_current_span("BookService.return_reservation") as span:
             span.set_attribute("reservation.id", str(reservation_id))
 
             async def _db_op():
                 async with self._session_factory() as session:
-                    result = await session.execute(
-                        select(Reservation).where(Reservation.id == reservation_id)
+                    db_result = await session.execute(
+                        select(ReservationModel).where(ReservationModel.id == reservation_id)
                     )
-                    reservation = result.scalar_one_or_none()
-                    if not reservation:
+                    found_reservation = db_result.scalar_one_or_none()
+                    if not found_reservation:
                         return None
-                    if reservation.status != ReservationStatus.ACTIVE:
-                        raise ValueError(f"Reservation is already {reservation.status.value}")
-                    reservation.status = ReservationStatus.RETURNED
-                    reservation.returned_at = datetime.now(UTC)
+                    if found_reservation.status != ReservationStatus.ACTIVE:
+                        raise ValueError(f"Reservation is already {found_reservation.status.value}")
+                    found_reservation.status = ReservationStatus.RETURNED
+                    found_reservation.returned_at = datetime.now(UTC)
                     book_result = await session.execute(
-                        select(Book).where(Book.id == reservation.book_id).with_for_update()
+                        select(BookModel)
+                        .where(BookModel.id == found_reservation.book_id)
+                        .with_for_update()
                     )
-                    book = book_result.scalar_one()
-                    book.available_copies += 1
+                    found_book = book_result.scalar_one()
+                    found_book.available_copies += 1
                     await session.commit()
-                    await session.refresh(reservation)
-                    return reservation
+                    await session.refresh(found_reservation)
+                    return found_reservation
 
             with db_query_duration_seconds.labels(operation="return_reservation").time():
                 reservation = await self._db_circuit_breaker.call(_db_op)
@@ -339,51 +435,57 @@ class BookService:
             await self._cache.invalidate_books()
             await self._update_gauges()
             span.set_attribute("book.found", True)
-            return ReservationResponse.model_validate(reservation)
+            return Reservation.model_validate(reservation)
 
     async def list_reservations(
-        self,
-        user_id: str | None = None,
-        status: str | None = None,
-        book_id: uuid.UUID | None = None,
-    ) -> list[ReservationResponse]:
+        self, query: ListReservationsQuery | None = None
+    ) -> PaginatedReservations:
+        if query is None:
+            query = ListReservationsQuery()
         with self._tracer.start_as_current_span("BookService.list_reservations") as span:
-            if user_id:
-                span.set_attribute("reservation.user_id_filter", user_id)
-            if status:
-                span.set_attribute("reservation.status_filter", status)
-            if book_id:
-                span.set_attribute("book.id", str(book_id))
+            if query.user_id:
+                span.set_attribute("reservation.user_id_filter", str(query.user_id))
+            if query.status:
+                span.set_attribute("reservation.status_filter", query.status)
+            if query.book_id:
+                span.set_attribute("book.id", str(query.book_id))
+
+            limit = max(1, min(query.limit, 100))
+            offset = _decode_continuation_token(query.continuation_token)
+
+            sort_column = RESERVATION_SORT_COLUMNS.get(query.sort_by, ReservationModel.reserved_at)
 
             async def _db_op():
                 async with self._session_factory() as session:
-                    query = select(Reservation)
-                    if user_id:
-                        query = query.where(Reservation.user_id == user_id)
-                    if status:
-                        query = query.where(Reservation.status == ReservationStatus(status))
-                    if book_id:
-                        query = query.where(Reservation.book_id == book_id)
-                    result = await session.execute(query)
-                    return result.scalars().all()
+                    stmt = _build_list_reservations_query(query, sort_column, limit, offset)
+                    db_result = await session.execute(stmt)
+                    return db_result.scalars().all()
 
             with db_query_duration_seconds.labels(operation="list_reservations").time():
                 reservations = await self._db_circuit_breaker.call(_db_op)
 
-            responses = [ReservationResponse.model_validate(r) for r in reservations]
-            span.set_attribute("books.count", len(responses))
-            return responses
+            has_more = len(reservations) > limit
+            if has_more:
+                reservations = reservations[:limit]
 
-    async def get_reservation(self, reservation_id: uuid.UUID) -> ReservationResponse | None:
+            next_token = _encode_continuation_token(offset + limit) if has_more else None
+            items = [Reservation.model_validate(r) for r in reservations]
+
+            span.set_attribute("books.count", len(items))
+            return PaginatedReservations(
+                items=items, continuation_token=next_token, has_more=has_more
+            )
+
+    async def get_reservation(self, reservation_id: uuid.UUID) -> Reservation | None:
         with self._tracer.start_as_current_span("BookService.get_reservation") as span:
             span.set_attribute("reservation.id", str(reservation_id))
 
             async def _db_op():
                 async with self._session_factory() as session:
-                    result = await session.execute(
-                        select(Reservation).where(Reservation.id == reservation_id)
+                    db_result = await session.execute(
+                        select(ReservationModel).where(ReservationModel.id == reservation_id)
                     )
-                    return result.scalar_one_or_none()
+                    return db_result.scalar_one_or_none()
 
             with db_query_duration_seconds.labels(operation="get_reservation").time():
                 reservation = await self._db_circuit_breaker.call(_db_op)
@@ -392,23 +494,23 @@ class BookService:
                 span.set_attribute("book.found", False)
                 return None
             span.set_attribute("book.found", True)
-            return ReservationResponse.model_validate(reservation)
+            return Reservation.model_validate(reservation)
 
-    async def _update_gauges(self):
+    async def _update_gauges(self) -> None:
         try:
 
-            async def _db_op():
+            async def _db_op() -> None:
                 async with self._session_factory() as session:
-                    result = await session.execute(select(func.sum(Book.available_copies)))
-                    total_available = result.scalar() or 0
+                    db_result = await session.execute(select(func.sum(BookModel.available_copies)))
+                    total_available = db_result.scalar() or 0
                     books_available_gauge.set(total_available)
 
-                    result = await session.execute(
-                        select(func.count(Reservation.id)).where(
-                            Reservation.status == ReservationStatus.ACTIVE
+                    db_result = await session.execute(
+                        select(func.count(ReservationModel.id)).where(
+                            ReservationModel.status == ReservationStatus.ACTIVE
                         )
                     )
-                    active_count = result.scalar() or 0
+                    active_count = db_result.scalar() or 0
                     active_reservations_gauge.set(active_count)
 
             await self._db_circuit_breaker.call(_db_op)

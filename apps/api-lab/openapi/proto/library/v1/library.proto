@@ -1,24 +1,120 @@
 syntax = "proto3";
 package library.v1;
 
+import "google/protobuf/field_mask.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/gillouche/playground/apps/api-lab/openapi/proto/library/v1;libraryv1";
 
+// LibraryService manages books and reservations in the library system.
+//
+// Recommended deadlines:
+//   - Unary RPCs (Get, Create, Update, Delete, Return): 5s
+//   - List RPCs (ListBooks, ListReservations): 10s
+//   - ReserveBooks: 10s (may involve multiple book locks)
 service LibraryService {
+  // ListBooks returns a paginated list of books matching the given filters.
+  //
+  // Errors:
+  //   INVALID_ARGUMENT: page_size is negative or exceeds 100.
+  //   INTERNAL: unexpected failure.
   rpc ListBooks(ListBooksRequest) returns (ListBooksResponse);
+
+  // GetBook returns a single book by its ID.
+  //
+  // Errors:
+  //   NOT_FOUND: no book with the given ID exists.
+  //   INVALID_ARGUMENT: book_id is not a valid UUID.
   rpc GetBook(GetBookRequest) returns (Book);
+
+  // CreateBook adds a new book to the library catalog.
+  // If idempotency_key is provided and a book was already created with that key,
+  // the previously created book is returned.
+  //
+  // Errors:
+  //   ALREADY_EXISTS: a book with the same ISBN already exists (without matching idempotency_key).
+  //   INVALID_ARGUMENT: required fields are missing or invalid.
   rpc CreateBook(CreateBookRequest) returns (Book);
+
+  // UpdateBook applies a partial update to an existing book.
+  // Only fields specified in update_mask are modified. If expected_version is set,
+  // the update is rejected when the stored version does not match (optimistic concurrency).
+  //
+  // Errors:
+  //   NOT_FOUND: no book with the given ID exists.
+  //   ABORTED: expected_version does not match the current version.
+  //   INVALID_ARGUMENT: update_mask is empty or contains unknown fields.
   rpc UpdateBook(UpdateBookRequest) returns (Book);
+
+  // DeleteBook removes a book from the catalog.
+  //
+  // Errors:
+  //   NOT_FOUND: no book with the given ID exists.
+  //   FAILED_PRECONDITION: book has active reservations.
   rpc DeleteBook(DeleteBookRequest) returns (DeleteBookResponse);
-  rpc GetInventory(GetInventoryRequest) returns (GetInventoryResponse);
+
+  // ReserveBooks creates reservations for one or more books on behalf of a user.
+  // If idempotency_key is provided and reservations were already created with that key,
+  // the previously created reservations are returned.
+  //
+  // Errors:
+  //   NOT_FOUND: one or more book IDs do not exist.
+  //   FAILED_PRECONDITION: one or more books have no available copies.
+  //   INVALID_ARGUMENT: book_ids is empty or user_id is not a valid UUID.
   rpc ReserveBooks(ReserveBooksRequest) returns (ReserveBooksResponse);
+
+  // ReturnReservation marks a reservation as returned.
+  //
+  // Errors:
+  //   NOT_FOUND: no reservation with the given ID exists.
+  //   FAILED_PRECONDITION: reservation is not in ACTIVE or OVERDUE status.
   rpc ReturnReservation(ReturnReservationRequest) returns (Reservation);
+
+  // ListReservations returns a paginated list of reservations matching the given filters.
+  //
+  // Errors:
+  //   INVALID_ARGUMENT: page_size is negative or exceeds 100.
+  //   INTERNAL: unexpected failure.
   rpc ListReservations(ListReservationsRequest) returns (ListReservationsResponse);
+
+  // GetReservation returns a single reservation by its ID.
+  //
+  // Errors:
+  //   NOT_FOUND: no reservation with the given ID exists.
+  //   INVALID_ARGUMENT: reservation_id is not a valid UUID.
   rpc GetReservation(GetReservationRequest) returns (Reservation);
 }
 
+enum ReservationStatus {
+  RESERVATION_STATUS_UNSPECIFIED = 0;
+  RESERVATION_STATUS_ACTIVE = 1;
+  RESERVATION_STATUS_RETURNED = 2;
+  RESERVATION_STATUS_OVERDUE = 3;
+}
+
+enum BookSortField {
+  BOOK_SORT_FIELD_UNSPECIFIED = 0;
+  BOOK_SORT_FIELD_TITLE = 1;
+  BOOK_SORT_FIELD_AUTHOR = 2;
+  BOOK_SORT_FIELD_PUBLISHED_YEAR = 3;
+  BOOK_SORT_FIELD_CREATED_AT = 4;
+}
+
+enum ReservationSortField {
+  RESERVATION_SORT_FIELD_UNSPECIFIED = 0;
+  RESERVATION_SORT_FIELD_RESERVED_AT = 1;
+  RESERVATION_SORT_FIELD_DUE_DATE = 2;
+  RESERVATION_SORT_FIELD_STATUS = 3;
+}
+
+enum SortOrder {
+  SORT_ORDER_UNSPECIFIED = 0;
+  SORT_ORDER_ASC = 1;
+  SORT_ORDER_DESC = 2;
+}
+
 message Book {
+  // UUID v4 identifier for this book.
   string id = 1;
   string isbn = 2;
   string title = 3;
@@ -29,11 +125,15 @@ message Book {
   int32 available_copies = 8;
   google.protobuf.Timestamp created_at = 9;
   google.protobuf.Timestamp updated_at = 10;
+  int32 version = 11;
 }
 
 message Reservation {
+  // UUID v4 identifier for this reservation.
   string id = 1;
+  // UUID v4 identifier of the reserved book.
   string book_id = 2;
+  // UUID v4 identifier of the user who made the reservation.
   string user_id = 3;
   google.protobuf.Timestamp reserved_at = 4;
   google.protobuf.Timestamp due_date = 5;
@@ -41,22 +141,27 @@ message Reservation {
   ReservationStatus status = 7;
 }
 
-enum ReservationStatus {
-  RESERVATION_STATUS_UNSPECIFIED = 0;
-  RESERVATION_STATUS_ACTIVE = 1;
-  RESERVATION_STATUS_RETURNED = 2;
-  RESERVATION_STATUS_OVERDUE = 3;
-}
-
-// Request/Response messages for all RPCs
 message ListBooksRequest {
   bool available_only = 1;
   string genre = 2;
   string author = 3;
   string search = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+  BookSortField sort_by = 7;
+  SortOrder sort_order = 8;
 }
-message ListBooksResponse { repeated Book books = 1; }
-message GetBookRequest { string book_id = 1; }
+
+message ListBooksResponse {
+  repeated Book books = 1;
+  string next_page_token = 2;
+}
+
+message GetBookRequest {
+  // UUID v4 identifier of the book to retrieve.
+  string book_id = 1;
+}
+
 message CreateBookRequest {
   string isbn = 1;
   string title = 2;
@@ -64,8 +169,11 @@ message CreateBookRequest {
   string genre = 4;
   int32 published_year = 5;
   int32 total_copies = 6;
+  string idempotency_key = 7;
 }
+
 message UpdateBookRequest {
+  // UUID v4 identifier of the book to update.
   string book_id = 1;
   optional string isbn = 2;
   optional string title = 3;
@@ -73,21 +181,52 @@ message UpdateBookRequest {
   optional string genre = 5;
   optional int32 published_year = 6;
   optional int32 total_copies = 7;
+  google.protobuf.FieldMask update_mask = 8;
+  int32 expected_version = 9;
 }
-message DeleteBookRequest { string book_id = 1; }
+
+message DeleteBookRequest {
+  // UUID v4 identifier of the book to delete.
+  string book_id = 1;
+}
+
 message DeleteBookResponse {}
-message GetInventoryRequest {}
-message GetInventoryResponse { repeated Book books = 1; }
+
 message ReserveBooksRequest {
+  // UUID v4 identifier of the user making the reservation.
   string user_id = 1;
+  // UUID v4 identifiers of the books to reserve.
   repeated string book_ids = 2;
+  string idempotency_key = 3;
 }
-message ReserveBooksResponse { repeated Reservation reservations = 1; }
-message ReturnReservationRequest { string reservation_id = 1; }
+
+message ReserveBooksResponse {
+  repeated Reservation reservations = 1;
+}
+
+message ReturnReservationRequest {
+  // UUID v4 identifier of the reservation to return.
+  string reservation_id = 1;
+}
+
 message ListReservationsRequest {
+  // UUID v4 identifier of the user whose reservations to list.
   string user_id = 1;
-  string status = 2;
+  ReservationStatus status = 2;
+  // UUID v4 identifier of the book to filter reservations by.
   string book_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+  ReservationSortField sort_by = 6;
+  SortOrder sort_order = 7;
 }
-message ListReservationsResponse { repeated Reservation reservations = 1; }
-message GetReservationRequest { string reservation_id = 1; }
+
+message ListReservationsResponse {
+  repeated Reservation reservations = 1;
+  string next_page_token = 2;
+}
+
+message GetReservationRequest {
+  // UUID v4 identifier of the reservation to retrieve.
+  string reservation_id = 1;
+}

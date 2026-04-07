@@ -27,6 +27,16 @@ async def lifespan(_application: FastAPI):
     cache = RedisCache()
     await cache.connect()
 
+    from middleware.idempotency import IdempotencyMiddleware
+    from middleware.rate_limit import RateLimitMiddleware
+    from middleware.request_id import RequestIdMiddleware
+
+    _application.add_middleware(RequestIdMiddleware)
+    _application.add_middleware(
+        RateLimitMiddleware, redis_client=cache.client, rate_limit=100, window_seconds=60
+    )
+    _application.add_middleware(IdempotencyMiddleware, redis_client=cache.client, ttl=86400)
+
     book_service = BookService(async_session_factory, cache)
 
     rest_module.set_book_service(book_service)
@@ -50,10 +60,27 @@ def _create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    from fastapi.middleware.cors import CORSMiddleware
     from observability.metrics import setup_metrics
     from observability.tracing import setup_tracing
     from routers.health import router as health_router
     from routers.rest import router as rest_router
+
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[],
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allow_headers=["*"],
+        expose_headers=[
+            "ETag",
+            "Location",
+            "X-Request-Id",
+            "X-RateLimit-Limit",
+            "X-RateLimit-Remaining",
+            "X-RateLimit-Reset",
+        ],
+    )
 
     application.include_router(rest_router)
     application.include_router(health_router)

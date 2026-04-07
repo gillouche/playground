@@ -1,13 +1,19 @@
 """System tests for GraphQL gateway."""
 
+import uuid
+
 import pytest
 from conftest import graphql_query
 
 
 @pytest.mark.asyncio
 async def test_query_books_empty(graphql_client):
-    result = await graphql_query(graphql_client, "{ books { id title } }")
-    assert result["data"]["books"] == []
+    result = await graphql_query(
+        graphql_client,
+        "{ books { items { id title } continuationToken hasMore } }",
+    )
+    assert result["data"]["books"]["items"] == []
+    assert result["data"]["books"]["hasMore"] is False
 
 
 @pytest.mark.asyncio
@@ -32,7 +38,6 @@ async def test_create_and_query_book(graphql_client):
     assert book["title"] == "GraphQL Book"
     assert book["availableCopies"] == 3
 
-    # Query by ID
     query = f"""
     {{
         book(bookId: "{book["id"]}") {{
@@ -62,8 +67,48 @@ async def test_query_books_with_data(graphql_client):
             }}
             """,
         )
-    result = await graphql_query(graphql_client, "{ books { id } }")
-    assert len(result["data"]["books"]) == 2
+    result = await graphql_query(
+        graphql_client,
+        "{ books { items { id } hasMore } }",
+    )
+    assert len(result["data"]["books"]["items"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_query_books_pagination(graphql_client):
+    for i in range(3):
+        await graphql_query(
+            graphql_client,
+            f"""
+            mutation {{
+                createBook(
+                    isbn: "978000070010{i}"
+                    title: "Page Book {i}"
+                    author: "Author"
+                    genre: "Fiction"
+                    publishedYear: 2024
+                    totalCopies: 1
+                ) {{ id }}
+            }}
+            """,
+        )
+
+    result = await graphql_query(
+        graphql_client,
+        "{ books(limit: 2) { items { id } continuationToken hasMore } }",
+    )
+    data = result["data"]["books"]
+    assert len(data["items"]) == 2
+    assert data["hasMore"] is True
+    assert data["continuationToken"] is not None
+
+    token = data["continuationToken"]
+    result2 = await graphql_query(
+        graphql_client,
+        f'{{ books(limit: 2, continuationToken: "{token}") {{ items {{ id }} hasMore }} }}',
+    )
+    page2 = result2["data"]["books"]
+    assert len(page2["items"]) == 1
 
 
 @pytest.mark.asyncio
@@ -129,28 +174,8 @@ async def test_delete_book(graphql_client):
 
 
 @pytest.mark.asyncio
-async def test_query_inventory(graphql_client):
-    await graphql_query(
-        graphql_client,
-        """
-        mutation {
-            createBook(
-                isbn: "9780000700041"
-                title: "Inventory Book"
-                author: "Author"
-                genre: "Fiction"
-                publishedYear: 2024
-                totalCopies: 5
-            ) { id }
-        }
-        """,
-    )
-    result = await graphql_query(graphql_client, "{ inventory { id isbn availableCopies } }")
-    assert len(result["data"]["inventory"]) >= 1
-
-
-@pytest.mark.asyncio
 async def test_reserve_and_query(graphql_client):
+    user_id = str(uuid.uuid4())
     create_result = await graphql_query(
         graphql_client,
         """
@@ -172,7 +197,7 @@ async def test_reserve_and_query(graphql_client):
         graphql_client,
         f"""
         mutation {{
-            reserveBooks(userId: "gql_user", bookIds: ["{book_id}"]) {{
+            reserveBooks(userId: "{user_id}", bookIds: ["{book_id}"]) {{
                 id bookId userId status
             }}
         }}
@@ -182,7 +207,6 @@ async def test_reserve_and_query(graphql_client):
     assert len(reservations) == 1
     assert reservations[0]["status"] == "ACTIVE"
 
-    # Query the reservation
     res_id = reservations[0]["id"]
     query_result = await graphql_query(
         graphql_client,
@@ -199,6 +223,7 @@ async def test_reserve_and_query(graphql_client):
 
 @pytest.mark.asyncio
 async def test_return_reservation(graphql_client):
+    user_id = str(uuid.uuid4())
     create_result = await graphql_query(
         graphql_client,
         """
@@ -220,7 +245,7 @@ async def test_return_reservation(graphql_client):
         graphql_client,
         f"""
         mutation {{
-            reserveBooks(userId: "gql_user", bookIds: ["{book_id}"]) {{
+            reserveBooks(userId: "{user_id}", bookIds: ["{book_id}"]) {{
                 id status
             }}
         }}
@@ -232,17 +257,19 @@ async def test_return_reservation(graphql_client):
         graphql_client,
         f"""
         mutation {{
-            returnReservation(reservationId: "{res_id}") {{
+            updateReservation(reservationId: "{res_id}", status: "RETURNED") {{
                 id status
             }}
         }}
         """,
     )
-    assert return_result["data"]["returnReservation"]["status"] == "RETURNED"
+    assert return_result["data"]["updateReservation"]["status"] == "RETURNED"
 
 
 @pytest.mark.asyncio
 async def test_query_reservations_with_filters(graphql_client):
+    alice = str(uuid.uuid4())
+    bob = str(uuid.uuid4())
     create_result = await graphql_query(
         graphql_client,
         """
@@ -264,7 +291,7 @@ async def test_query_reservations_with_filters(graphql_client):
         graphql_client,
         f"""
         mutation {{
-            reserveBooks(userId: "alice", bookIds: ["{book_id}"]) {{ id }}
+            reserveBooks(userId: "{alice}", bookIds: ["{book_id}"]) {{ id }}
         }}
         """,
     )
@@ -272,20 +299,21 @@ async def test_query_reservations_with_filters(graphql_client):
         graphql_client,
         f"""
         mutation {{
-            reserveBooks(userId: "bob", bookIds: ["{book_id}"]) {{ id }}
+            reserveBooks(userId: "{bob}", bookIds: ["{book_id}"]) {{ id }}
         }}
         """,
     )
 
     result = await graphql_query(
         graphql_client,
-        """
-        {
-            reservations(userId: "alice") {
-                id userId status
-            }
-        }
+        f"""
+        {{
+            reservations(userId: "{alice}") {{
+                items {{ id userId status }}
+                hasMore
+            }}
+        }}
         """,
     )
-    assert len(result["data"]["reservations"]) == 1
-    assert result["data"]["reservations"][0]["userId"] == "alice"
+    assert len(result["data"]["reservations"]["items"]) == 1
+    assert result["data"]["reservations"]["items"][0]["userId"] == alice

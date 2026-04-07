@@ -26,7 +26,13 @@ if _version_not_supported:
 
 
 class LibraryServiceStub(object):
-    """Missing associated documentation comment in .proto file."""
+    """LibraryService manages books and reservations in the library system.
+
+    Recommended deadlines:
+    - Unary RPCs (Get, Create, Update, Delete, Return): 5s
+    - List RPCs (ListBooks, ListReservations): 10s
+    - ReserveBooks: 10s (may involve multiple book locks)
+    """
 
     def __init__(self, channel):
         """Constructor.
@@ -59,11 +65,6 @@ class LibraryServiceStub(object):
                 request_serializer=library_dot_v1_dot_library__pb2.DeleteBookRequest.SerializeToString,
                 response_deserializer=library_dot_v1_dot_library__pb2.DeleteBookResponse.FromString,
                 _registered_method=True)
-        self.GetInventory = channel.unary_unary(
-                '/library.v1.LibraryService/GetInventory',
-                request_serializer=library_dot_v1_dot_library__pb2.GetInventoryRequest.SerializeToString,
-                response_deserializer=library_dot_v1_dot_library__pb2.GetInventoryResponse.FromString,
-                _registered_method=True)
         self.ReserveBooks = channel.unary_unary(
                 '/library.v1.LibraryService/ReserveBooks',
                 request_serializer=library_dot_v1_dot_library__pb2.ReserveBooksRequest.SerializeToString,
@@ -87,64 +88,117 @@ class LibraryServiceStub(object):
 
 
 class LibraryServiceServicer(object):
-    """Missing associated documentation comment in .proto file."""
+    """LibraryService manages books and reservations in the library system.
+
+    Recommended deadlines:
+    - Unary RPCs (Get, Create, Update, Delete, Return): 5s
+    - List RPCs (ListBooks, ListReservations): 10s
+    - ReserveBooks: 10s (may involve multiple book locks)
+    """
 
     def ListBooks(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """ListBooks returns a paginated list of books matching the given filters.
+
+        Errors:
+        INVALID_ARGUMENT: page_size is negative or exceeds 100.
+        INTERNAL: unexpected failure.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GetBook(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """GetBook returns a single book by its ID.
+
+        Errors:
+        NOT_FOUND: no book with the given ID exists.
+        INVALID_ARGUMENT: book_id is not a valid UUID.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def CreateBook(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """CreateBook adds a new book to the library catalog.
+        If idempotency_key is provided and a book was already created with that key,
+        the previously created book is returned.
+
+        Errors:
+        ALREADY_EXISTS: a book with the same ISBN already exists (without matching idempotency_key).
+        INVALID_ARGUMENT: required fields are missing or invalid.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def UpdateBook(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """UpdateBook applies a partial update to an existing book.
+        Only fields specified in update_mask are modified. If expected_version is set,
+        the update is rejected when the stored version does not match (optimistic concurrency).
+
+        Errors:
+        NOT_FOUND: no book with the given ID exists.
+        ABORTED: expected_version does not match the current version.
+        INVALID_ARGUMENT: update_mask is empty or contains unknown fields.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def DeleteBook(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
+        """DeleteBook removes a book from the catalog.
 
-    def GetInventory(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        Errors:
+        NOT_FOUND: no book with the given ID exists.
+        FAILED_PRECONDITION: book has active reservations.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def ReserveBooks(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """ReserveBooks creates reservations for one or more books on behalf of a user.
+        If idempotency_key is provided and reservations were already created with that key,
+        the previously created reservations are returned.
+
+        Errors:
+        NOT_FOUND: one or more book IDs do not exist.
+        FAILED_PRECONDITION: one or more books have no available copies.
+        INVALID_ARGUMENT: book_ids is empty or user_id is not a valid UUID.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def ReturnReservation(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """ReturnReservation marks a reservation as returned.
+
+        Errors:
+        NOT_FOUND: no reservation with the given ID exists.
+        FAILED_PRECONDITION: reservation is not in ACTIVE or OVERDUE status.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def ListReservations(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """ListReservations returns a paginated list of reservations matching the given filters.
+
+        Errors:
+        INVALID_ARGUMENT: page_size is negative or exceeds 100.
+        INTERNAL: unexpected failure.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def GetReservation(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """GetReservation returns a single reservation by its ID.
+
+        Errors:
+        NOT_FOUND: no reservation with the given ID exists.
+        INVALID_ARGUMENT: reservation_id is not a valid UUID.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -177,11 +231,6 @@ def add_LibraryServiceServicer_to_server(servicer, server):
                     request_deserializer=library_dot_v1_dot_library__pb2.DeleteBookRequest.FromString,
                     response_serializer=library_dot_v1_dot_library__pb2.DeleteBookResponse.SerializeToString,
             ),
-            'GetInventory': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetInventory,
-                    request_deserializer=library_dot_v1_dot_library__pb2.GetInventoryRequest.FromString,
-                    response_serializer=library_dot_v1_dot_library__pb2.GetInventoryResponse.SerializeToString,
-            ),
             'ReserveBooks': grpc.unary_unary_rpc_method_handler(
                     servicer.ReserveBooks,
                     request_deserializer=library_dot_v1_dot_library__pb2.ReserveBooksRequest.FromString,
@@ -211,7 +260,13 @@ def add_LibraryServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class LibraryService(object):
-    """Missing associated documentation comment in .proto file."""
+    """LibraryService manages books and reservations in the library system.
+
+    Recommended deadlines:
+    - Unary RPCs (Get, Create, Update, Delete, Return): 5s
+    - List RPCs (ListBooks, ListReservations): 10s
+    - ReserveBooks: 10s (may involve multiple book locks)
+    """
 
     @staticmethod
     def ListBooks(request,
@@ -338,33 +393,6 @@ class LibraryService(object):
             '/library.v1.LibraryService/DeleteBook',
             library_dot_v1_dot_library__pb2.DeleteBookRequest.SerializeToString,
             library_dot_v1_dot_library__pb2.DeleteBookResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def GetInventory(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/library.v1.LibraryService/GetInventory',
-            library_dot_v1_dot_library__pb2.GetInventoryRequest.SerializeToString,
-            library_dot_v1_dot_library__pb2.GetInventoryResponse.FromString,
             options,
             channel_credentials,
             insecure,

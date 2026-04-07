@@ -4,10 +4,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import grpc
 import pytest
+from generated.models import PaginatedBooks, PaginatedReservations
 from grpc import aio
 from grpc_server import LibraryServiceServicer
 from library.v1 import library_pb2, library_pb2_grpc
-from services.book_service import DuplicateISBNError
+from services.book_service import ActiveReservationsError, DuplicateISBNError, StaleVersionError
 
 anyio_backend = "asyncio"
 
@@ -22,6 +23,7 @@ def _make_book(**overrides):
     book.published_year = overrides.get("published_year", 1999)
     book.total_copies = overrides.get("total_copies", 5)
     book.available_copies = overrides.get("available_copies", 3)
+    book.version = overrides.get("version", 1)
     book.created_at = overrides.get("created_at", datetime(2025, 1, 1, 0, 0, 0, tzinfo=UTC))
     book.updated_at = overrides.get("updated_at", datetime(2025, 6, 1, 0, 0, 0, tzinfo=UTC))
     return book
@@ -31,7 +33,7 @@ def _make_reservation(**overrides):
     res = MagicMock()
     res.id = overrides.get("id", uuid.uuid4())
     res.book_id = overrides.get("book_id", uuid.uuid4())
-    res.user_id = overrides.get("user_id", "user-42")
+    res.user_id = overrides.get("user_id", uuid.uuid4())
     res.reserved_at = overrides.get("reserved_at", datetime(2025, 3, 1, 10, 0, 0, tzinfo=UTC))
     res.due_date = overrides.get("due_date", datetime(2025, 3, 15, 0, 0, 0, tzinfo=UTC))
     res.returned_at = overrides.get("returned_at")
@@ -62,7 +64,9 @@ class TestListBooksIntegration:
     @pytest.mark.asyncio
     async def test_returns_empty_list(self, grpc_server_and_channel):
         stub, mock_svc = grpc_server_and_channel
-        mock_svc.list_books.return_value = []
+        mock_svc.list_books.return_value = PaginatedBooks(
+            items=[], continuation_token=None, has_more=False
+        )
 
         resp = await stub.ListBooks(library_pb2.ListBooksRequest())
 
@@ -73,7 +77,9 @@ class TestListBooksIntegration:
     async def test_returns_books(self, grpc_server_and_channel):
         stub, mock_svc = grpc_server_and_channel
         book = _make_book()
-        mock_svc.list_books.return_value = [book]
+        mock_svc.list_books.return_value = PaginatedBooks(
+            items=[book], continuation_token=None, has_more=False
+        )
 
         resp = await stub.ListBooks(library_pb2.ListBooksRequest())
 
@@ -84,26 +90,43 @@ class TestListBooksIntegration:
     @pytest.mark.asyncio
     async def test_with_available_only_filter(self, grpc_server_and_channel):
         stub, mock_svc = grpc_server_and_channel
-        mock_svc.list_books.return_value = []
+        mock_svc.list_books.return_value = PaginatedBooks(
+            items=[], continuation_token=None, has_more=False
+        )
 
         await stub.ListBooks(library_pb2.ListBooksRequest(available_only=True))
 
-        mock_svc.list_books.assert_awaited_once_with(
-            available_only=True,
-            genre=None,
-            author=None,
-            search=None,
-        )
+        mock_svc.list_books.assert_awaited_once()
+        query = mock_svc.list_books.call_args[0][0]
+        assert query.available_only is True
 
     @pytest.mark.asyncio
     async def test_with_genre_filter(self, grpc_server_and_channel):
         stub, mock_svc = grpc_server_and_channel
-        mock_svc.list_books.return_value = []
+        mock_svc.list_books.return_value = PaginatedBooks(
+            items=[], continuation_token=None, has_more=False
+        )
 
         await stub.ListBooks(library_pb2.ListBooksRequest(genre="Fiction"))
 
-        call_kwargs = mock_svc.list_books.call_args[1]
-        assert call_kwargs["genre"] == "Fiction"
+        query = mock_svc.list_books.call_args[0][0]
+        assert query.genre == "Fiction"
+
+    @pytest.mark.asyncio
+    async def test_with_pagination_params(self, grpc_server_and_channel):
+        stub, mock_svc = grpc_server_and_channel
+        mock_svc.list_books.return_value = PaginatedBooks(
+            items=[], continuation_token="next_token", has_more=True
+        )
+
+        resp = await stub.ListBooks(
+            library_pb2.ListBooksRequest(page_size=5, page_token="prev_token")
+        )
+
+        assert resp.next_page_token == "next_token"
+        query = mock_svc.list_books.call_args[0][0]
+        assert query.limit == 5
+        assert query.continuation_token == "prev_token"
 
 
 class TestGetBookIntegration:
@@ -210,6 +233,47 @@ class TestUpdateBookIntegration:
 
         assert exc_info.value.code() == grpc.StatusCode.ALREADY_EXISTS
 
+    @pytest.mark.asyncio
+    async def test_version_mismatch_raises_aborted(self, grpc_server_and_channel):
+        stub, mock_svc = grpc_server_and_channel
+        mock_svc.update_book.side_effect = StaleVersionError("Version mismatch")
+
+        with pytest.raises(aio.AioRpcError) as exc_info:
+            await stub.UpdateBook(
+                library_pb2.UpdateBookRequest(
+                    book_id=str(uuid.uuid4()),
+                    title="Stale",
+                    expected_version=1,
+                )
+            )
+
+        assert exc_info.value.code() == grpc.StatusCode.ABORTED
+
+    @pytest.mark.asyncio
+    async def test_with_field_mask(self, grpc_server_and_channel):
+        from google.protobuf import field_mask_pb2
+
+        stub, mock_svc = grpc_server_and_channel
+        book = _make_book(title="Masked Title", author="Masked Author")
+        mock_svc.update_book.return_value = book
+
+        resp = await stub.UpdateBook(
+            library_pb2.UpdateBookRequest(
+                book_id=str(uuid.uuid4()),
+                title="Masked Title",
+                author="Masked Author",
+                genre="Should be ignored",
+                update_mask=field_mask_pb2.FieldMask(paths=["title", "author"]),
+            )
+        )
+
+        assert resp.title == "Masked Title"
+        call_args = mock_svc.update_book.call_args[0]
+        update_data = call_args[1]
+        assert update_data.title == "Masked Title"
+        assert update_data.author == "Masked Author"
+        assert update_data.genre is None
+
 
 class TestDeleteBookIntegration:
     @pytest.mark.asyncio
@@ -231,27 +295,15 @@ class TestDeleteBookIntegration:
 
         assert exc_info.value.code() == grpc.StatusCode.NOT_FOUND
 
-
-class TestGetInventoryIntegration:
     @pytest.mark.asyncio
-    async def test_returns_available_books(self, grpc_server_and_channel):
+    async def test_active_reservations_raises_failed_precondition(self, grpc_server_and_channel):
         stub, mock_svc = grpc_server_and_channel
-        books = [_make_book(), _make_book(available_copies=1)]
-        mock_svc.get_inventory.return_value = books
+        mock_svc.delete_book.side_effect = ActiveReservationsError()
 
-        resp = await stub.GetInventory(library_pb2.GetInventoryRequest())
+        with pytest.raises(aio.AioRpcError) as exc_info:
+            await stub.DeleteBook(library_pb2.DeleteBookRequest(book_id=str(uuid.uuid4())))
 
-        assert isinstance(resp, library_pb2.GetInventoryResponse)
-        assert len(resp.books) == 2
-
-    @pytest.mark.asyncio
-    async def test_empty_inventory(self, grpc_server_and_channel):
-        stub, mock_svc = grpc_server_and_channel
-        mock_svc.get_inventory.return_value = []
-
-        resp = await stub.GetInventory(library_pb2.GetInventoryRequest())
-
-        assert len(resp.books) == 0
+        assert exc_info.value.code() == grpc.StatusCode.FAILED_PRECONDITION
 
 
 class TestReserveBooksIntegration:
@@ -261,14 +313,14 @@ class TestReserveBooksIntegration:
         reservations = [_make_reservation()]
         mock_svc.reserve_books.return_value = reservations
         book_id = str(uuid.uuid4())
+        user_id = str(uuid.uuid4())
 
         resp = await stub.ReserveBooks(
-            library_pb2.ReserveBooksRequest(user_id="user-1", book_ids=[book_id])
+            library_pb2.ReserveBooksRequest(user_id=user_id, book_ids=[book_id])
         )
 
         assert isinstance(resp, library_pb2.ReserveBooksResponse)
         assert len(resp.reservations) == 1
-        assert resp.reservations[0].user_id == "user-42"
         assert resp.reservations[0].status == library_pb2.RESERVATION_STATUS_ACTIVE
 
     @pytest.mark.asyncio
@@ -278,7 +330,9 @@ class TestReserveBooksIntegration:
 
         with pytest.raises(aio.AioRpcError) as exc_info:
             await stub.ReserveBooks(
-                library_pb2.ReserveBooksRequest(user_id="user-1", book_ids=[str(uuid.uuid4())])
+                library_pb2.ReserveBooksRequest(
+                    user_id=str(uuid.uuid4()), book_ids=[str(uuid.uuid4())]
+                )
             )
 
         assert exc_info.value.code() == grpc.StatusCode.FAILED_PRECONDITION
@@ -330,7 +384,9 @@ class TestListReservationsIntegration:
     async def test_returns_all_reservations(self, grpc_server_and_channel):
         stub, mock_svc = grpc_server_and_channel
         reservations = [_make_reservation(), _make_reservation()]
-        mock_svc.list_reservations.return_value = reservations
+        mock_svc.list_reservations.return_value = PaginatedReservations(
+            items=reservations, continuation_token=None, has_more=False
+        )
 
         resp = await stub.ListReservations(library_pb2.ListReservationsRequest())
 
@@ -340,33 +396,60 @@ class TestListReservationsIntegration:
     @pytest.mark.asyncio
     async def test_filters_by_user_id(self, grpc_server_and_channel):
         stub, mock_svc = grpc_server_and_channel
-        mock_svc.list_reservations.return_value = []
+        mock_svc.list_reservations.return_value = PaginatedReservations(
+            items=[], continuation_token=None, has_more=False
+        )
+        user_id = str(uuid.uuid4())
 
-        await stub.ListReservations(library_pb2.ListReservationsRequest(user_id="user-7"))
+        await stub.ListReservations(library_pb2.ListReservationsRequest(user_id=user_id))
 
-        call_kwargs = mock_svc.list_reservations.call_args[1]
-        assert call_kwargs["user_id"] == "user-7"
+        query = mock_svc.list_reservations.call_args[0][0]
+        assert query.user_id == uuid.UUID(user_id)
 
     @pytest.mark.asyncio
     async def test_filters_by_status(self, grpc_server_and_channel):
         stub, mock_svc = grpc_server_and_channel
-        mock_svc.list_reservations.return_value = []
+        mock_svc.list_reservations.return_value = PaginatedReservations(
+            items=[], continuation_token=None, has_more=False
+        )
 
-        await stub.ListReservations(library_pb2.ListReservationsRequest(status="ACTIVE"))
+        await stub.ListReservations(
+            library_pb2.ListReservationsRequest(
+                status=library_pb2.RESERVATION_STATUS_ACTIVE,
+            )
+        )
 
-        call_kwargs = mock_svc.list_reservations.call_args[1]
-        assert call_kwargs["status"] == "ACTIVE"
+        query = mock_svc.list_reservations.call_args[0][0]
+        assert query.status == "ACTIVE"
 
     @pytest.mark.asyncio
     async def test_filters_by_book_id(self, grpc_server_and_channel):
         stub, mock_svc = grpc_server_and_channel
-        mock_svc.list_reservations.return_value = []
+        mock_svc.list_reservations.return_value = PaginatedReservations(
+            items=[], continuation_token=None, has_more=False
+        )
         book_id = uuid.uuid4()
 
         await stub.ListReservations(library_pb2.ListReservationsRequest(book_id=str(book_id)))
 
-        call_kwargs = mock_svc.list_reservations.call_args[1]
-        assert call_kwargs["book_id"] == uuid.UUID(str(book_id))
+        query = mock_svc.list_reservations.call_args[0][0]
+        assert query.book_id == uuid.UUID(str(book_id))
+
+    @pytest.mark.asyncio
+    async def test_with_pagination_params(self, grpc_server_and_channel):
+        stub, mock_svc = grpc_server_and_channel
+        mock_svc.list_reservations.return_value = PaginatedReservations(
+            items=[], continuation_token="next_page", has_more=True
+        )
+
+        resp = await stub.ListReservations(
+            library_pb2.ListReservationsRequest(page_size=10, page_token="prev_page")
+        )
+
+        assert resp.next_page_token == "next_page"
+        query = mock_svc.list_reservations.call_args[0][0]
+        assert query.limit == 10
+        assert query.continuation_token == "prev_page"
 
 
 class TestGetReservationIntegration:
@@ -382,7 +465,6 @@ class TestGetReservationIntegration:
 
         assert isinstance(resp, library_pb2.Reservation)
         assert resp.id == str(reservation.id)
-        assert resp.user_id == "user-42"
 
     @pytest.mark.asyncio
     async def test_not_found_raises_not_found(self, grpc_server_and_channel):

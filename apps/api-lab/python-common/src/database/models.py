@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -28,6 +28,8 @@ class Book(Base):
     published_year: Mapped[int] = mapped_column(Integer, nullable=False)
     total_copies: Mapped[int] = mapped_column(Integer, nullable=False)
     available_copies: Mapped[int] = mapped_column(Integer, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    search_vector: Mapped[str | None] = mapped_column(TSVECTOR, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
@@ -41,6 +43,7 @@ class Book(Base):
         CheckConstraint("available_copies >= 0", name="check_available_copies_non_negative"),
         Index("ix_books_isbn", "isbn"),
         Index("ix_books_author", "author"),
+        Index("ix_books_search_vector", "search_vector", postgresql_using="gin"),
     )
 
 
@@ -51,7 +54,7 @@ class Reservation(Base):
     book_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("books.id"), nullable=False
     )
-    user_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     reserved_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )

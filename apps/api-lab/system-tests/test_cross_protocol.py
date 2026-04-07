@@ -1,5 +1,7 @@
 """System tests verifying data consistency across REST, gRPC, and GraphQL."""
 
+import uuid
+
 import pytest
 from conftest import graphql_query
 from library.v1 import library_pb2
@@ -44,6 +46,7 @@ async def test_create_rest_query_graphql_and_grpc(rest_client, graphql_client, g
 @pytest.mark.asyncio
 async def test_reserve_grpc_verify_rest_and_graphql(rest_client, graphql_client, grpc_stub):
     """Reserve via gRPC, verify reservation visible via REST and GraphQL."""
+    user_id = str(uuid.uuid4())
     resp = await rest_client.post(
         "/api/v1/books",
         json={
@@ -58,7 +61,7 @@ async def test_reserve_grpc_verify_rest_and_graphql(rest_client, graphql_client,
     book = resp.json()
 
     reserve_result = await grpc_stub.ReserveBooks(
-        library_pb2.ReserveBooksRequest(user_id="cross_user", book_ids=[book["id"]])
+        library_pb2.ReserveBooksRequest(user_id=user_id, book_ids=[book["id"]])
     )
     res_id = reserve_result.reservations[0].id
 
@@ -77,12 +80,13 @@ async def test_reserve_grpc_verify_rest_and_graphql(rest_client, graphql_client,
         """,
     )
     assert gql_result["data"]["reservation"]["status"] == "ACTIVE"
-    assert gql_result["data"]["reservation"]["userId"] == "cross_user"
+    assert gql_result["data"]["reservation"]["userId"] == user_id
 
 
 @pytest.mark.asyncio
 async def test_full_cross_protocol_lifecycle(rest_client, graphql_client, grpc_stub):
     """REST create -> gRPC reserve -> GraphQL query -> REST return -> verify all."""
+    user_id = str(uuid.uuid4())
     resp = await rest_client.post(
         "/api/v1/books",
         json={
@@ -97,7 +101,7 @@ async def test_full_cross_protocol_lifecycle(rest_client, graphql_client, grpc_s
     book = resp.json()
 
     reserve_result = await grpc_stub.ReserveBooks(
-        library_pb2.ReserveBooksRequest(user_id="life_user", book_ids=[book["id"]])
+        library_pb2.ReserveBooksRequest(user_id=user_id, book_ids=[book["id"]])
     )
     res_id = reserve_result.reservations[0].id
 
@@ -113,7 +117,10 @@ async def test_full_cross_protocol_lifecycle(rest_client, graphql_client, grpc_s
     )
     assert gql_result["data"]["reservation"]["status"] == "ACTIVE"
 
-    return_resp = await rest_client.post(f"/api/v1/reservations/{res_id}/return")
+    return_resp = await rest_client.patch(
+        f"/api/v1/reservations/{res_id}",
+        json={"status": "RETURNED"},
+    )
     assert return_resp.status_code == 200
     assert return_resp.json()["status"] == "RETURNED"
 
