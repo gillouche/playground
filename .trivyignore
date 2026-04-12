@@ -1,3 +1,7 @@
 # glibc: Integer overflow in memalign leads to heap corruption
 # Base image dependency - waiting for upstream fix
 CVE-2026-0861
+
+# openssl: Denial of Service due to NULL pointer dereference in CMS EnvelopedData processing
+# Base image dependency - waiting for upstream fix
+CVE-2026-28390
