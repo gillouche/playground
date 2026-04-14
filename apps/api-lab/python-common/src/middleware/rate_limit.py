@@ -87,7 +87,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         limits = RATE_TIERS[tier]
-        assert limits is not None
+        if limits is None:
+            return await call_next(request)
         rate_limit, window_seconds = limits
 
         key = _get_rate_key(request, tier)

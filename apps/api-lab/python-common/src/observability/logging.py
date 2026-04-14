@@ -19,8 +19,8 @@ def _get_otel_context() -> dict:
                 "trace_id": format(ctx.trace_id, "032x"),
                 "span_id": format(ctx.span_id, "016x"),
             }
-    except Exception:
-        pass
+    except (ImportError, AttributeError):
+        return {"trace_id": None, "span_id": None}
     return {"trace_id": None, "span_id": None}
 
 

@@ -23,7 +23,8 @@ def set_client(client: LibraryClient):
 
 
 def _get_client() -> LibraryClient:
-    assert _client is not None, "LibraryClient not initialized"
+    if _client is None:
+        raise RuntimeError("LibraryClient not initialized")
     return _client
 
 
