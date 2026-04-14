@@ -124,7 +124,9 @@ async def test_list_reservations(rest_client, create_sample_book):
 
 @pytest.mark.asyncio
 async def test_list_reservations_filter_by_user(
-    rest_client, create_sample_book, auth_client, _admin_token
+    rest_client,
+    create_sample_book,
+    auth_client,
 ):
     import uuid
 

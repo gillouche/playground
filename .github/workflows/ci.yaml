@@ -212,7 +212,7 @@ jobs:
             COMPOSE="docker-compose"
           fi
           COMPOSE_CMD="$COMPOSE -f infra/sandbox/localhost/docker-compose.yaml"
-          $COMPOSE_CMD up -d postgres redis
+          $COMPOSE_CMD up -d postgres redis keycloak
           until $COMPOSE_CMD exec -T postgres pg_isready -U playground; do
             sleep 2
           done
@@ -220,6 +220,10 @@ jobs:
             | grep PONG; do sleep 2; done
           $COMPOSE_CMD exec -T postgres \
             psql -U playground -c "CREATE DATABASE api_lab" || true
+          until curl -sf http://localhost:8180/realms/api-lab/.well-known/openid-configuration > /dev/null; do
+            sleep 3
+          done
+          bash infra/sandbox/localhost/keycloak/setup-realm.sh
 
       - name: Build, migrate, start services, and run system tests
         run: |
@@ -231,8 +235,14 @@ jobs:
           export ENABLE_TRACING=false
           export REST_API_URL=http://localhost:8080
           export API_BASE_URL=http://localhost:8080
+          export AUTH_API_URL=http://localhost:8084
           export GRAPHQL_BASE_URL=http://localhost:8083
           export GRPC_HOST=localhost:50051
+          export KEYCLOAK_SERVER_URL=http://localhost:8180
+          export KEYCLOAK_CLIENT_ID=api-lab
+          export KEYCLOAK_CLIENT_SECRET=api-lab-secret
+          export KEYCLOAK_AUTH_SERVICE_CLIENT_ID=api-lab-auth-service
+          export KEYCLOAK_AUTH_SERVICE_CLIENT_SECRET=api-lab-auth-service-secret
 
           nix develop ./nix#ci --command bash -c '
             set -e
@@ -241,6 +251,7 @@ jobs:
             bazel build --config=ci \
               //apps/api-lab/database:migrate \
               //apps/api-lab/python-rest-api \
+              //apps/api-lab/python-auth-api \
               //apps/api-lab/python-grpc-api \
               //apps/api-lab/graphql-gateway \
               //apps/api-lab/system-tests:system-tests
@@ -250,12 +261,15 @@ jobs:
 
             echo "=== Starting services ==="
             bazel run --config=ci //apps/api-lab/python-rest-api &
+            bazel run --config=ci //apps/api-lab/python-auth-api &
             bazel run --config=ci //apps/api-lab/python-grpc-api &
             REST_API_URL=http://localhost:8080 \
               bazel run --config=ci //apps/api-lab/graphql-gateway &
 
             echo "Waiting for REST API..."
             until curl -sf http://localhost:8080/healthz; do sleep 2; done
+            echo "Waiting for Auth API..."
+            until curl -sf http://localhost:8084/healthz; do sleep 2; done
             echo "Waiting for GraphQL gateway..."
             until curl -sf http://localhost:8083/healthz; do sleep 2; done
             echo "Waiting for gRPC..."
@@ -265,6 +279,7 @@ jobs:
             bazel test --config=ci \
               --test_tag_filters=system \
               --test_env=API_BASE_URL \
+              --test_env=AUTH_API_URL \
               --test_env=GRAPHQL_BASE_URL \
               --test_env=GRPC_HOST \
               --test_env=POSTGRES_HOST \
@@ -274,6 +289,7 @@ jobs:
               --test_env=REDIS_HOST \
               --test_env=REDIS_PORT \
               --test_env=REDIS_PASSWORD \
+              --test_env=KEYCLOAK_SERVER_URL \
               //apps/api-lab/system-tests:system-tests
           '
 

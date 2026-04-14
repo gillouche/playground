@@ -2,11 +2,26 @@ import uuid
 
 
 class TestRegistrationAndLogin:
-    async def test_register_login_access_api(
-        self, _auth_client, rest_client, _registered_user, user_token
-    ):
-        headers = {"Authorization": f"Bearer {user_token}"}
-        resp = await rest_client.get("/api/v1/books", headers=headers)
+    async def test_register_login_access_api(self, auth_client, rest_client):
+        username = f"user-{uuid.uuid4().hex[:8]}"
+        reg_resp = await auth_client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": username,
+                "email": f"{username}@test.local",
+                "password": "testpass123",
+            },
+        )
+        assert reg_resp.status_code == 201
+
+        login_resp = await auth_client.post(
+            "/api/v1/auth/login",
+            json={"username": username, "password": "testpass123"},
+        )
+        assert login_resp.status_code == 200
+        token = login_resp.json()["access_token"]
+
+        resp = await rest_client.get("/api/v1/books", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
 
     async def test_user_cannot_create_book(self, rest_client, user_token):
