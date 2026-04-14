@@ -1,23 +1,19 @@
 """System tests for REST API reservation operations."""
 
-import uuid
-
 import pytest
 
 
 @pytest.mark.asyncio
 async def test_reserve_single_book(rest_client, create_sample_book):
-    user_id = str(uuid.uuid4())
     book = await create_sample_book(total_copies=3)
     resp = await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book["id"]]},
+        json={"book_ids": [book["id"]]},
     )
     assert resp.status_code == 201
     reservations = resp.json()
     assert len(reservations) == 1
     assert reservations[0]["book_id"] == book["id"]
-    assert reservations[0]["user_id"] == user_id
     assert reservations[0]["status"] == "ACTIVE"
 
     book_resp = await rest_client.get(f"/api/v1/books/{book['id']}")
@@ -26,12 +22,11 @@ async def test_reserve_single_book(rest_client, create_sample_book):
 
 @pytest.mark.asyncio
 async def test_reserve_multiple_books(rest_client, create_sample_book):
-    user_id = str(uuid.uuid4())
     book1 = await create_sample_book(isbn="9780000100001")
     book2 = await create_sample_book(isbn="9780000100002")
     resp = await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book1["id"], book2["id"]]},
+        json={"book_ids": [book1["id"], book2["id"]]},
     )
     assert resp.status_code == 201
     assert len(resp.json()) == 2
@@ -39,38 +34,36 @@ async def test_reserve_multiple_books(rest_client, create_sample_book):
 
 @pytest.mark.asyncio
 async def test_reserve_unavailable_book(rest_client, create_sample_book):
-    user_id1 = str(uuid.uuid4())
-    user_id2 = str(uuid.uuid4())
     book = await create_sample_book(total_copies=1)
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id1, "book_ids": [book["id"]]},
+        json={"book_ids": [book["id"]]},
     )
     resp = await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id2, "book_ids": [book["id"]]},
+        json={"book_ids": [book["id"]]},
     )
     assert resp.status_code == 409
 
 
 @pytest.mark.asyncio
 async def test_reserve_nonexistent_book(rest_client):
-    user_id = str(uuid.uuid4())
+    import uuid
+
     fake_id = str(uuid.uuid4())
     resp = await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [fake_id]},
+        json={"book_ids": [fake_id]},
     )
     assert resp.status_code == 409
 
 
 @pytest.mark.asyncio
 async def test_return_reservation(rest_client, create_sample_book):
-    user_id = str(uuid.uuid4())
     book = await create_sample_book(total_copies=2)
     reserve_resp = await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book["id"]]},
+        json={"book_ids": [book["id"]]},
     )
     reservation_id = reserve_resp.json()[0]["id"]
 
@@ -87,11 +80,10 @@ async def test_return_reservation(rest_client, create_sample_book):
 
 @pytest.mark.asyncio
 async def test_return_already_returned(rest_client, create_sample_book):
-    user_id = str(uuid.uuid4())
     book = await create_sample_book()
     reserve_resp = await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book["id"]]},
+        json={"book_ids": [book["id"]]},
     )
     reservation_id = reserve_resp.json()[0]["id"]
 
@@ -108,6 +100,8 @@ async def test_return_already_returned(rest_client, create_sample_book):
 
 @pytest.mark.asyncio
 async def test_return_nonexistent(rest_client):
+    import uuid
+
     fake_id = str(uuid.uuid4())
     resp = await rest_client.patch(
         f"/api/v1/reservations/{fake_id}",
@@ -118,11 +112,10 @@ async def test_return_nonexistent(rest_client):
 
 @pytest.mark.asyncio
 async def test_list_reservations(rest_client, create_sample_book):
-    user_id = str(uuid.uuid4())
     book = await create_sample_book()
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book["id"]]},
+        json={"book_ids": [book["id"]]},
     )
     resp = await rest_client.get("/api/v1/reservations")
     assert resp.status_code == 200
@@ -130,38 +123,71 @@ async def test_list_reservations(rest_client, create_sample_book):
 
 
 @pytest.mark.asyncio
-async def test_list_reservations_filter_by_user(rest_client, create_sample_book):
-    alice = str(uuid.uuid4())
-    bob = str(uuid.uuid4())
+async def test_list_reservations_filter_by_user(
+    rest_client, create_sample_book, auth_client, _admin_token
+):
+    import uuid
+
+    user1_name = f"patron1-{uuid.uuid4().hex[:8]}"
+    user2_name = f"patron2-{uuid.uuid4().hex[:8]}"
+
+    await auth_client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": user1_name,
+            "email": f"{user1_name}@test.local",
+            "password": "testpass123",
+        },
+    )
+    await auth_client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": user2_name,
+            "email": f"{user2_name}@test.local",
+            "password": "testpass123",
+        },
+    )
+
+    u1_resp = await auth_client.post(
+        "/api/v1/auth/login", json={"username": user1_name, "password": "testpass123"}
+    )
+    u2_resp = await auth_client.post(
+        "/api/v1/auth/login", json={"username": user2_name, "password": "testpass123"}
+    )
+    u1_token = u1_resp.json()["access_token"]
+    u2_token = u2_resp.json()["access_token"]
+
     book1 = await create_sample_book(isbn="9780000200001")
     book2 = await create_sample_book(isbn="9780000200002")
+
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": alice, "book_ids": [book1["id"]]},
+        json={"book_ids": [book1["id"]]},
+        headers={"Authorization": f"Bearer {u1_token}"},
     )
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": bob, "book_ids": [book2["id"]]},
+        json={"book_ids": [book2["id"]]},
+        headers={"Authorization": f"Bearer {u2_token}"},
     )
-    resp = await rest_client.get("/api/v1/reservations", params={"user_id": alice})
+
+    resp = await rest_client.get("/api/v1/reservations")
     assert resp.status_code == 200
     reservations = resp.json()["items"]
-    assert len(reservations) == 1
-    assert reservations[0]["user_id"] == alice
+    assert len(reservations) == 2
 
 
 @pytest.mark.asyncio
 async def test_list_reservations_filter_by_status(rest_client, create_sample_book):
-    user_id = str(uuid.uuid4())
     book1 = await create_sample_book(isbn="9780000300001")
     book2 = await create_sample_book(isbn="9780000300002")
     r1 = await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book1["id"]]},
+        json={"book_ids": [book1["id"]]},
     )
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book2["id"]]},
+        json={"book_ids": [book2["id"]]},
     )
     await rest_client.patch(
         f"/api/v1/reservations/{r1.json()[0]['id']}",
@@ -177,16 +203,15 @@ async def test_list_reservations_filter_by_status(rest_client, create_sample_boo
 
 @pytest.mark.asyncio
 async def test_list_reservations_filter_by_book(rest_client, create_sample_book):
-    user_id = str(uuid.uuid4())
     book1 = await create_sample_book(isbn="9780000400001")
     book2 = await create_sample_book(isbn="9780000400002")
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book1["id"]]},
+        json={"book_ids": [book1["id"]]},
     )
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book2["id"]]},
+        json={"book_ids": [book2["id"]]},
     )
     resp = await rest_client.get("/api/v1/reservations", params={"book_id": book1["id"]})
     assert resp.status_code == 200
@@ -197,11 +222,10 @@ async def test_list_reservations_filter_by_book(rest_client, create_sample_book)
 
 @pytest.mark.asyncio
 async def test_get_reservation(rest_client, create_sample_book):
-    user_id = str(uuid.uuid4())
     book = await create_sample_book()
     reserve_resp = await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book["id"]]},
+        json={"book_ids": [book["id"]]},
     )
     reservation_id = reserve_resp.json()[0]["id"]
     resp = await rest_client.get(f"/api/v1/reservations/{reservation_id}")
@@ -211,6 +235,8 @@ async def test_get_reservation(rest_client, create_sample_book):
 
 @pytest.mark.asyncio
 async def test_get_reservation_not_found(rest_client):
+    import uuid
+
     fake_id = str(uuid.uuid4())
     resp = await rest_client.get(f"/api/v1/reservations/{fake_id}")
     assert resp.status_code == 404
@@ -218,21 +244,20 @@ async def test_get_reservation_not_found(rest_client):
 
 @pytest.mark.asyncio
 async def test_list_reservations_pagination(rest_client, create_sample_book):
-    user_id = str(uuid.uuid4())
     book1 = await create_sample_book(isbn="9780000500001", total_copies=5)
     book2 = await create_sample_book(isbn="9780000500002", total_copies=5)
     book3 = await create_sample_book(isbn="9780000500003", total_copies=5)
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book1["id"]]},
+        json={"book_ids": [book1["id"]]},
     )
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book2["id"]]},
+        json={"book_ids": [book2["id"]]},
     )
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book3["id"]]},
+        json={"book_ids": [book3["id"]]},
     )
 
     resp = await rest_client.get("/api/v1/reservations", params={"limit": 2})
@@ -253,17 +278,16 @@ async def test_list_reservations_pagination(rest_client, create_sample_book):
 
 @pytest.mark.asyncio
 async def test_list_reservations_sort_by_due_date(rest_client, create_sample_book):
-    user_id = str(uuid.uuid4())
     book1 = await create_sample_book(isbn="9780000600001", total_copies=5)
     book2 = await create_sample_book(isbn="9780000600002", total_copies=5)
 
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book1["id"]]},
+        json={"book_ids": [book1["id"]]},
     )
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book2["id"]]},
+        json={"book_ids": [book2["id"]]},
     )
 
     resp = await rest_client.get(

@@ -1,14 +1,11 @@
 """System tests for complete end-to-end library workflows."""
 
-import uuid
-
 import pytest
 
 
 @pytest.mark.asyncio
 async def test_complete_library_workflow(rest_client, create_sample_book):
     """Full workflow: create -> list -> reserve -> check availability -> return -> verify."""
-    user_id = str(uuid.uuid4())
     book1 = await create_sample_book(isbn="9780000900001", total_copies=2)
     await create_sample_book(isbn="9780000900002", total_copies=3)
 
@@ -17,7 +14,7 @@ async def test_complete_library_workflow(rest_client, create_sample_book):
 
     reserve_resp = await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book1["id"]]},
+        json={"book_ids": [book1["id"]]},
     )
     assert reserve_resp.status_code == 201
     reservation = reserve_resp.json()[0]
@@ -42,13 +39,11 @@ async def test_complete_library_workflow(rest_client, create_sample_book):
 @pytest.mark.asyncio
 async def test_reserve_last_copy_then_fail(rest_client, create_sample_book):
     """Reserve the last copy, then verify a second attempt fails."""
-    user_id1 = str(uuid.uuid4())
-    user_id2 = str(uuid.uuid4())
     book = await create_sample_book(isbn="9780000900003", total_copies=1)
 
     resp = await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id1, "book_ids": [book["id"]]},
+        json={"book_ids": [book["id"]]},
     )
     assert resp.status_code == 201
 
@@ -57,6 +52,6 @@ async def test_reserve_last_copy_then_fail(rest_client, create_sample_book):
 
     resp2 = await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id2, "book_ids": [book["id"]]},
+        json={"book_ids": [book["id"]]},
     )
     assert resp2.status_code == 409

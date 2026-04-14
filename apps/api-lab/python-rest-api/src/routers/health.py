@@ -1,10 +1,12 @@
 import os
 import platform
 
+from auth.dependencies import require_roles
+from auth.models import AuthenticatedUser
 from cache.redis_cache import RedisCache
 from config import app_config
 from database.engine import async_session_factory
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from generated.models import HealthResponse, InfoResponse
 from sqlalchemy import text
 
@@ -29,8 +31,8 @@ async def ready():
     try:
         async with async_session_factory() as session:
             await session.execute(text("SELECT 1"))
-    except Exception as e:
-        errors.append(f"postgres: {e}")
+    except Exception:
+        errors.append("postgres: unavailable")
 
     if _cache:
         healthy = await _cache.health_check()
@@ -46,7 +48,9 @@ async def ready():
 
 
 @router.get("/info", response_model=InfoResponse)
-async def info():
+async def info(
+    _admin: AuthenticatedUser = Depends(require_roles("admin")),  # noqa: B008
+):
     return InfoResponse(
         hostname=os.environ.get("HOSTNAME", platform.node()),
         app_version=app_config.app_version,

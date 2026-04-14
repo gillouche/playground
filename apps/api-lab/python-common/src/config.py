@@ -1,3 +1,5 @@
+from urllib.parse import quote_plus
+
 from pydantic_settings import BaseSettings
 
 
@@ -12,7 +14,8 @@ class PostgresConfig(BaseSettings):
 
     @property
     def url(self) -> str:
-        return f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
+        encoded_password = quote_plus(self.password)
+        return f"postgresql+asyncpg://{self.user}:{encoded_password}@{self.host}:{self.port}/{self.database}"
 
 
 class RedisConfig(BaseSettings):
@@ -35,6 +38,33 @@ class GrpcConfig(BaseSettings):
     model_config = {"env_prefix": "GRPC_"}
 
 
+class KeycloakConfig(BaseSettings):
+    server_url: str = "http://localhost:8180"
+    realm: str = "api-lab"
+    client_id: str = "api-lab"
+    client_secret: str = "api-lab-secret"
+    auth_service_client_id: str = "api-lab-auth-service"
+    auth_service_client_secret: str = "api-lab-auth-service-secret"
+
+    model_config = {"env_prefix": "KEYCLOAK_"}
+
+    @property
+    def issuer_url(self) -> str:
+        return f"{self.server_url}/realms/{self.realm}"
+
+    @property
+    def jwks_url(self) -> str:
+        return f"{self.issuer_url}/protocol/openid-connect/certs"
+
+    @property
+    def token_url(self) -> str:
+        return f"{self.issuer_url}/protocol/openid-connect/token"
+
+    @property
+    def admin_url(self) -> str:
+        return f"{self.server_url}/admin/realms/{self.realm}"
+
+
 class AppConfig(BaseSettings):
     environment: str = "local"
     app: str = "api-lab"
@@ -53,4 +83,5 @@ class AppConfig(BaseSettings):
 postgres_config = PostgresConfig()
 redis_config = RedisConfig()
 grpc_config = GrpcConfig()
+keycloak_config = KeycloakConfig()
 app_config = AppConfig()

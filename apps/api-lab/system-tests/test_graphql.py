@@ -268,9 +268,7 @@ async def test_return_reservation(graphql_client):
 
 @pytest.mark.asyncio
 async def test_query_reservations_with_filters(graphql_client):
-    alice = str(uuid.uuid4())
-    bob = str(uuid.uuid4())
-    create_result = await graphql_query(
+    book1_result = await graphql_query(
         graphql_client,
         """
         mutation {
@@ -285,13 +283,31 @@ async def test_query_reservations_with_filters(graphql_client):
         }
         """,
     )
-    book_id = create_result["data"]["createBook"]["id"]
+    book1_id = book1_result["data"]["createBook"]["id"]
 
+    book2_result = await graphql_query(
+        graphql_client,
+        """
+        mutation {
+            createBook(
+                isbn: "9780000700072"
+                title: "Filter Test 2"
+                author: "Author"
+                genre: "Fiction"
+                publishedYear: 2024
+                totalCopies: 5
+            ) { id }
+        }
+        """,
+    )
+    book2_id = book2_result["data"]["createBook"]["id"]
+
+    dummy_user = str(uuid.uuid4())
     await graphql_query(
         graphql_client,
         f"""
         mutation {{
-            reserveBooks(userId: "{alice}", bookIds: ["{book_id}"]) {{ id }}
+            reserveBooks(userId: "{dummy_user}", bookIds: ["{book1_id}"]) {{ id }}
         }}
         """,
     )
@@ -299,7 +315,7 @@ async def test_query_reservations_with_filters(graphql_client):
         graphql_client,
         f"""
         mutation {{
-            reserveBooks(userId: "{bob}", bookIds: ["{book_id}"]) {{ id }}
+            reserveBooks(userId: "{dummy_user}", bookIds: ["{book2_id}"]) {{ id }}
         }}
         """,
     )
@@ -308,7 +324,7 @@ async def test_query_reservations_with_filters(graphql_client):
         graphql_client,
         f"""
         {{
-            reservations(userId: "{alice}") {{
+            reservations(bookId: "{book1_id}") {{
                 items {{ id userId status }}
                 hasMore
             }}
@@ -316,4 +332,4 @@ async def test_query_reservations_with_filters(graphql_client):
         """,
     )
     assert len(result["data"]["reservations"]["items"]) == 1
-    assert result["data"]["reservations"]["items"][0]["userId"] == alice
+    assert result["data"]["reservations"]["items"][0]["status"] == "ACTIVE"

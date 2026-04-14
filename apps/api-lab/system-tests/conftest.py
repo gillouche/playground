@@ -1,10 +1,3 @@
-"""Shared fixtures for api-lab system tests.
-
-These tests run against real running services with real PostgreSQL and Redis.
-They skip automatically if services are not reachable.
-Database schema is managed by the database migration project.
-"""
-
 import os
 import uuid
 
@@ -17,10 +10,10 @@ import redis.asyncio as aioredis
 from library.v1 import library_pb2_grpc
 from migrate import migrate as run_migrations
 
-# Configuration via environment variables
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8080")
 GRAPHQL_BASE_URL = os.environ.get("GRAPHQL_BASE_URL", "http://localhost:8083")
 GRPC_HOST = os.environ.get("GRPC_HOST", "localhost:50051")
+AUTH_API_URL = os.environ.get("AUTH_API_URL", "http://localhost:8084")
 
 POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "localhost")
 POSTGRES_PORT = int(os.environ.get("POSTGRES_PORT", "5432"))
@@ -67,7 +60,6 @@ async def _db_connect():
 
 @pytest_asyncio.fixture(autouse=True)
 async def ensure_and_clean():
-    """Check services are reachable (once), then clean DB and Redis."""
     global _services_checked, _services_available  # noqa: PLW0603
 
     if not _services_checked:
@@ -86,13 +78,11 @@ async def ensure_and_clean():
                 missing.append(f"gRPC ({GRPC_HOST})")
             pytest.skip(f"Services not reachable: {', '.join(missing)}")
 
-        # Apply database migrations (idempotent, only on first run)
         await run_migrations()
 
     if not _services_available:
         pytest.skip("Services not reachable")
 
-    # Flush Redis cache first so services don't serve stale data
     redis_client = aioredis.Redis(
         host=REDIS_HOST,
         port=REDIS_PORT,
@@ -104,7 +94,6 @@ async def ensure_and_clean():
     finally:
         await redis_client.aclose()
 
-    # Clean data: DELETE in FK order (no TRUNCATE to keep SQLAlchemy sessions valid)
     conn = await _db_connect()
     try:
         await conn.execute("DELETE FROM reservations")
@@ -116,30 +105,54 @@ async def ensure_and_clean():
 
 
 @pytest_asyncio.fixture
-async def rest_client():
-    """HTTP client for the REST API."""
-    async with httpx.AsyncClient(base_url=API_BASE_URL, timeout=10.0) as client:
+async def rest_client(admin_token):
+    async with httpx.AsyncClient(
+        base_url=API_BASE_URL,
+        timeout=10.0,
+        headers={"Authorization": f"Bearer {admin_token}"},
+    ) as client:
         yield client
 
 
 @pytest_asyncio.fixture
-async def graphql_client():
-    """HTTP client for the GraphQL gateway."""
-    async with httpx.AsyncClient(base_url=GRAPHQL_BASE_URL, timeout=10.0) as client:
+async def graphql_client(admin_token):
+    async with httpx.AsyncClient(
+        base_url=GRAPHQL_BASE_URL,
+        timeout=10.0,
+        headers={"Authorization": f"Bearer {admin_token}"},
+    ) as client:
         yield client
 
 
+class _AuthInterceptor(grpc.aio.UnaryUnaryClientInterceptor):
+    def __init__(self, token: str):
+        self._metadata = [("authorization", f"Bearer {token}")]
+
+    async def intercept_unary_unary(self, continuation, client_call_details, request):
+        metadata = list(client_call_details.metadata or []) + self._metadata
+        new_details = grpc.aio.ClientCallDetails(
+            client_call_details.method,
+            client_call_details.timeout,
+            metadata,
+            client_call_details.credentials,
+            client_call_details.wait_for_ready,
+        )
+        return await continuation(new_details, request)
+
+
 @pytest_asyncio.fixture
-async def grpc_channel():
-    """gRPC async channel."""
-    channel = grpc.aio.insecure_channel(GRPC_HOST)
+async def grpc_channel(admin_token):
+    channel = grpc.aio.insecure_channel(
+        GRPC_HOST,
+        interceptors=[_AuthInterceptor(admin_token)],
+    )
     yield channel
     await channel.close()
 
 
 def _sample_book_data(isbn: str | None = None) -> dict:
     return {
-        "isbn": isbn or f"978{uuid.uuid4().hex[:10]}",
+        "isbn": isbn or f"978{uuid.uuid4().int % 10**10:010d}",
         "title": "Test Book",
         "author": "Test Author",
         "genre": "Fiction",
@@ -150,8 +163,6 @@ def _sample_book_data(isbn: str | None = None) -> dict:
 
 @pytest_asyncio.fixture
 async def create_sample_book(rest_client):
-    """Helper fixture that creates a book via REST and returns the response JSON."""
-
     async def _create(isbn: str | None = None, **overrides) -> dict:
         data = _sample_book_data(isbn)
         data.update(overrides)
@@ -168,6 +179,68 @@ async def grpc_stub(grpc_channel):
 
 
 async def graphql_query(client, query: str, variables: dict | None = None):
-    """Execute a GraphQL query/mutation and return the parsed JSON response."""
     resp = await client.post("/graphql", json={"query": query, "variables": variables})
     return resp.json()
+
+
+@pytest_asyncio.fixture
+async def auth_client():
+    async with httpx.AsyncClient(base_url=AUTH_API_URL, timeout=10.0) as client:
+        yield client
+
+
+@pytest_asyncio.fixture
+async def registered_user(auth_client):
+    username = f"testuser-{uuid.uuid4().hex[:8]}"
+    resp = await auth_client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": username,
+            "email": f"{username}@test.local",
+            "password": "testpass123",
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    yield {"username": username, "password": "testpass123", "user_id": data["user_id"]}
+
+
+@pytest_asyncio.fixture
+async def user_token(auth_client, registered_user):
+    resp = await auth_client.post(
+        "/api/v1/auth/login",
+        json={
+            "username": registered_user["username"],
+            "password": registered_user["password"],
+        },
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    yield data["access_token"]
+
+
+@pytest_asyncio.fixture
+async def admin_token():
+    async with httpx.AsyncClient(base_url=AUTH_API_URL, timeout=10.0) as client:
+        resp = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "admin-user",
+                "password": "admin",
+            },
+        )
+        if resp.status_code == 200:
+            return resp.json()["access_token"]
+    keycloak_url = os.environ.get("KEYCLOAK_SERVER_URL", "http://localhost:8180")
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(
+            f"{keycloak_url}/realms/api-lab/protocol/openid-connect/token",
+            data={
+                "grant_type": "password",
+                "client_id": "api-lab",
+                "client_secret": "api-lab-secret",
+                "username": "admin-user",
+                "password": "admin",
+            },
+        )
+        return resp.json()["access_token"]

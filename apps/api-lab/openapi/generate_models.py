@@ -72,23 +72,111 @@ def _is_enum(schema: dict) -> bool:
     return "enum" in schema
 
 
-def _generate_models(spec: dict) -> str:
+def _has_constraints(prop: dict) -> bool:
+    constraint_keys = {
+        "minLength",
+        "maxLength",
+        "pattern",
+        "minimum",
+        "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
+        "minItems",
+        "maxItems",
+    }
+    return bool(constraint_keys & prop.keys())
+
+
+def _has_literal_enum(prop: dict) -> bool:
+    return "enum" in prop and prop.get("type") == "string"
+
+
+def _needs_field_import(schemas: dict) -> bool:
+    for _name, schema in schemas.items():
+        for _pname, prop in schema.get("properties", {}).items():
+            if _has_constraints(prop):
+                return True
+    return False
+
+
+def _needs_literal_import(schemas: dict) -> bool:
+    for _name, schema in schemas.items():
+        for _pname, prop in schema.get("properties", {}).items():
+            if _has_literal_enum(prop):
+                return True
+    return False
+
+
+_CONSTRAINT_MAP = {
+    "minLength": "min_length",
+    "maxLength": "max_length",
+    "pattern": "pattern",
+    "minimum": "ge",
+    "maximum": "le",
+    "exclusiveMinimum": "gt",
+    "exclusiveMaximum": "lt",
+    "minItems": "min_length",
+    "maxItems": "max_length",
+}
+
+
+def _build_field_kwargs(prop: dict) -> dict[str, object]:
+    kwargs: dict[str, object] = {}
+    for oa_key, pydantic_key in _CONSTRAINT_MAP.items():
+        if oa_key in prop:
+            val = prop[oa_key]
+            if oa_key == "pattern":
+                val = f'r"{val}"'
+            kwargs[pydantic_key] = val
+    return kwargs
+
+
+def _format_field_call(kwargs: dict[str, object], default: object = ...) -> str:
+    parts = []
+    if default is not ...:
+        if default is None:
+            parts.append("default=None")
+        elif isinstance(default, str | bool):
+            parts.append(f"default={default!r}")
+        else:
+            parts.append(f"default={default}")
+    for key, val in kwargs.items():
+        parts.append(f"{key}={val}")
+    return f"Field({', '.join(parts)})"
+
+
+def _generate_models(spec: dict) -> str:  # noqa: PLR0912
     """Generate Pydantic model classes from OpenAPI schemas."""
     schemas = spec.get("components", {}).get("schemas", {})
 
+    needs_field = _needs_field_import(schemas)
+    needs_literal = _needs_literal_import(schemas)
+
+    pydantic_imports = ["BaseModel"]
+    if needs_field:
+        pydantic_imports.append("Field")
+
+    typing_imports = []
+    if needs_literal:
+        typing_imports.append("Literal")
+
     lines = [
-        "# Generated from openapi.yaml — DO NOT EDIT MANUALLY",
-        "# Regenerated automatically by Bazel at build time.",
+        "# Generated from openapi.yaml - DO NOT EDIT MANUALLY",
+        "# Run: ./apps/api-lab/openapi/generate.sh python",
         "",
         "import uuid",
         "from datetime import datetime",
         "from enum import Enum",
-        "",
-        "from pydantic import BaseModel",
-        "",
     ]
 
-    # Collect enums, base schemas, and derived schemas
+    if typing_imports:
+        lines.append(f"from typing import {', '.join(typing_imports)}")
+
+    lines.append("")
+    lines.append(f"from pydantic import {', '.join(pydantic_imports)}")
+    lines.append("")
+    lines.append("")
+
     enums: list[tuple[str, dict]] = []
     bases: list[tuple[str, dict]] = []
     derived: list[tuple[str, dict]] = []
@@ -107,19 +195,13 @@ def _generate_models(spec: dict) -> str:
             enum_types[name] = schema["enum"]
     lines.extend(_generate_enum_lines(enum_types))
 
-    lines.append("# " + "-" * 75)
-    lines.append("# Core schemas")
-    lines.append("# " + "-" * 75)
-    lines.append("")
+    all_models = []
 
-    # Generate base model classes
     for name, schema in bases:
         if name in enum_types:
             continue
-        lines.extend(_generate_model_class(name, schema, spec, None, enum_types))
-        lines.append("")
+        all_models.append(_generate_model_class(name, schema, spec, None, enum_types))
 
-    # Generate derived model classes (allOf)
     for name, schema in derived:
         parent_name = None
         extra_props = {}
@@ -130,58 +212,24 @@ def _generate_models(spec: dict) -> str:
             elif "properties" in item:
                 extra_props = item.get("properties", {})
 
-        lines.extend(
+        all_models.append(
             _generate_model_class(name, {"properties": extra_props}, spec, parent_name, enum_types)
         )
+
+    for i, model_lines in enumerate(all_models):
+        if i > 0:
+            lines.append("")
+        lines.extend(model_lines)
         lines.append("")
 
-    lines.extend(_generate_query_models())
-
     return "\n".join(lines)
-
-
-def _generate_query_models() -> list[str]:
-    """Generate query parameter models for list endpoints."""
-    return [
-        "",
-        "# " + "-" * 75,
-        "# Query parameter models",
-        "# " + "-" * 75,
-        "",
-        "",
-        "class ListBooksQuery(BaseModel):",
-        "    available_only: bool = False",
-        "    genre: str | None = None",
-        "    author: str | None = None",
-        "    search: str | None = None",
-        "    limit: int = 20",
-        "    continuation_token: str | None = None",
-        '    sort_by: str = "created_at"',
-        '    sort_order: str = "asc"',
-        "",
-        "",
-        "class ListReservationsQuery(BaseModel):",
-        "    user_id: uuid.UUID | None = None",
-        "    status: str | None = None",
-        "    book_id: uuid.UUID | None = None",
-        "    limit: int = 20",
-        "    continuation_token: str | None = None",
-        '    sort_by: str = "reserved_at"',
-        '    sort_order: str = "desc"',
-        "",
-    ]
 
 
 def _generate_enum_lines(enum_types: dict[str, list[str]]) -> list[str]:
     """Generate enum class definitions."""
     if not enum_types:
         return []
-    lines = [
-        "# " + "-" * 75,
-        "# Enums",
-        "# " + "-" * 75,
-        "",
-    ]
+    lines: list[str] = []
     for enum_name, enum_values in enum_types.items():
         lines.append(f"class {enum_name}(str, Enum):")
         for val in enum_values:
@@ -202,7 +250,8 @@ def _find_enum_types(schemas: dict) -> dict[str, list[str]]:
     for _name, schema in schemas.items():
         for _prop_name, prop in schema.get("properties", {}).items():
             if "enum" in prop:
-                # Derive enum class name from the property context
+                if _has_literal_enum(prop):
+                    continue
                 enum_name = _derive_enum_name(_name, _prop_name)
                 enums[enum_name] = prop["enum"]
     return enums
@@ -221,13 +270,19 @@ class _ModelGenContext:
     model_name: str
 
 
-def _generate_property_line(
+def _generate_property_line(  # noqa: PLR0912
     prop_name: str, prop_schema: dict, is_required: bool, ctx: _ModelGenContext
 ) -> str:
     """Generate a single property line for a Pydantic model class."""
     is_nullable = isinstance(prop_schema.get("type"), list) and "null" in prop_schema["type"]
+    constraints = _build_field_kwargs(prop_schema)
+    has_literal = _has_literal_enum(prop_schema)
 
-    if ctx.enum_types and "enum" in prop_schema:
+    if has_literal:
+        enum_vals = prop_schema["enum"]
+        literal_args = ", ".join(f'"{v}"' for v in enum_vals)
+        py_type = f"Literal[{literal_args}]"
+    elif ctx.enum_types and "enum" in prop_schema:
         enum_name = _derive_enum_name(ctx.model_name, prop_name)
         if enum_name in ctx.enum_types:
             py_type = enum_name
@@ -239,6 +294,22 @@ def _generate_property_line(
         py_type = _python_type(prop_schema, ctx.spec, nullable=is_nullable)
 
     default_val = prop_schema.get("default")
+
+    if has_literal and default_val is not None:
+        return f'    {prop_name}: {py_type} = "{default_val}"'
+
+    if constraints:
+        if default_val is not None:
+            field_str = _format_field_call(constraints, default=default_val)
+        elif not is_required and not is_nullable:
+            py_type = f"{py_type} | None"
+            field_str = _format_field_call(constraints, default=None)
+        elif is_nullable and not is_required:
+            field_str = _format_field_call(constraints, default=None)
+        else:
+            field_str = _format_field_call(constraints)
+        return f"    {prop_name}: {py_type} = {field_str}"
+
     if default_val is not None:
         return f"    {prop_name}: {py_type} = {default_val!r}"
     if not is_required and not is_nullable:

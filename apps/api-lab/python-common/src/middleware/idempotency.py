@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
@@ -8,15 +9,27 @@ from starlette.responses import Response
 logger = logging.getLogger("api-lab.idempotency")
 
 DEFAULT_TTL = 86400
+_UUID_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
+)
 
 
 class IdempotencyMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, redis_client, ttl: int = DEFAULT_TTL):
+    def __init__(self, app, redis_client=None, redis_client_ref=None, ttl: int = DEFAULT_TTL):
         super().__init__(app)
-        self.redis_client = redis_client
+        self._redis_client = redis_client
+        self._redis_client_ref = redis_client_ref
         self.ttl = ttl
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+    @property
+    def redis_client(self):
+        if self._redis_client is not None:
+            return self._redis_client
+        if self._redis_client_ref:
+            return self._redis_client_ref[0]
+        return None
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:  # noqa: PLR0911
         if request.method != "POST":
             return await call_next(request)
 
@@ -24,7 +37,18 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         if not idempotency_key:
             return await call_next(request)
 
-        cache_key = f"idempotency:{idempotency_key}"
+        if self.redis_client is None:
+            return await call_next(request)
+
+        if not _UUID_PATTERN.match(idempotency_key):
+            from starlette.responses import JSONResponse
+
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Idempotency-Key must be a valid UUID"},
+            )
+
+        cache_key = f"idempotency:{request.method}:{request.url.path}:{idempotency_key}"
 
         try:
             cached = await self.redis_client.get(cache_key)

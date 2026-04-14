@@ -14,3 +14,6 @@ data:
   GIT_COMMIT: local
   LOG_LEVEL: DEBUG
   REST_API_URL: http://python-api:8080
+  KEYCLOAK_SERVER_URL: http://keycloak.playground-infra-sandbox.svc.cluster.local:8080
+  KEYCLOAK_REALM: api-lab
+  KEYCLOAK_CLIENT_ID: api-lab

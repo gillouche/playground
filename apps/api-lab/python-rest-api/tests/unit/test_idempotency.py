@@ -48,18 +48,29 @@ class TestIdempotencyMiddleware:
         assert response.json() == {"status": "created"}
         redis_client.get.assert_not_called()
 
+    def test_rejects_non_uuid_idempotency_key(self):
+        redis_client = AsyncMock()
+        client = TestClient(create_app(redis_client))
+
+        response = client.post("/test", headers={"Idempotency-Key": "not-a-uuid"})
+
+        assert response.status_code == 400
+        assert response.json() == {"detail": "Idempotency-Key must be a valid UUID"}
+        redis_client.get.assert_not_called()
+
     def test_stores_response_for_new_key(self):
         redis_client = AsyncMock()
         redis_client.get = AsyncMock(return_value=None)
         redis_client.set = AsyncMock()
         client = TestClient(create_app(redis_client))
+        key = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
-        response = client.post("/test", headers={"Idempotency-Key": "key-123"})
+        response = client.post("/test", headers={"Idempotency-Key": key})
 
         assert response.status_code == 200
         redis_client.set.assert_called_once()
         call_args = redis_client.set.call_args
-        assert call_args[0][0] == "idempotency:key-123"
+        assert call_args[0][0] == f"idempotency:POST:/test:{key}"
         cached_data = json.loads(call_args[0][1])
         assert cached_data["status_code"] == 200
         assert "created" in cached_data["body"]
@@ -76,7 +87,10 @@ class TestIdempotencyMiddleware:
         redis_client.get = AsyncMock(return_value=cached)
         client = TestClient(create_app(redis_client))
 
-        response = client.post("/test", headers={"Idempotency-Key": "key-123"})
+        response = client.post(
+            "/test",
+            headers={"Idempotency-Key": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"},
+        )
 
         assert response.status_code == 200
         assert response.json() == {"status": "created"}
@@ -93,7 +107,10 @@ class TestIdempotencyMiddleware:
         redis_client.get = AsyncMock(return_value=cached)
         client = TestClient(create_app(redis_client))
 
-        response = client.post("/test", headers={"Idempotency-Key": "key-456"})
+        response = client.post(
+            "/test",
+            headers={"Idempotency-Key": "b2c3d4e5-f6a7-8901-bcde-f12345678901"},
+        )
 
         assert response.status_code == 422
         assert response.json() == {"detail": "validation error"}
@@ -103,7 +120,10 @@ class TestIdempotencyMiddleware:
         redis_client.get = AsyncMock(side_effect=ConnectionError("Redis down"))
         client = TestClient(create_app(redis_client))
 
-        response = client.post("/test", headers={"Idempotency-Key": "key-789"})
+        response = client.post(
+            "/test",
+            headers={"Idempotency-Key": "c3d4e5f6-a7b8-9012-cdef-123456789012"},
+        )
 
         assert response.status_code == 200
         assert response.json() == {"status": "created"}
@@ -114,7 +134,10 @@ class TestIdempotencyMiddleware:
         redis_client.set = AsyncMock(side_effect=ConnectionError("Redis down"))
         client = TestClient(create_app(redis_client))
 
-        response = client.post("/test", headers={"Idempotency-Key": "key-abc"})
+        response = client.post(
+            "/test",
+            headers={"Idempotency-Key": "d4e5f6a7-b8c9-0123-defa-234567890123"},
+        )
 
         assert response.status_code == 200
         assert response.json() == {"status": "created"}
@@ -125,7 +148,10 @@ class TestIdempotencyMiddleware:
         redis_client.set = AsyncMock()
         client = TestClient(create_app(redis_client, ttl=3600))
 
-        client.post("/test", headers={"Idempotency-Key": "key-ttl"})
+        client.post(
+            "/test",
+            headers={"Idempotency-Key": "e5f6a7b8-c9d0-1234-efab-345678901234"},
+        )
 
         call_args = redis_client.set.call_args
         assert call_args.kwargs["ex"] == 3600

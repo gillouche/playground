@@ -126,7 +126,7 @@ class TestListBooks:
         lib, mock_http = connected_client
         mock_http.get.return_value = _make_response(200, PAGINATED_BOOKS_RESPONSE)
         result = await lib.list_books()
-        mock_http.get.assert_awaited_once_with("/api/v1/books", params={})
+        mock_http.get.assert_awaited_once_with("/api/v1/books", params={}, headers={})
         assert result["items"] == [SAMPLE_BOOK]
         assert result["has_more"] is False
 
@@ -148,6 +148,7 @@ class TestListBooks:
                 "author": "Thomas",
                 "search": "pragmatic",
             },
+            headers={},
         )
         assert result["items"] == []
 
@@ -156,7 +157,9 @@ class TestListBooks:
         lib, mock_http = connected_client
         mock_http.get.return_value = _make_response(200, PAGINATED_BOOKS_RESPONSE)
         await lib.list_books(ListBooksParams(available_only=True))
-        mock_http.get.assert_awaited_once_with("/api/v1/books", params={"available_only": "true"})
+        mock_http.get.assert_awaited_once_with(
+            "/api/v1/books", params={"available_only": "true"}, headers={}
+        )
 
     @pytest.mark.asyncio
     async def test_list_books_raises_on_server_error(self, connected_client):
@@ -180,6 +183,7 @@ class TestListBooks:
         mock_http.get.assert_awaited_once_with(
             "/api/v1/books",
             params={"limit": "10", "continuation_token": "prev"},
+            headers={},
         )
         assert result["continuation_token"] == "next"
         assert result["has_more"] is True
@@ -192,6 +196,7 @@ class TestListBooks:
         mock_http.get.assert_awaited_once_with(
             "/api/v1/books",
             params={"sort_by": "title", "sort_order": "desc"},
+            headers={},
         )
 
 
@@ -201,7 +206,7 @@ class TestGetBook:
         lib, mock_http = connected_client
         mock_http.get.return_value = _make_response(200, SAMPLE_BOOK)
         result = await lib.get_book(BOOK_ID)
-        mock_http.get.assert_awaited_once_with(f"/api/v1/books/{BOOK_ID}")
+        mock_http.get.assert_awaited_once_with(f"/api/v1/books/{BOOK_ID}", headers={})
         assert result == SAMPLE_BOOK
 
     @pytest.mark.asyncio
@@ -233,7 +238,7 @@ class TestCreateBook:
             "total_copies": 5,
         }
         result = await lib.create_book(data)
-        mock_http.post.assert_awaited_once_with("/api/v1/books", json=data)
+        mock_http.post.assert_awaited_once_with("/api/v1/books", json=data, headers={})
         assert result == SAMPLE_BOOK
 
     @pytest.mark.asyncio
@@ -252,7 +257,7 @@ class TestUpdateBook:
         mock_http.put.return_value = _make_response(200, updated)
         result = await lib.update_book(BOOK_ID, {"title": "Updated Title"})
         mock_http.put.assert_awaited_once_with(
-            f"/api/v1/books/{BOOK_ID}", json={"title": "Updated Title"}
+            f"/api/v1/books/{BOOK_ID}", json={"title": "Updated Title"}, headers={}
         )
         assert result == updated
 
@@ -277,7 +282,7 @@ class TestDeleteBook:
         lib, mock_http = connected_client
         mock_http.delete.return_value = _make_response(204)
         result = await lib.delete_book(BOOK_ID)
-        mock_http.delete.assert_awaited_once_with(f"/api/v1/books/{BOOK_ID}")
+        mock_http.delete.assert_awaited_once_with(f"/api/v1/books/{BOOK_ID}", headers={})
         assert result is True
 
     @pytest.mark.asyncio
@@ -297,6 +302,7 @@ class TestReserveBooks:
         mock_http.post.assert_awaited_once_with(
             "/api/v1/reservations",
             json={"user_id": str(USER_ID), "book_ids": [str(BOOK_ID)]},
+            headers={},
         )
         assert result == [SAMPLE_RESERVATION]
 
@@ -322,6 +328,7 @@ class TestUpdateReservation:
         mock_http.patch.assert_awaited_once_with(
             f"/api/v1/reservations/{RESERVATION_ID}",
             json={"status": "RETURNED"},
+            headers={},
         )
         assert result == returned
 
@@ -346,7 +353,7 @@ class TestListReservations:
         lib, mock_http = connected_client
         mock_http.get.return_value = _make_response(200, PAGINATED_RESERVATIONS_RESPONSE)
         result = await lib.list_reservations()
-        mock_http.get.assert_awaited_once_with("/api/v1/reservations", params={})
+        mock_http.get.assert_awaited_once_with("/api/v1/reservations", params={}, headers={})
         assert result["items"] == [SAMPLE_RESERVATION]
         assert result["has_more"] is False
 
@@ -365,6 +372,7 @@ class TestListReservations:
                 "status": "ACTIVE",
                 "book_id": str(BOOK_ID),
             },
+            headers={},
         )
         assert result["items"] == []
 
@@ -386,6 +394,7 @@ class TestListReservations:
         mock_http.get.assert_awaited_once_with(
             "/api/v1/reservations",
             params={"limit": "5", "continuation_token": "prev"},
+            headers={},
         )
         assert result["continuation_token"] == "next"
         assert result["has_more"] is True
@@ -397,7 +406,7 @@ class TestGetReservation:
         lib, mock_http = connected_client
         mock_http.get.return_value = _make_response(200, SAMPLE_RESERVATION)
         result = await lib.get_reservation(RESERVATION_ID)
-        mock_http.get.assert_awaited_once_with(f"/api/v1/reservations/{RESERVATION_ID}")
+        mock_http.get.assert_awaited_once_with(f"/api/v1/reservations/{RESERVATION_ID}", headers={})
         assert result == SAMPLE_RESERVATION
 
     @pytest.mark.asyncio

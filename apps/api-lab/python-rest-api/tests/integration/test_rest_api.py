@@ -2,6 +2,8 @@ import uuid
 from unittest.mock import AsyncMock
 
 import pytest
+from auth import dependencies as auth_deps
+from auth.models import AuthenticatedUser
 from generated.models import ListBooksQuery, ListReservationsQuery
 from httpx import ASGITransport, AsyncClient
 
@@ -62,14 +64,51 @@ def mock_book_service():
 
 
 @pytest.fixture
-def client_with_service(mock_book_service):
+def admin_user():
+    return AuthenticatedUser(sub=uuid.uuid4(), username="admin", roles=["admin", "user"])
+
+
+@pytest.fixture
+def regular_user():
+    return AuthenticatedUser(sub=uuid.uuid4(), username="patron", roles=["user"])
+
+
+@pytest.fixture
+def client_with_auth(mock_book_service, admin_user):
     from main import app
     from routers import rest as rest_module
 
     original = rest_module._book_service
     rest_module._book_service = mock_book_service
-    yield app, mock_book_service
+
+    async def mock_get_user():
+        return admin_user
+
+    app.dependency_overrides[auth_deps.get_current_user] = mock_get_user
+
+    yield app, mock_book_service, admin_user
+
     rest_module._book_service = original
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client_with_regular_user(mock_book_service, regular_user):
+    from main import app
+    from routers import rest as rest_module
+
+    original = rest_module._book_service
+    rest_module._book_service = mock_book_service
+
+    async def mock_get_user():
+        return regular_user
+
+    app.dependency_overrides[auth_deps.get_current_user] = mock_get_user
+
+    yield app, mock_book_service, regular_user
+
+    rest_module._book_service = original
+    app.dependency_overrides.clear()
 
 
 class TestHealthEndpoints:
@@ -81,22 +120,31 @@ class TestHealthEndpoints:
             assert response.status_code == 200
             assert response.json()["status"] == "ok"
 
-    async def test_info(self):
+    async def test_info(self, admin_user):
         from main import app
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.get("/info")
-            assert response.status_code == 200
-            data = response.json()
-            assert "hostname" in data
-            assert "environment" in data
+        async def mock_get_user():
+            return admin_user
+
+        app.dependency_overrides[auth_deps.get_current_user] = mock_get_user
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get("/info")
+                assert response.status_code == 200
+                data = response.json()
+                assert "hostname" in data
+                assert "environment" in data
+        finally:
+            app.dependency_overrides.clear()
 
 
 class TestListBooks:
-    async def test_list_books_empty(self, client_with_service):
+    async def test_list_books_empty(self, client_with_auth):
         from generated.models import PaginatedBooks
 
-        app, service = client_with_service
+        app, service, _user = client_with_auth
         service.list_books.return_value = PaginatedBooks(
             items=[], continuation_token=None, has_more=False
         )
@@ -109,10 +157,10 @@ class TestListBooks:
             assert data["continuation_token"] is None
             assert data["has_more"] is False
 
-    async def test_list_books_with_results(self, client_with_service):
+    async def test_list_books_with_results(self, client_with_auth):
         from generated.models import PaginatedBooks
 
-        app, service = client_with_service
+        app, service, _user = client_with_auth
         book = _make_book()
         service.list_books.return_value = PaginatedBooks(
             items=[book], continuation_token=None, has_more=False
@@ -125,10 +173,10 @@ class TestListBooks:
             assert len(data["items"]) == 1
             assert data["items"][0]["isbn"] == "9780134685991"
 
-    async def test_list_books_with_filters(self, client_with_service):
+    async def test_list_books_with_filters(self, client_with_auth):
         from generated.models import PaginatedBooks
 
-        app, service = client_with_service
+        app, service, _user = client_with_auth
         service.list_books.return_value = PaginatedBooks(
             items=[], continuation_token=None, has_more=False
         )
@@ -152,10 +200,10 @@ class TestListBooks:
                 )
             )
 
-    async def test_list_books_with_pagination(self, client_with_service):
+    async def test_list_books_with_pagination(self, client_with_auth):
         from generated.models import PaginatedBooks
 
-        app, service = client_with_service
+        app, service, _user = client_with_auth
         service.list_books.return_value = PaginatedBooks(
             items=[], continuation_token="next123", has_more=True
         )
@@ -182,10 +230,10 @@ class TestListBooks:
                 )
             )
 
-    async def test_list_books_with_sorting(self, client_with_service):
+    async def test_list_books_with_sorting(self, client_with_auth):
         from generated.models import PaginatedBooks
 
-        app, service = client_with_service
+        app, service, _user = client_with_auth
         service.list_books.return_value = PaginatedBooks(
             items=[], continuation_token=None, has_more=False
         )
@@ -211,8 +259,8 @@ class TestListBooks:
 
 
 class TestGetBook:
-    async def test_get_book_found(self, client_with_service):
-        app, service = client_with_service
+    async def test_get_book_found(self, client_with_auth):
+        app, service, _user = client_with_auth
         book_id = uuid.uuid4()
         book = _make_book(id=book_id)
         service.get_book.return_value = book
@@ -223,8 +271,8 @@ class TestGetBook:
             assert response.json()["id"] == str(book_id)
             assert "ETag" in response.headers
 
-    async def test_get_book_not_found(self, client_with_service):
-        app, service = client_with_service
+    async def test_get_book_not_found(self, client_with_auth):
+        app, service, _user = client_with_auth
         service.get_book.return_value = None
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -233,8 +281,8 @@ class TestGetBook:
 
 
 class TestCreateBook:
-    async def test_create_book_success(self, client_with_service):
-        app, service = client_with_service
+    async def test_create_book_success(self, client_with_auth):
+        app, service, _user = client_with_auth
         book = _make_book()
         service.create_book.return_value = book
 
@@ -256,8 +304,8 @@ class TestCreateBook:
             assert f"/api/v1/books/{book.id}" in response.headers["Location"]
             assert "ETag" in response.headers
 
-    async def test_create_book_duplicate_isbn(self, client_with_service):
-        app, service = client_with_service
+    async def test_create_book_duplicate_isbn(self, client_with_auth):
+        app, service, _user = client_with_auth
         from services.book_service import DuplicateISBNError
 
         service.create_book.side_effect = DuplicateISBNError("9780134685991")
@@ -279,8 +327,8 @@ class TestCreateBook:
 
 
 class TestUpdateBook:
-    async def test_update_book_success(self, client_with_service):
-        app, service = client_with_service
+    async def test_update_book_success(self, client_with_auth):
+        app, service, _user = client_with_auth
         book_id = uuid.uuid4()
         book = _make_book(id=book_id, title="Updated Title", version=2)
         service.update_book.return_value = book
@@ -294,8 +342,8 @@ class TestUpdateBook:
             assert response.status_code == 200
             assert response.json()["title"] == "Updated Title"
 
-    async def test_update_book_not_found(self, client_with_service):
-        app, service = client_with_service
+    async def test_update_book_not_found(self, client_with_auth):
+        app, service, _user = client_with_auth
         service.update_book.return_value = None
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -306,8 +354,8 @@ class TestUpdateBook:
             )
             assert response.status_code == 404
 
-    async def test_update_book_duplicate_isbn(self, client_with_service):
-        app, service = client_with_service
+    async def test_update_book_duplicate_isbn(self, client_with_auth):
+        app, service, _user = client_with_auth
         from services.book_service import DuplicateISBNError
 
         service.update_book.side_effect = DuplicateISBNError("9780134685991")
@@ -320,8 +368,8 @@ class TestUpdateBook:
             )
             assert response.status_code == 409
 
-    async def test_update_book_version_mismatch(self, client_with_service):
-        app, service = client_with_service
+    async def test_update_book_version_mismatch(self, client_with_auth):
+        app, service, _user = client_with_auth
         from services.book_service import StaleVersionError
 
         service.update_book.side_effect = StaleVersionError(
@@ -336,8 +384,8 @@ class TestUpdateBook:
             )
             assert response.status_code == 412
 
-    async def test_update_book_missing_if_match(self, client_with_service):
-        app, service = client_with_service
+    async def test_update_book_missing_if_match(self, client_with_auth):
+        app, service, _user = client_with_auth
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.put(
@@ -348,24 +396,24 @@ class TestUpdateBook:
 
 
 class TestDeleteBook:
-    async def test_delete_book_success(self, client_with_service):
-        app, service = client_with_service
+    async def test_delete_book_success(self, client_with_auth):
+        app, service, _user = client_with_auth
         service.delete_book.return_value = True
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.delete(f"/api/v1/books/{uuid.uuid4()}")
             assert response.status_code == 204
 
-    async def test_delete_book_not_found(self, client_with_service):
-        app, service = client_with_service
+    async def test_delete_book_not_found(self, client_with_auth):
+        app, service, _user = client_with_auth
         service.delete_book.return_value = False
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.delete(f"/api/v1/books/{uuid.uuid4()}")
             assert response.status_code == 404
 
-    async def test_delete_book_with_active_reservations(self, client_with_service):
-        app, service = client_with_service
+    async def test_delete_book_with_active_reservations(self, client_with_auth):
+        app, service, _user = client_with_auth
         from services.book_service import ActiveReservationsError
 
         service.delete_book.side_effect = ActiveReservationsError()
@@ -377,25 +425,24 @@ class TestDeleteBook:
 
 
 class TestReservations:
-    async def test_reserve_books_success(self, client_with_service):
-        app, service = client_with_service
+    async def test_reserve_books_success(self, client_with_auth):
+        app, service, user = client_with_auth
         book_id = uuid.uuid4()
-        user_id = uuid.uuid4()
-        reservation = _make_reservation(book_id=book_id, user_id=user_id)
+        reservation = _make_reservation(book_id=book_id, user_id=user.sub)
         service.reserve_books.return_value = [reservation]
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
                 "/api/v1/reservations",
-                json={"user_id": str(user_id), "book_ids": [str(book_id)]},
+                json={"book_ids": [str(book_id)]},
             )
             assert response.status_code == 201
             data = response.json()
             assert len(data) == 1
             assert data[0]["status"] == "ACTIVE"
 
-    async def test_reserve_books_unavailable(self, client_with_service):
-        app, service = client_with_service
+    async def test_reserve_books_unavailable(self, client_with_auth):
+        app, service, _user = client_with_auth
         service.reserve_books.side_effect = ValueError(
             "Book 'Test' is not available for reservation"
         )
@@ -403,16 +450,18 @@ class TestReservations:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
                 "/api/v1/reservations",
-                json={"user_id": str(uuid.uuid4()), "book_ids": [str(uuid.uuid4())]},
+                json={"book_ids": [str(uuid.uuid4())]},
             )
             assert response.status_code == 409
             assert "not available" in response.json()["detail"]
 
-    async def test_update_reservation_success(self, client_with_service):
-        app, service = client_with_service
+    async def test_update_reservation_success(self, client_with_auth):
+        app, service, user = client_with_auth
         res_id = uuid.uuid4()
-        reservation = _make_reservation(id=res_id, status="RETURNED")
-        service.return_reservation.return_value = reservation
+        existing = _make_reservation(id=res_id, user_id=user.sub, status="ACTIVE")
+        service.get_reservation.return_value = existing
+        returned = _make_reservation(id=res_id, user_id=user.sub, status="RETURNED")
+        service.return_reservation.return_value = returned
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.patch(
@@ -422,9 +471,9 @@ class TestReservations:
             assert response.status_code == 200
             assert response.json()["status"] == "RETURNED"
 
-    async def test_update_reservation_not_found(self, client_with_service):
-        app, service = client_with_service
-        service.return_reservation.return_value = None
+    async def test_update_reservation_not_found(self, client_with_auth):
+        app, service, _user = client_with_auth
+        service.get_reservation.return_value = None
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.patch(
@@ -433,19 +482,22 @@ class TestReservations:
             )
             assert response.status_code == 404
 
-    async def test_update_reservation_already_returned(self, client_with_service):
-        app, service = client_with_service
+    async def test_update_reservation_already_returned(self, client_with_auth):
+        app, service, user = client_with_auth
+        res_id = uuid.uuid4()
+        existing = _make_reservation(id=res_id, user_id=user.sub, status="RETURNED")
+        service.get_reservation.return_value = existing
         service.return_reservation.side_effect = ValueError("Reservation is already RETURNED")
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.patch(
-                f"/api/v1/reservations/{uuid.uuid4()}",
+                f"/api/v1/reservations/{res_id}",
                 json={"status": "RETURNED"},
             )
             assert response.status_code == 409
 
-    async def test_update_reservation_invalid_status(self, client_with_service):
-        app, service = client_with_service
+    async def test_update_reservation_invalid_status(self, client_with_auth):
+        app, service, _user = client_with_auth
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.patch(
@@ -454,10 +506,10 @@ class TestReservations:
             )
             assert response.status_code == 400
 
-    async def test_list_reservations(self, client_with_service):
+    async def test_list_reservations(self, client_with_auth):
         from generated.models import PaginatedReservations
 
-        app, service = client_with_service
+        app, service, _user = client_with_auth
         reservation = _make_reservation()
         service.list_reservations.return_value = PaginatedReservations(
             items=[reservation], continuation_token=None, has_more=False
@@ -471,10 +523,10 @@ class TestReservations:
             assert data["continuation_token"] is None
             assert data["has_more"] is False
 
-    async def test_list_reservations_with_filters(self, client_with_service):
+    async def test_list_reservations_with_filters(self, client_with_auth):
         from generated.models import PaginatedReservations
 
-        app, service = client_with_service
+        app, service, _user = client_with_auth
         user_id = uuid.uuid4()
         service.list_reservations.return_value = PaginatedReservations(
             items=[], continuation_token=None, has_more=False
@@ -498,10 +550,10 @@ class TestReservations:
                 )
             )
 
-    async def test_list_reservations_with_pagination(self, client_with_service):
+    async def test_list_reservations_with_pagination(self, client_with_auth):
         from generated.models import PaginatedReservations
 
-        app, service = client_with_service
+        app, service, _user = client_with_auth
         service.list_reservations.return_value = PaginatedReservations(
             items=[], continuation_token="next456", has_more=True
         )
@@ -516,10 +568,10 @@ class TestReservations:
             assert data["continuation_token"] == "next456"
             assert data["has_more"] is True
 
-    async def test_get_reservation_found(self, client_with_service):
-        app, service = client_with_service
+    async def test_get_reservation_found(self, client_with_auth):
+        app, service, user = client_with_auth
         res_id = uuid.uuid4()
-        reservation = _make_reservation(id=res_id)
+        reservation = _make_reservation(id=res_id, user_id=user.sub)
         service.get_reservation.return_value = reservation
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -527,10 +579,81 @@ class TestReservations:
             assert response.status_code == 200
             assert response.json()["id"] == str(res_id)
 
-    async def test_get_reservation_not_found(self, client_with_service):
-        app, service = client_with_service
+    async def test_get_reservation_not_found(self, client_with_auth):
+        app, service, _user = client_with_auth
         service.get_reservation.return_value = None
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get(f"/api/v1/reservations/{uuid.uuid4()}")
             assert response.status_code == 404
+
+
+class TestAuthIntegration:
+    async def test_unauthenticated_request_returns_401(self, mock_book_service):
+        from unittest.mock import AsyncMock, MagicMock
+
+        from auth.dependencies import set_jwt_validator
+        from auth.jwt import InvalidTokenError
+        from main import app
+        from routers import rest as rest_module
+
+        mock_validator = MagicMock()
+        mock_validator.validate = AsyncMock(side_effect=InvalidTokenError("missing"))
+        set_jwt_validator(mock_validator)
+
+        original = rest_module._book_service
+        rest_module._book_service = mock_book_service
+        app.dependency_overrides.clear()
+
+        try:
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get("/api/v1/books")
+                assert response.status_code == 401
+        finally:
+            rest_module._book_service = original
+            set_jwt_validator(None)
+
+    async def test_user_cannot_create_book(self, client_with_regular_user):
+        app, service, _user = client_with_regular_user
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/api/v1/books",
+                json={
+                    "isbn": "9780134685991",
+                    "title": "Effective Java",
+                    "author": "Joshua Bloch",
+                    "genre": "Programming",
+                    "published_year": 2018,
+                    "total_copies": 5,
+                },
+            )
+            assert response.status_code == 403
+
+    async def test_user_cannot_delete_book(self, client_with_regular_user):
+        app, service, _user = client_with_regular_user
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.delete(f"/api/v1/books/{uuid.uuid4()}")
+            assert response.status_code == 403
+
+    async def test_user_can_list_books(self, client_with_regular_user):
+        from generated.models import PaginatedBooks
+
+        app, service, _user = client_with_regular_user
+        service.list_books.return_value = PaginatedBooks(
+            items=[], continuation_token=None, has_more=False
+        )
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/api/v1/books")
+            assert response.status_code == 200
+
+    async def test_info_requires_admin(self, client_with_regular_user):
+        app, _service, _user = client_with_regular_user
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/info")
+            assert response.status_code == 403

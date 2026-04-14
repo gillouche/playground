@@ -1,7 +1,7 @@
 import os
 from unittest.mock import patch
 
-from config import AppConfig, GrpcConfig, PostgresConfig, RedisConfig
+from config import AppConfig, GrpcConfig, KeycloakConfig, PostgresConfig, RedisConfig
 
 
 class TestPostgresConfig:
@@ -26,6 +26,10 @@ class TestPostgresConfig:
             password="secret",
         )
         assert cfg.url == "postgresql+asyncpg://admin:secret@db.example.com:5433/mydb"
+
+    def test_url_encodes_special_characters_in_password(self):
+        cfg = PostgresConfig(password="p@ss:w0rd/special#chars")
+        assert "p%40ss%3Aw0rd%2Fspecial%23chars" in cfg.url
 
     def test_env_prefix(self):
         env = {
@@ -112,3 +116,45 @@ class TestAppConfig:
         assert cfg.environment == "production"
         assert cfg.log_level == "DEBUG"
         assert cfg.enable_tracing is True
+
+
+class TestKeycloakConfig:
+    def test_default_values(self):
+        cfg = KeycloakConfig()
+        assert cfg.server_url == "http://localhost:8180"
+        assert cfg.realm == "api-lab"
+        assert cfg.client_id == "api-lab"
+        assert cfg.client_secret == "api-lab-secret"
+        assert cfg.auth_service_client_id == "api-lab-auth-service"
+        assert cfg.auth_service_client_secret == "api-lab-auth-service-secret"
+
+    def test_issuer_url(self):
+        cfg = KeycloakConfig()
+        assert cfg.issuer_url == "http://localhost:8180/realms/api-lab"
+
+    def test_jwks_url(self):
+        cfg = KeycloakConfig()
+        assert cfg.jwks_url == "http://localhost:8180/realms/api-lab/protocol/openid-connect/certs"
+
+    def test_token_url(self):
+        cfg = KeycloakConfig()
+        assert cfg.token_url == "http://localhost:8180/realms/api-lab/protocol/openid-connect/token"
+
+    def test_admin_url(self):
+        cfg = KeycloakConfig()
+        assert cfg.admin_url == "http://localhost:8180/admin/realms/api-lab"
+
+    def test_env_prefix(self):
+        env = {
+            "KEYCLOAK_SERVER_URL": "http://keycloak:8080",
+            "KEYCLOAK_REALM": "production",
+            "KEYCLOAK_CLIENT_ID": "prod-client",
+            "KEYCLOAK_CLIENT_SECRET": "prod-secret",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            cfg = KeycloakConfig()
+        assert cfg.server_url == "http://keycloak:8080"
+        assert cfg.realm == "production"
+        assert cfg.client_id == "prod-client"
+        assert cfg.client_secret == "prod-secret"
+        assert cfg.issuer_url == "http://keycloak:8080/realms/production"

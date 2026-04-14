@@ -201,11 +201,11 @@ class LibraryServiceServicer(library_pb2_grpc.LibraryServiceServicer):
             if request.idempotency_key:
                 logger.debug("ReserveBooks idempotency_key=%s", request.idempotency_key)
             try:
+                user_id = uuid.UUID(request.user_id)
                 data = ReservationCreate(
-                    user_id=uuid.UUID(request.user_id),
                     book_ids=[uuid.UUID(bid) for bid in request.book_ids],
                 )
-                reservations = await self._service.reserve_books(data)
+                reservations = await self._service.reserve_books(data, user_id=user_id)
                 return library_pb2.ReserveBooksResponse(
                     reservations=[_reservation_to_proto(r) for r in reservations]
                 )
@@ -249,8 +249,8 @@ class LibraryServiceServicer(library_pb2_grpc.LibraryServiceServicer):
             return _reservation_to_proto(reservation)
 
 
-async def start_grpc_server(book_service: BookService, port: int = 50051):
-    server = aio.server()
+async def start_grpc_server(book_service: BookService, port: int = 50051, interceptors=None):
+    server = aio.server(interceptors=interceptors or [])
 
     servicer = LibraryServiceServicer(book_service)
     library_pb2_grpc.add_LibraryServiceServicer_to_server(servicer, server)

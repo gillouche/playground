@@ -22,3 +22,6 @@ data:
   GRPC_PORT: "50051"
   ENABLE_TRACING: "false"
   OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317
+  KEYCLOAK_SERVER_URL: http://keycloak.playground-infra-sandbox.svc.cluster.local:8080
+  KEYCLOAK_REALM: api-lab
+  KEYCLOAK_CLIENT_ID: api-lab

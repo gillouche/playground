@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: python-auth-api-config
+  labels:
+    component: python-auth-api
+data:
+  ENVIRONMENT: sandbox
+  APP: api-lab
+  COMPONENT: python-auth-api
+  APP_VERSION: sandbox
+  COMPONENT_VERSION: latest
+  GIT_TAG: local/python-auth-api/latest
+  GIT_COMMIT: local
+  LOG_LEVEL: DEBUG
+  POSTGRES_HOST: postgres.playground-infra-sandbox.svc.cluster.local
+  POSTGRES_PORT: "5432"
+  POSTGRES_DATABASE: api_lab
+  POSTGRES_USER: playground
+  REDIS_HOST: redis.playground-infra-sandbox.svc.cluster.local
+  REDIS_PORT: "6379"
+  GRPC_PORT: "50051"
+  ENABLE_TRACING: "false"
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://localhost:4317
+  KEYCLOAK_SERVER_URL: http://keycloak.playground-infra-sandbox.svc.cluster.local:8080
+  KEYCLOAK_REALM: api-lab
+  KEYCLOAK_CLIENT_ID: api-lab
+  KEYCLOAK_AUTH_SERVICE_CLIENT_ID: api-lab-auth-service

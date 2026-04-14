@@ -98,12 +98,11 @@ async def test_list_books_filter_by_author(rest_client, create_sample_book):
 
 @pytest.mark.asyncio
 async def test_list_books_filter_available_only(rest_client, create_sample_book):
-    user_id = str(uuid.uuid4())
     book = await create_sample_book(isbn="9780000000041", total_copies=1)
     await create_sample_book(isbn="9780000000042", total_copies=1)
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book["id"]]},
+        json={"book_ids": [book["id"]]},
     )
     resp = await rest_client.get("/api/v1/books", params={"available_only": "true"})
     assert resp.status_code == 200
@@ -316,11 +315,10 @@ async def test_delete_book_not_found(rest_client):
 
 @pytest.mark.asyncio
 async def test_delete_book_with_active_reservation(rest_client, create_sample_book):
-    user_id = str(uuid.uuid4())
     book = await create_sample_book(total_copies=1)
     await rest_client.post(
         "/api/v1/reservations",
-        json={"user_id": user_id, "book_ids": [book["id"]]},
+        json={"book_ids": [book["id"]]},
     )
     resp = await rest_client.delete(f"/api/v1/books/{book['id']}")
     assert resp.status_code == 409

@@ -16,7 +16,7 @@ anyio_backend = "asyncio"
 def _make_book(**overrides):
     book = MagicMock()
     book.id = overrides.get("id", uuid.uuid4())
-    book.isbn = overrides.get("isbn", "978-0-13-468599-1")
+    book.isbn = overrides.get("isbn", "9780134685991")
     book.title = overrides.get("title", "The Pragmatic Programmer")
     book.author = overrides.get("author", "David Thomas")
     book.genre = overrides.get("genre", "Technology")
@@ -85,7 +85,7 @@ class TestListBooksIntegration:
 
         assert len(resp.books) == 1
         assert resp.books[0].title == "The Pragmatic Programmer"
-        assert resp.books[0].isbn == "978-0-13-468599-1"
+        assert resp.books[0].isbn == "9780134685991"
 
     @pytest.mark.asyncio
     async def test_with_available_only_filter(self, grpc_server_and_channel):
@@ -163,7 +163,7 @@ class TestCreateBookIntegration:
 
         resp = await stub.CreateBook(
             library_pb2.CreateBookRequest(
-                isbn="978-0-13-468599-1",
+                isbn="9780134685991",
                 title="New Book",
                 author="Author",
                 genre="Technology",
@@ -178,12 +178,12 @@ class TestCreateBookIntegration:
     @pytest.mark.asyncio
     async def test_duplicate_isbn_raises_already_exists(self, grpc_server_and_channel):
         stub, mock_svc = grpc_server_and_channel
-        mock_svc.create_book.side_effect = DuplicateISBNError("978-0-13-468599-1")
+        mock_svc.create_book.side_effect = DuplicateISBNError("9780134685991")
 
         with pytest.raises(aio.AioRpcError) as exc_info:
             await stub.CreateBook(
                 library_pb2.CreateBookRequest(
-                    isbn="978-0-13-468599-1",
+                    isbn="9780134685991",
                     title="Duplicate",
                     author="Author",
                     genre="Tech",
@@ -224,11 +224,11 @@ class TestUpdateBookIntegration:
     @pytest.mark.asyncio
     async def test_duplicate_isbn_raises_already_exists(self, grpc_server_and_channel):
         stub, mock_svc = grpc_server_and_channel
-        mock_svc.update_book.side_effect = DuplicateISBNError("978-0-13-468599-1")
+        mock_svc.update_book.side_effect = DuplicateISBNError("9780134685991")
 
         with pytest.raises(aio.AioRpcError) as exc_info:
             await stub.UpdateBook(
-                library_pb2.UpdateBookRequest(book_id=str(uuid.uuid4()), isbn="978-0-13-468599-1")
+                library_pb2.UpdateBookRequest(book_id=str(uuid.uuid4()), isbn="9780134685991")
             )
 
         assert exc_info.value.code() == grpc.StatusCode.ALREADY_EXISTS

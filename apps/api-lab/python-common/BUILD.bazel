@@ -28,5 +28,7 @@ py_library(
         requirement("opentelemetry-instrumentation-logging"),
         requirement("tenacity"),
         requirement("loguru"),
+        requirement("pyjwt"),
+        requirement("cryptography"),
     ],
 )

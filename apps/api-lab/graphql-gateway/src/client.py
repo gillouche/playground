@@ -90,62 +90,117 @@ class LibraryClient:
             raise RuntimeError("Client not connected. Call connect() first.")
         return self._client
 
-    async def list_books(self, params: ListBooksParams | None = None) -> dict[str, Any]:
+    def _build_headers(self, headers: dict[str, str] | None = None) -> dict[str, str]:
+        if not headers:
+            return {}
+        result: dict[str, str] = {}
+        auth = headers.get("authorization") or headers.get("Authorization")
+        if auth:
+            result["Authorization"] = auth
+        return result
+
+    async def list_books(
+        self,
+        params: ListBooksParams | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         client = self._ensure_client()
         if params is None:
             params = ListBooksParams()
-        response = await client.get("/api/v1/books", params=params.to_query())
+        response = await client.get(
+            "/api/v1/books", params=params.to_query(), headers=self._build_headers(headers)
+        )
         response.raise_for_status()
         result: dict[str, Any] = response.json()
         return result
 
-    async def get_book(self, book_id: uuid.UUID) -> dict[str, Any] | None:
+    async def get_book(
+        self,
+        book_id: uuid.UUID,
+        headers: dict[str, str] | None = None,
+    ) -> dict[str, Any] | None:
         client = self._ensure_client()
-        response = await client.get(f"/api/v1/books/{book_id}")
+        response = await client.get(
+            f"/api/v1/books/{book_id}", headers=self._build_headers(headers)
+        )
         if response.status_code == 404:
             return None
         response.raise_for_status()
         result: dict[str, Any] = response.json()
         return result
 
-    async def create_book(self, data: dict[str, Any]) -> dict[str, Any]:
+    async def create_book(
+        self,
+        data: dict[str, Any],
+        headers: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         client = self._ensure_client()
-        response = await client.post("/api/v1/books", json=data)
+        response = await client.post(
+            "/api/v1/books", json=data, headers=self._build_headers(headers)
+        )
         response.raise_for_status()
         result: dict[str, Any] = response.json()
         return result
 
-    async def update_book(self, book_id: uuid.UUID, data: dict[str, Any]) -> dict[str, Any] | None:
+    async def update_book(
+        self,
+        book_id: uuid.UUID,
+        data: dict[str, Any],
+        headers: dict[str, str] | None = None,
+    ) -> dict[str, Any] | None:
         client = self._ensure_client()
-        response = await client.put(f"/api/v1/books/{book_id}", json=data)
+        built_headers = self._build_headers(headers)
+        get_response = await client.get(f"/api/v1/books/{book_id}", headers=built_headers)
+        if get_response.status_code == 404:
+            return None
+        get_response.raise_for_status()
+        etag = get_response.headers.get("ETag", '"1"')
+        update_headers = {**built_headers, "If-Match": etag}
+        response = await client.put(f"/api/v1/books/{book_id}", json=data, headers=update_headers)
         if response.status_code == 404:
             return None
         response.raise_for_status()
         result: dict[str, Any] = response.json()
         return result
 
-    async def delete_book(self, book_id: uuid.UUID) -> bool:
+    async def delete_book(
+        self,
+        book_id: uuid.UUID,
+        headers: dict[str, str] | None = None,
+    ) -> bool:
         client = self._ensure_client()
-        response = await client.delete(f"/api/v1/books/{book_id}")
+        response = await client.delete(
+            f"/api/v1/books/{book_id}", headers=self._build_headers(headers)
+        )
         return bool(response.status_code == 204)
 
-    async def reserve_books(self, user_id: str, book_ids: list[str]) -> list[dict[str, Any]]:
+    async def reserve_books(
+        self,
+        _user_id: str,
+        book_ids: list[str],
+        headers: dict[str, str] | None = None,
+    ) -> list[dict[str, Any]]:
         client = self._ensure_client()
         response = await client.post(
             "/api/v1/reservations",
-            json={"user_id": user_id, "book_ids": book_ids},
+            json={"book_ids": book_ids},
+            headers=self._build_headers(headers),
         )
         response.raise_for_status()
         result: list[dict[str, Any]] = response.json()
         return result
 
     async def update_reservation(
-        self, reservation_id: uuid.UUID, status: str
+        self,
+        reservation_id: uuid.UUID,
+        status: str,
+        headers: dict[str, str] | None = None,
     ) -> dict[str, Any] | None:
         client = self._ensure_client()
         response = await client.patch(
             f"/api/v1/reservations/{reservation_id}",
             json={"status": status},
+            headers=self._build_headers(headers),
         )
         if response.status_code == 404:
             return None
@@ -154,19 +209,31 @@ class LibraryClient:
         return result
 
     async def list_reservations(
-        self, params: ListReservationsParams | None = None
+        self,
+        params: ListReservationsParams | None = None,
+        headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         client = self._ensure_client()
         if params is None:
             params = ListReservationsParams()
-        response = await client.get("/api/v1/reservations", params=params.to_query())
+        response = await client.get(
+            "/api/v1/reservations",
+            params=params.to_query(),
+            headers=self._build_headers(headers),
+        )
         response.raise_for_status()
         result: dict[str, Any] = response.json()
         return result
 
-    async def get_reservation(self, reservation_id: uuid.UUID) -> dict[str, Any] | None:
+    async def get_reservation(
+        self,
+        reservation_id: uuid.UUID,
+        headers: dict[str, str] | None = None,
+    ) -> dict[str, Any] | None:
         client = self._ensure_client()
-        response = await client.get(f"/api/v1/reservations/{reservation_id}")
+        response = await client.get(
+            f"/api/v1/reservations/{reservation_id}", headers=self._build_headers(headers)
+        )
         if response.status_code == 404:
             return None
         response.raise_for_status()

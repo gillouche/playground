@@ -18,6 +18,16 @@ cache_op_duration_seconds = Histogram(
 books_available_gauge = Gauge("api_lab_books_available", "Available books count")
 active_reservations_gauge = Gauge("api_lab_active_reservations", "Active reservations count")
 
+auth_failures_total = Counter("api_lab_auth_failures_total", "Authentication failures", ["reason"])
+authz_failures_total = Counter(
+    "api_lab_authz_failures_total", "Authorization failures", ["endpoint", "role"]
+)
+rate_limit_rejections_total = Counter(
+    "api_lab_rate_limit_rejections_total", "Rate limit rejections", ["endpoint", "tier"]
+)
+login_attempts_total = Counter("api_lab_login_attempts_total", "Login attempts", ["status"])
+registrations_total = Counter("api_lab_registrations_total", "User registrations")
+
 
 def setup_metrics(app):
     """Setup FastAPI metrics instrumentation. Requires prometheus-fastapi-instrumentator."""

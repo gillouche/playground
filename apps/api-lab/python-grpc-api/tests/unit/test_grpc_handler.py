@@ -22,7 +22,7 @@ anyio_backend = "asyncio"
 def _make_book(**overrides):
     book = MagicMock()
     book.id = overrides.get("id", uuid.uuid4())
-    book.isbn = overrides.get("isbn", "978-0-13-468599-1")
+    book.isbn = overrides.get("isbn", "9780134685991")
     book.title = overrides.get("title", "The Pragmatic Programmer")
     book.author = overrides.get("author", "David Thomas")
     book.genre = overrides.get("genre", "Technology")
@@ -298,7 +298,7 @@ class TestCreateBook:
         book = _make_book()
         mock_book_service.create_book.return_value = book
         req = library_pb2.CreateBookRequest(
-            isbn="978-0-13-468599-1",
+            isbn="9780134685991",
             title="New Book",
             author="Author Name",
             genre="Technology",
@@ -316,9 +316,9 @@ class TestCreateBook:
     async def test_duplicate_isbn_aborts_with_already_exists(
         self, servicer, mock_book_service, context
     ):
-        mock_book_service.create_book.side_effect = DuplicateISBNError("978-0-13-468599-1")
+        mock_book_service.create_book.side_effect = DuplicateISBNError("9780134685991")
         req = library_pb2.CreateBookRequest(
-            isbn="978-0-13-468599-1",
+            isbn="9780134685991",
             title="Duplicate",
             author="Author",
             genre="Tech",
@@ -338,7 +338,7 @@ class TestCreateBook:
         book = _make_book()
         mock_book_service.create_book.return_value = book
         req = library_pb2.CreateBookRequest(
-            isbn="978-0-13-468599-1",
+            isbn="9780134685991",
             title="Test Book",
             author="Test Author",
             genre="Fiction",
@@ -350,7 +350,7 @@ class TestCreateBook:
 
         mock_book_service.create_book.assert_awaited_once()
         call_data = mock_book_service.create_book.call_args[0][0]
-        assert call_data.isbn == "978-0-13-468599-1"
+        assert call_data.isbn == "9780134685991"
         assert call_data.title == "Test Book"
         assert call_data.author == "Test Author"
         assert call_data.genre == "Fiction"
@@ -385,8 +385,8 @@ class TestUpdateBook:
     async def test_duplicate_isbn_aborts_with_already_exists(
         self, servicer, mock_book_service, context
     ):
-        mock_book_service.update_book.side_effect = DuplicateISBNError("978-0-13-468599-1")
-        req = library_pb2.UpdateBookRequest(book_id=str(uuid.uuid4()), isbn="978-0-13-468599-1")
+        mock_book_service.update_book.side_effect = DuplicateISBNError("9780134685991")
+        req = library_pb2.UpdateBookRequest(book_id=str(uuid.uuid4()), isbn="9780134685991")
 
         with pytest.raises(_AbortError):
             await servicer.UpdateBook(req, context)
@@ -558,7 +558,8 @@ class TestReserveBooks:
         await servicer.ReserveBooks(req, context)
 
         call_data = mock_book_service.reserve_books.call_args[0][0]
-        assert call_data.user_id == user_id
+        call_user_id = mock_book_service.reserve_books.call_args[1]["user_id"]
+        assert call_user_id == user_id
         assert uuid.UUID(str(book_id)) in call_data.book_ids
 
 

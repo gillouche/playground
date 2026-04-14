@@ -1,5 +1,5 @@
-# Generated from openapi.yaml - DO NOT EDIT MANUALLY
-# Run: ./apps/api-lab/openapi/generate.sh python
+# Generated from openapi.yaml — DO NOT EDIT MANUALLY
+# Regenerated automatically by Bazel at build time.
 
 from __future__ import annotations
 
@@ -10,14 +10,19 @@ if TYPE_CHECKING:
     import uuid
 
     from generated.models import (
+        Book,
         BookCreate,
-        BookResponse,
         BookUpdate,
+        ErrorResponse,
         HealthResponse,
         InfoResponse,
-        InventoryResponse,
+        PaginatedBooks,
+        PaginatedReservations,
+        Reservation,
         ReservationCreate,
-        ReservationResponse,
+        ReservationStatus,
+        ReservationUpdate,
+        schema,
     )
 
 
@@ -29,32 +34,25 @@ class LibraryAPI(abc.ABC):
     (FastAPI, Flask, etc.).
     """
 
-    # ----- Books ----------------------------------------------------------
+    # ----- Books --------------------------------------------------
 
     @abc.abstractmethod
-    async def list_books(
-        self,
-        *,
-        available_only: bool | None = None,
-        genre: str | None = None,
-        author: str | None = None,
-        search: str | None = None,
-    ) -> list[BookResponse]:
+    async def list_books(self, *, limit: int | None = None, continuation_token: str | None = None, sort_by: str | None = None, sort_order: str | None = None, available_only: bool | None = None, genre: str | None = None, author: str | None = None, search: str | None = None) -> PaginatedBooks:
         """GET /api/v1/books  (operationId: listBooks)"""
         ...
 
     @abc.abstractmethod
-    async def create_book(self, *, body: BookCreate) -> BookResponse:
+    async def create_book(self, *, body: BookCreate) -> Book:
         """POST /api/v1/books  (operationId: createBook)"""
         ...
 
     @abc.abstractmethod
-    async def get_book(self, *, book_id: uuid.UUID) -> BookResponse:
+    async def get_book(self, *, book_id: uuid.UUID) -> Book:
         """GET /api/v1/books/{book_id}  (operationId: getBook)"""
         ...
 
     @abc.abstractmethod
-    async def update_book(self, *, book_id: uuid.UUID, body: BookUpdate) -> BookResponse:
+    async def update_book(self, *, book_id: uuid.UUID, body: BookUpdate) -> Book:
         """PUT /api/v1/books/{book_id}  (operationId: updateBook)"""
         ...
 
@@ -63,42 +61,29 @@ class LibraryAPI(abc.ABC):
         """DELETE /api/v1/books/{book_id}  (operationId: deleteBook)"""
         ...
 
-    # ----- Inventory ------------------------------------------------------
+    # ----- Reservations -------------------------------------------
 
     @abc.abstractmethod
-    async def get_inventory(self) -> InventoryResponse:
-        """GET /api/v1/inventory  (operationId: getInventory)"""
-        ...
-
-    # ----- Reservations ---------------------------------------------------
-
-    @abc.abstractmethod
-    async def create_reservations(self, *, body: ReservationCreate) -> list[ReservationResponse]:
-        """POST /api/v1/reservations  (operationId: createReservations)"""
-        ...
-
-    @abc.abstractmethod
-    async def list_reservations(
-        self,
-        *,
-        user_id: str | None = None,
-        status: str | None = None,
-        book_id: str | None = None,
-    ) -> list[ReservationResponse]:
+    async def list_reservations(self, *, limit: int | None = None, continuation_token: str | None = None, sort_by: str | None = None, sort_order: str | None = None, user_id: uuid.UUID | None = None, status: ReservationStatus | None = None, book_id: uuid.UUID | None = None) -> PaginatedReservations:
         """GET /api/v1/reservations  (operationId: listReservations)"""
         ...
 
     @abc.abstractmethod
-    async def get_reservation(self, *, id: uuid.UUID) -> ReservationResponse:
-        """GET /api/v1/reservations/{id}  (operationId: getReservation)"""
+    async def create_reservations(self, *, body: ReservationCreate) -> list[Reservation]:
+        """POST /api/v1/reservations  (operationId: createReservations)"""
         ...
 
     @abc.abstractmethod
-    async def return_reservation(self, *, id: uuid.UUID) -> ReservationResponse:
-        """POST /api/v1/reservations/{id}/return  (operationId: returnReservation)"""
+    async def get_reservation(self, *, reservation_id: uuid.UUID) -> Reservation:
+        """GET /api/v1/reservations/{reservation_id}  (operationId: getReservation)"""
         ...
 
-    # ----- Health / Info --------------------------------------------------
+    @abc.abstractmethod
+    async def update_reservation(self, *, reservation_id: uuid.UUID, body: ReservationUpdate) -> Reservation:
+        """PATCH /api/v1/reservations/{reservation_id}  (operationId: updateReservation)"""
+        ...
+
+    # ----- Health / Info ------------------------------------------
 
     @abc.abstractmethod
     async def health_check(self) -> HealthResponse:

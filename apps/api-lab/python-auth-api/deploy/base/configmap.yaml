@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: python-auth-api-config
+  labels:
+    component: python-auth-api
+data:
+  ENVIRONMENT: base
+  APP: api-lab
+  APP_VERSION: unknown
+  COMPONENT: python-auth-api
+  COMPONENT_VERSION: unknown
+  GIT_TAG: unknown
+  GIT_COMMIT: unknown
+  LOG_LEVEL: INFO

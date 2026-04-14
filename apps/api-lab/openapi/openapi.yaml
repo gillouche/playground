@@ -38,6 +38,9 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
 
+security:
+  - bearerAuth: []
+
 paths:
   /api/v1/books:
     get:
@@ -486,8 +489,141 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError"
 
+  /api/v1/auth/register:
+    post:
+      security: []
+      tags:
+        - auth
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 100
+                  pattern: "^[a-zA-Z0-9_-]+$"
+                email:
+                  type: string
+                  minLength: 5
+                  maxLength: 255
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: string
+                  username:
+                    type: string
+        "409":
+          description: Username already exists
+
+  /api/v1/auth/login:
+    post:
+      security: []
+      tags:
+        - auth
+      summary: Authenticate and obtain tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  expires_in:
+                    type: integer
+                  token_type:
+                    type: string
+        "401":
+          description: Invalid credentials
+
+  /api/v1/auth/refresh:
+    post:
+      security: []
+      tags:
+        - auth
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        "200":
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/paths/~1api~1v1~1auth~1login/post/responses/200/content/application~1json/schema"
+        "401":
+          description: Invalid refresh token
+
+  /api/v1/auth/logout:
+    post:
+      security: []
+      tags:
+        - auth
+      summary: Revoke refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        "204":
+          description: Logged out
+
   /healthz:
     get:
+      security: []
       tags:
         - operations
       summary: Health check
@@ -513,6 +649,7 @@ paths:
 
   /ready:
     get:
+      security: []
       tags:
         - operations
       summary: Readiness check
@@ -722,27 +859,37 @@ components:
       properties:
         isbn:
           type: string
-          description: International Standard Book Number (ISBN-13).
-          example: "978-0-13-468599-1"
+          description: International Standard Book Number (ISBN-10 or ISBN-13, digits only).
+          pattern: '^\d{10}(\d{3})?$'
+          example: "9780134685991"
         title:
           type: string
           description: Title of the book.
+          minLength: 1
+          maxLength: 500
           example: The Pragmatic Programmer
         author:
           type: string
           description: Full name of the primary author.
+          minLength: 1
+          maxLength: 500
           example: David Thomas
         genre:
           type: string
           description: Literary genre or category.
+          minLength: 1
+          maxLength: 100
           example: Software Engineering
         published_year:
           type: integer
           description: Year the book was first published.
+          minimum: 1000
+          maximum: 2027
           example: 2019
         total_copies:
           type: integer
           description: Total number of copies to add to the library.
+          minimum: 1
           example: 5
       required:
         - isbn
@@ -758,51 +905,38 @@ components:
       properties:
         isbn:
           type: string
-          description: International Standard Book Number (ISBN-13).
-          example: "978-0-13-468599-1"
+          description: International Standard Book Number (ISBN-10 or ISBN-13, digits only).
+          pattern: '^\d{10}(\d{3})?$'
+          example: "9780134685991"
         title:
           type: string
           description: Title of the book.
+          minLength: 1
+          maxLength: 500
           example: The Pragmatic Programmer
         author:
           type: string
           description: Full name of the primary author.
+          minLength: 1
+          maxLength: 500
           example: David Thomas
         genre:
           type: string
           description: Literary genre or category.
+          minLength: 1
+          maxLength: 100
           example: Software Engineering
         published_year:
           type: integer
           description: Year the book was first published.
+          minimum: 1000
+          maximum: 2027
           example: 2019
         total_copies:
           type: integer
           description: Total number of copies owned by the library.
+          minimum: 1
           example: 5
-
-    PaginatedBooks:
-      type: object
-      description: Paginated response wrapper for book listings.
-      properties:
-        items:
-          type: array
-          description: List of books for the current page.
-          items:
-            $ref: "#/components/schemas/Book"
-        continuation_token:
-          type:
-            - string
-            - "null"
-          description: Opaque token to retrieve the next page. Null when there are no more pages.
-          example: eyJpZCI6ICIxMjM0NTY3ODkwIn0
-        has_more:
-          type: boolean
-          description: Whether additional pages of results exist.
-          example: true
-      required:
-        - items
-        - has_more
 
     Reservation:
       type: object
@@ -852,16 +986,13 @@ components:
 
     ReservationCreate:
       type: object
-      description: Payload for creating one or more reservations.
+      description: Payload for creating one or more reservations. The user_id is extracted from the JWT token.
       properties:
-        user_id:
-          type: string
-          format: uuid
-          description: Identifier of the user making the reservation.
-          example: 770e8400-e29b-41d4-a716-446655440000
         book_ids:
           type: array
           description: List of book identifiers to reserve.
+          minItems: 1
+          maxItems: 20
           items:
             type: string
             format: uuid
@@ -869,7 +1000,6 @@ components:
             - 550e8400-e29b-41d4-a716-446655440000
             - 880e8400-e29b-41d4-a716-446655440000
       required:
-        - user_id
         - book_ids
 
     ReservationUpdate:
@@ -880,6 +1010,29 @@ components:
           $ref: "#/components/schemas/ReservationStatus"
       required:
         - status
+
+    PaginatedBooks:
+      type: object
+      description: Paginated response wrapper for book listings.
+      properties:
+        items:
+          type: array
+          description: List of books for the current page.
+          items:
+            $ref: "#/components/schemas/Book"
+        continuation_token:
+          type:
+            - string
+            - "null"
+          description: Opaque token to retrieve the next page. Null when there are no more pages.
+          example: eyJpZCI6ICIxMjM0NTY3ODkwIn0
+        has_more:
+          type: boolean
+          description: Whether additional pages of results exist.
+          example: true
+      required:
+        - items
+        - has_more
 
     PaginatedReservations:
       type: object
@@ -904,6 +1057,77 @@ components:
         - items
         - has_more
 
+    ListBooksQuery:
+      type: object
+      description: Query parameters for listing books.
+      properties:
+        available_only:
+          type: boolean
+          default: false
+        genre:
+          type: string
+          maxLength: 100
+        author:
+          type: string
+          maxLength: 500
+        search:
+          type: string
+          maxLength: 500
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        continuation_token:
+          type: string
+        sort_by:
+          type: string
+          enum:
+            - title
+            - author
+            - published_year
+            - created_at
+          default: created_at
+        sort_order:
+          type: string
+          enum:
+            - asc
+            - desc
+          default: asc
+
+    ListReservationsQuery:
+      type: object
+      description: Query parameters for listing reservations.
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        book_id:
+          type: string
+          format: uuid
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        continuation_token:
+          type: string
+        sort_by:
+          type: string
+          enum:
+            - reserved_at
+            - due_date
+            - status
+          default: reserved_at
+        sort_order:
+          type: string
+          enum:
+            - asc
+            - desc
+          default: desc
+
     ErrorResponse:
       type: object
       description: Standard error response body.
@@ -918,7 +1142,6 @@ components:
           example: 409
         request_id:
           type: string
-          format: uuid
           description: Identifier of the request that caused the error, if available.
           example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
       required:
@@ -984,6 +1207,13 @@ components:
         - hostname
         - app_version
         - environment
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from the auth service login endpoint
 
   responses:
     BadRequest:

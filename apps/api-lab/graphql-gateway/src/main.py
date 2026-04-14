@@ -67,12 +67,18 @@ def _create_app() -> FastAPI:
             "environment": env,
         }
 
+    from middleware.body_limit import BodyLimitMiddleware
+    from middleware.security_headers import SecurityHeadersMiddleware
+
+    application.add_middleware(SecurityHeadersMiddleware)
+    application.add_middleware(BodyLimitMiddleware)
+
     application.add_middleware(
         CORSMiddleware,
         allow_origins=[],
         allow_credentials=True,
         allow_methods=["GET", "POST"],
-        allow_headers=["*"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-Id"],
         expose_headers=["X-Request-Id"],
     )
 

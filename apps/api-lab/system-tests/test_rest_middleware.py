@@ -32,7 +32,7 @@ async def test_idempotency_key_deduplication(rest_client):
     key = str(uuid.uuid4())
     headers = {"Idempotency-Key": key}
     book_data = {
-        "isbn": f"978-{uuid.uuid4().hex[:10]}",
+        "isbn": f"978{uuid.uuid4().int % 10**10:010d}",
         "title": "Idempotency Test",
         "author": "Test Author",
         "genre": "Testing",

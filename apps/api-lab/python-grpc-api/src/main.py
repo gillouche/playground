@@ -3,7 +3,9 @@ import logging
 import signal
 
 from grpc_server import start_grpc_server
+from metrics_interceptor import MetricsInterceptor
 from observability.logging import setup_logging
+from prometheus_client import start_http_server
 
 setup_logging()
 logger = logging.getLogger("api-lab.grpc")
@@ -24,9 +26,21 @@ async def serve():
     cache = RedisCache()
     await cache.connect()
 
+    from auth.jwt import JWTValidator
+    from auth_interceptor import AuthInterceptor
+
+    jwt_validator = JWTValidator()
+    auth_interceptor = AuthInterceptor(jwt_validator)
+    metrics_interceptor = MetricsInterceptor()
+
     book_service = BookService(async_session_factory, cache)
 
-    server = await start_grpc_server(book_service, grpc_config.port)
+    start_http_server(9090)
+    logger.info("Prometheus metrics server started on port 9090")
+
+    server = await start_grpc_server(
+        book_service, grpc_config.port, interceptors=[metrics_interceptor, auth_interceptor]
+    )
     logger.info("api-lab python-grpc-api started successfully")
 
     stop_event = asyncio.Event()

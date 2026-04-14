@@ -10,6 +10,7 @@ from services.book_service import (
     StaleVersionError,
     _decode_continuation_token,
     _encode_continuation_token,
+    _escape_like,
 )
 
 
@@ -99,7 +100,7 @@ class TestBookServiceListBooks:
         session_factory.return_value.__aexit__ = AsyncMock(return_value=False)
 
         service = BookService(session_factory, cache)
-        result = await service.list_books(ListBooksQuery(limit=200))
+        result = await service.list_books(ListBooksQuery(limit=100))
         assert isinstance(result, PaginatedBooks)
         assert result.has_more is False
 
@@ -172,10 +173,10 @@ class TestBookServiceReservation:
         session_factory.return_value.__aexit__ = AsyncMock(return_value=False)
 
         service = BookService(session_factory, cache)
-        data = ReservationCreate(user_id=uuid.uuid4(), book_ids=[book.id])
+        data = ReservationCreate(book_ids=[book.id])
 
         with pytest.raises(ValueError, match="not available"):
-            await service.reserve_books(data)
+            await service.reserve_books(data, user_id=uuid.uuid4())
 
 
 class TestBookServiceUpdateBook:
@@ -252,3 +253,44 @@ class TestBookServiceDeleteBook:
 
         with pytest.raises(ActiveReservationsError):
             await service.delete_book(book.id)
+
+
+class TestEscapeLike:
+    def test_escapes_percent(self):
+        assert _escape_like("100%") == "100\\%"
+
+    def test_escapes_underscore(self):
+        assert _escape_like("foo_bar") == "foo\\_bar"
+
+    def test_escapes_backslash(self):
+        assert _escape_like("back\\slash") == "back\\\\slash"
+
+    def test_leaves_normal_strings_alone(self):
+        assert _escape_like("normal string") == "normal string"
+
+
+class TestSignedContinuationTokens:
+    def test_roundtrip(self):
+        token = _encode_continuation_token(42)
+        assert _decode_continuation_token(token) == 42
+
+    def test_tampered_token_returns_zero(self):
+        import base64
+
+        tampered = base64.b64encode(b"999:fakesignature00").decode()
+        assert _decode_continuation_token(tampered) == 0
+
+    def test_negative_offset_returns_zero(self):
+        import base64
+        import hashlib
+        import hmac
+
+        from config import app_config
+
+        secret = (app_config.git_commit + "continuation-token-salt").encode()
+        sig = hmac.new(secret, b"-5", hashlib.sha256).hexdigest()[:16]
+        forged = base64.b64encode(f"-5:{sig}".encode()).decode()
+        assert _decode_continuation_token(forged) == 0
+
+    def test_none_returns_zero(self):
+        assert _decode_continuation_token(None) == 0

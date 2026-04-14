@@ -1,9 +1,12 @@
 import base64
+import hashlib
+import hmac
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
 from cache.redis_cache import BOOK_TTL, BOOKS_ALL_TTL, RedisCache
+from config import app_config
 from database.models import Book as BookModel
 from database.models import Reservation as ReservationModel
 from database.models import ReservationStatus
@@ -70,17 +73,39 @@ class ActiveReservationsError(Exception):
         super().__init__("Cannot delete book with active reservations")
 
 
+_TOKEN_SECRET = (app_config.git_commit + "continuation-token-salt").encode()
+
+
+def _sign_offset(offset: int) -> str:
+    return hmac.new(_TOKEN_SECRET, str(offset).encode(), hashlib.sha256).hexdigest()[:16]
+
+
+def _encode_continuation_token(offset: int) -> str:
+    sig = _sign_offset(offset)
+    return base64.b64encode(f"{offset}:{sig}".encode()).decode()
+
+
 def _decode_continuation_token(token: str | None) -> int:
     if not token:
         return 0
     try:
-        return int(base64.b64decode(token).decode())
+        decoded = base64.b64decode(token).decode()
+        parts = decoded.split(":", 1)
+        if len(parts) != 2:
+            return 0
+        offset = int(parts[0])
+        if offset < 0:
+            return 0
+        expected_sig = _sign_offset(offset)
+        if not hmac.compare_digest(parts[1], expected_sig):
+            return 0
+        return offset
     except (ValueError, UnicodeDecodeError):
         return 0
 
 
-def _encode_continuation_token(offset: int) -> str:
-    return base64.b64encode(str(offset).encode()).decode()
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _build_list_books_query(query: ListBooksQuery, sort_column, limit: int, offset: int):
@@ -90,7 +115,7 @@ def _build_list_books_query(query: ListBooksQuery, sort_column, limit: int, offs
     if query.genre:
         stmt = stmt.where(BookModel.genre == query.genre)
     if query.author:
-        stmt = stmt.where(BookModel.author.ilike(f"%{query.author}%"))
+        stmt = stmt.where(BookModel.author.ilike(f"%{_escape_like(query.author)}%"))
     if query.search:
         try:
             ts_vector = func.to_tsvector(
@@ -102,9 +127,9 @@ def _build_list_books_query(query: ListBooksQuery, sort_column, limit: int, offs
         except Exception:
             stmt = stmt.where(
                 or_(
-                    BookModel.title.ilike(f"%{query.search}%"),
-                    BookModel.author.ilike(f"%{query.search}%"),
-                    BookModel.isbn.ilike(f"%{query.search}%"),
+                    BookModel.title.ilike(f"%{_escape_like(query.search)}%"),
+                    BookModel.author.ilike(f"%{_escape_like(query.search)}%"),
+                    BookModel.isbn.ilike(f"%{_escape_like(query.search)}%"),
                 )
             )
 
@@ -355,9 +380,9 @@ class BookService:
             span.set_attribute("book.found", True)
             return True
 
-    async def reserve_books(self, data: ReservationCreate) -> list[Reservation]:
+    async def reserve_books(self, data: ReservationCreate, user_id: uuid.UUID) -> list[Reservation]:
         with self._tracer.start_as_current_span("BookService.reserve_books") as span:
-            span.set_attribute("reservation.user_id", str(data.user_id))
+            span.set_attribute("reservation.user_id", str(user_id))
             span.set_attribute("reservation.book_count", len(data.book_ids))
 
             async def _db_op():
@@ -377,7 +402,7 @@ class BookService:
                         found_book.available_copies -= 1
                         new_reservation = ReservationModel(
                             book_id=bid,
-                            user_id=data.user_id,
+                            user_id=user_id,
                             due_date=datetime.now(UTC) + timedelta(days=LOAN_DURATION_DAYS),
                             status=ReservationStatus.ACTIVE,
                         )

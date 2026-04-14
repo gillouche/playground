@@ -15,6 +15,7 @@ python_application(
         dev_requirement("pytest-asyncio"),
         dev_requirement("pytest-cov"),
         dev_requirement("httpx"),
+        dev_requirement("hypothesis"),
     ],
     unit_tests = glob(["tests/unit/**/test_*.py"]),
     deps = [

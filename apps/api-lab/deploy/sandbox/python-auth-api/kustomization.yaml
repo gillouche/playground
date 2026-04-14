@@ -1,0 +1,16 @@
+resources:
+  - ../../../python-auth-api/deploy/base
+  - python-auth-api-rollout.yaml
+  - python-auth-api-secrets.yaml
+patches:
+  - path: python-auth-api-configmap.yaml
+images:
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/python-auth-api
+    newName: python-auth-api
+    newTag: latest
+labels:
+  - pairs:
+      environment: sandbox
+      app: api-lab
+    includeSelectors: false
+    includeTemplates: true

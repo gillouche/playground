@@ -1,6 +1,7 @@
 from typing import Any
 
 from opentelemetry import trace
+from opentelemetry.trace import StatusCode
 from strawberry.extensions import SchemaExtension
 
 _tracer = trace.get_tracer("api-lab.graphql")
@@ -16,7 +17,12 @@ class OpenTelemetryExtension(SchemaExtension):
         with _tracer.start_as_current_span(f"GraphQL.{operation_type}: {operation_name}") as span:
             span.set_attribute("graphql.operation.name", operation_name)
             span.set_attribute("graphql.operation.type", operation_type)
-            yield
+            try:
+                yield
+            except Exception as exc:
+                span.set_status(StatusCode.ERROR, str(exc))
+                span.record_exception(exc)
+                raise
 
     def resolve(self, _next, root, info, *args: Any, **kwargs: Any):
         if info.field_name.startswith("_"):
@@ -27,4 +33,9 @@ class OpenTelemetryExtension(SchemaExtension):
             span.set_attribute(
                 "graphql.parent.type", info.parent_type.name if info.parent_type else "unknown"
             )
-            return _next(root, info, *args, **kwargs)
+            try:
+                return _next(root, info, *args, **kwargs)
+            except Exception as exc:
+                span.set_status(StatusCode.ERROR, str(exc))
+                span.record_exception(exc)
+                raise
