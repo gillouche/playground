@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: playground
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./keycloak/init-keycloak-db.sql:/docker-entrypoint-initdb.d/02-init-keycloak.sql:ro
+      - ./keycloak/init-keycloak-db.sh:/docker-entrypoint-initdb.d/02-init-keycloak.sh:ro
 
   redis:
     image: nexus.gillouche.homelab/docker-hub/library/redis:8-alpine
