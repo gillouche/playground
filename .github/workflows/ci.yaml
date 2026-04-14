@@ -212,7 +212,7 @@ jobs:
             COMPOSE="docker-compose"
           fi
           COMPOSE_CMD="$COMPOSE -f infra/sandbox/localhost/docker-compose.yaml"
-          $COMPOSE_CMD up -d postgres redis keycloak
+          $COMPOSE_CMD up -d postgres redis
           until $COMPOSE_CMD exec -T postgres pg_isready -U playground; do
             sleep 2
           done
@@ -220,6 +220,9 @@ jobs:
             | grep PONG; do sleep 2; done
           $COMPOSE_CMD exec -T postgres \
             psql -U playground -c "CREATE DATABASE api_lab" || true
+          $COMPOSE_CMD exec -T postgres \
+            psql -U playground -c "CREATE DATABASE keycloak" || true
+          $COMPOSE_CMD up -d keycloak
           until curl -sf http://localhost:8180/realms/api-lab/.well-known/openid-configuration > /dev/null; do
             sleep 3
           done

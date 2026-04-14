@@ -38,36 +38,41 @@ fi
 
 echo "=== Starting api-lab development stack ==="
 
-echo "[1/8] Starting infrastructure (postgres, redis, keycloak, jaeger)..."
-$COMPOSE -f "$COMPOSE_FILE" up -d postgres redis keycloak jaeger
+echo "[1/9] Starting infrastructure (postgres, redis, jaeger)..."
+$COMPOSE -f "$COMPOSE_FILE" up -d postgres redis jaeger
 
-echo "[2/8] Waiting for Postgres..."
+echo "[2/9] Waiting for Postgres..."
 until $COMPOSE -f "$COMPOSE_FILE" exec -T postgres pg_isready -U playground 2>/dev/null; do
     sleep 2
 done
 echo "  Postgres is ready."
 
-echo "[3/8] Creating api_lab database (if needed)..."
+echo "[3/9] Creating databases (if needed)..."
 $COMPOSE -f "$COMPOSE_FILE" exec -T postgres \
     psql -U playground -c "CREATE DATABASE api_lab" 2>/dev/null || true
+$COMPOSE -f "$COMPOSE_FILE" exec -T postgres \
+    psql -U playground -c "CREATE DATABASE keycloak" 2>/dev/null || true
 
-echo "[4/8] Waiting for Keycloak..."
+echo "[4/9] Starting Keycloak..."
+$COMPOSE -f "$COMPOSE_FILE" up -d keycloak
+
+echo "[5/9] Waiting for Keycloak..."
 until curl -sf http://localhost:8180/realms/master > /dev/null 2>&1; do
     sleep 3
 done
 echo "  Keycloak is ready."
 
-echo "[5/8] Setting up Keycloak realm (service account roles)..."
+echo "[6/9] Setting up Keycloak realm (service account roles)..."
 if [ -x "$SETUP_REALM" ]; then
     bash "$SETUP_REALM"
 else
     echo "  WARNING: setup-realm.sh not found or not executable at $SETUP_REALM"
 fi
 
-echo "[6/8] Running database migrations..."
+echo "[7/9] Running database migrations..."
 (cd "$PROJECT_ROOT" && bazel run //apps/api-lab/database:migrate)
 
-echo "[7/8] Starting Python services..."
+echo "[8/9] Starting Python services..."
 PIDS=()
 
 (cd "$PROJECT_ROOT" && bazel run //apps/api-lab/python-rest-api) &
@@ -84,7 +89,7 @@ PIDS+=($!)
 
 printf "%s\n" "${PIDS[@]}" > "$PIDS_FILE"
 
-echo "[8/8] Waiting for health checks..."
+echo "[9/9] Waiting for health checks..."
 
 echo "  Waiting for REST API (port 8080)..."
 until curl -sf http://localhost:8080/healthz > /dev/null 2>&1; do sleep 2; done
