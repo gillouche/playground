@@ -29,10 +29,11 @@ PAGINATED_BOOKS_RESPONSE = {
 }
 
 
-def _make_response(status_code: int = 200, json_data=None) -> MagicMock:
+def _make_response(status_code: int = 200, json_data=None, headers=None) -> MagicMock:
     resp = MagicMock(spec=httpx.Response)
     resp.status_code = status_code
     resp.json.return_value = json_data
+    resp.headers = headers or {}
     resp.raise_for_status = MagicMock()
     return resp
 
@@ -124,13 +125,17 @@ class TestAuthHeaderForwarding:
     @pytest.mark.asyncio
     async def test_update_book_forwards_auth(self, connected_client):
         lib, mock_http = connected_client
+        mock_http.get.return_value = _make_response(200, SAMPLE_BOOK, headers={"ETag": '"1"'})
         mock_http.put.return_value = _make_response(200, SAMPLE_BOOK)
         headers = {"authorization": "Bearer update-token"}
 
         await lib.update_book(BOOK_ID, {"title": "New"}, headers=headers)
 
         call_kwargs = mock_http.put.call_args
-        assert call_kwargs.kwargs["headers"] == {"Authorization": "Bearer update-token"}
+        assert call_kwargs.kwargs["headers"] == {
+            "Authorization": "Bearer update-token",
+            "If-Match": '"1"',
+        }
 
     @pytest.mark.asyncio
     async def test_delete_book_forwards_auth(self, connected_client):

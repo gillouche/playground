@@ -47,10 +47,11 @@ PAGINATED_RESERVATIONS_RESPONSE = {
 }
 
 
-def _make_response(status_code: int = 200, json_data=None) -> MagicMock:
+def _make_response(status_code: int = 200, json_data=None, headers=None) -> MagicMock:
     resp = MagicMock(spec=httpx.Response)
     resp.status_code = status_code
     resp.json.return_value = json_data
+    resp.headers = headers or {}
     resp.raise_for_status = MagicMock()
     if status_code >= 400 and status_code != 404:
         resp.raise_for_status.side_effect = httpx.HTTPStatusError(
@@ -254,23 +255,27 @@ class TestUpdateBook:
     async def test_update_book_success(self, connected_client):
         lib, mock_http = connected_client
         updated = {**SAMPLE_BOOK, "title": "Updated Title"}
+        mock_http.get.return_value = _make_response(200, SAMPLE_BOOK, headers={"ETag": '"1"'})
         mock_http.put.return_value = _make_response(200, updated)
         result = await lib.update_book(BOOK_ID, {"title": "Updated Title"})
         mock_http.put.assert_awaited_once_with(
-            f"/api/v1/books/{BOOK_ID}", json={"title": "Updated Title"}, headers={}
+            f"/api/v1/books/{BOOK_ID}",
+            json={"title": "Updated Title"},
+            headers={"If-Match": '"1"'},
         )
         assert result == updated
 
     @pytest.mark.asyncio
     async def test_update_book_not_found(self, connected_client):
         lib, mock_http = connected_client
-        mock_http.put.return_value = _make_response(404)
+        mock_http.get.return_value = _make_response(404)
         result = await lib.update_book(BOOK_ID, {"title": "Nope"})
         assert result is None
 
     @pytest.mark.asyncio
     async def test_update_book_server_error(self, connected_client):
         lib, mock_http = connected_client
+        mock_http.get.return_value = _make_response(200, SAMPLE_BOOK, headers={"ETag": '"1"'})
         mock_http.put.return_value = _make_response(500)
         with pytest.raises(httpx.HTTPStatusError):
             await lib.update_book(BOOK_ID, {"title": "Fail"})
@@ -301,7 +306,7 @@ class TestReserveBooks:
         result = await lib.reserve_books(str(USER_ID), [str(BOOK_ID)])
         mock_http.post.assert_awaited_once_with(
             "/api/v1/reservations",
-            json={"user_id": str(USER_ID), "book_ids": [str(BOOK_ID)]},
+            json={"book_ids": [str(BOOK_ID)]},
             headers={},
         )
         assert result == [SAMPLE_RESERVATION]

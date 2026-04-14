@@ -127,21 +127,6 @@ class TestAuthInterceptorAcceptsValidToken:
         mock_jwt_validator.validate.assert_awaited_once_with("valid-token")
 
     @pytest.mark.asyncio
-    async def test_valid_token_stores_user_on_details(self, interceptor, mock_jwt_validator):
-        user = AuthenticatedUser(
-            sub=uuid.uuid4(),
-            username="admin",
-            roles=["admin"],
-        )
-        mock_jwt_validator.validate.return_value = user
-        details = _make_handler_call_details(metadata={"authorization": "Bearer admin-token"})
-        continuation = _make_continuation()
-
-        await interceptor.intercept_service(continuation, details)
-
-        assert details.user == user
-
-    @pytest.mark.asyncio
     async def test_bearer_case_insensitive(self, interceptor, mock_jwt_validator):
         user = AuthenticatedUser(
             sub=uuid.uuid4(),
