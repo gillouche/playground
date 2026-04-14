@@ -134,11 +134,11 @@ jobs:
 
       - name: Run bandit security scan
         run: |
-          uv tool run bandit -r apps/api-lab/python-rest-api/src apps/api-lab/python-common/src apps/api-lab/python-auth-api/src apps/api-lab/graphql-gateway/src apps/api-lab/python-grpc-api/src -c apps/api-lab/.bandit.yaml
+          nix develop ./nix#ci --command uv tool run bandit -r apps/api-lab/python-rest-api/src apps/api-lab/python-common/src apps/api-lab/python-auth-api/src apps/api-lab/graphql-gateway/src apps/api-lab/python-grpc-api/src -c apps/api-lab/.bandit.yaml
 
       - name: Run pip-audit
         run: |
-          uv tool run pip-audit -r apps/api-lab/requirements_lock.txt
+          nix develop ./nix#ci --command uv tool run pip-audit -r apps/api-lab/requirements_lock.txt
 
       - name: Publish test results
         if: always() && hashFiles('bazel-testlogs/**/test.xml') != ''
