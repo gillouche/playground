@@ -223,13 +223,13 @@ jobs:
           $COMPOSE_CMD exec -T postgres \
             psql -U playground -c "CREATE DATABASE keycloak" || true
           $COMPOSE_CMD up -d keycloak
-          echo "Waiting for Keycloak (up to 120s)..."
-          for i in $(seq 1 40); do
-            if curl -sf http://localhost:8180/realms/api-lab/.well-known/openid-configuration > /dev/null 2>&1; then
+          echo "Waiting for Keycloak (up to 180s)..."
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8180/realms/master > /dev/null 2>&1; then
               echo "Keycloak ready at attempt $i"
               break
             fi
-            if [ "$i" -eq 40 ]; then
+            if [ "$i" -eq 60 ]; then
               echo "Keycloak failed to start. Logs:"
               $COMPOSE_CMD logs keycloak --tail 30
               exit 1

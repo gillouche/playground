@@ -54,9 +54,7 @@ services:
       KC_DB_PASSWORD: playground
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-    command: start-dev --import-realm
-    volumes:
-      - ./keycloak/api-lab-realm.json:/opt/keycloak/data/import/api-lab-realm.json:ro
+    command: start-dev
     depends_on:
       - postgres
 
