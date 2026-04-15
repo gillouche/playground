@@ -3,9 +3,12 @@ name: SonarQube Analysis
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      scan_all:
+        description: "Scan all services (ignore change detection)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -59,8 +62,8 @@ jobs:
           ALL_SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type d | \
             grep -vE "($SKIP_NAMES)" | sort)
 
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Manual dispatch — scanning all services"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.scan_all }}" = "true" ]; then
+            echo "Manual dispatch (scan all) — scanning all services"
             AFFECTED_DIRS="$ALL_SERVICES"
           else
             if [ "${{ github.event_name }}" = "pull_request" ]; then
