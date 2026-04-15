@@ -211,7 +211,7 @@ jobs:
           else
             COMPOSE="docker-compose"
           fi
-          COMPOSE_CMD="$COMPOSE -f infra/sandbox/localhost/docker-compose.yaml"
+          COMPOSE_CMD="$COMPOSE --project-directory infra/sandbox/localhost -f infra/sandbox/localhost/docker-compose.yaml"
           $COMPOSE_CMD up -d postgres redis
           until $COMPOSE_CMD exec -T postgres pg_isready -U playground; do
             sleep 2
@@ -319,11 +319,11 @@ jobs:
         if: always()
         run: |
           if docker compose version &>/dev/null; then
-            docker compose -f infra/sandbox/localhost/docker-compose.yaml \
-              down -v || true
+            docker compose --project-directory infra/sandbox/localhost \
+              -f infra/sandbox/localhost/docker-compose.yaml down -v || true
           else
-            docker-compose -f infra/sandbox/localhost/docker-compose.yaml \
-              down -v || true
+            docker-compose --project-directory infra/sandbox/localhost \
+              -f infra/sandbox/localhost/docker-compose.yaml down -v || true
           fi
 
   finalize:
