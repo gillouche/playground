@@ -50,49 +50,87 @@ jobs:
       - name: Setup Nix Environment
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
 
-      - name: Detect services with uncached changes
+      - name: Detect affected services
         id: services
         run: |
           { set +x; } 2>/dev/null
 
           SKIP_NAMES="deploy|monitoring|__pycache__|system-tests|scripts|tools"
-
           ALL_SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type d | \
             grep -vE "($SKIP_NAMES)" | sort)
 
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "Manual dispatch — scanning all services"
-            CHANGED_SERVICES="$ALL_SERVICES"
+            AFFECTED_DIRS="$ALL_SERVICES"
           else
-            CHANGED_SERVICES=""
-            nix develop ./nix#ci --command bash -c '
-              for dir in '"$(echo $ALL_SERVICES)"'; do
-                app=$(basename "$(dirname "$dir")")
-                service=$(basename "$dir")
-                target="//apps/${app}/${service}"
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              DIFF_BASE="${{ github.event.pull_request.base.sha }}"
+            else
+              DIFF_BASE="HEAD~1"
+            fi
 
-                LIB_TARGET=$(bazel query "kind(py_library, ${target}/...)" 2>/dev/null | head -1 || true)
-                BIN_TARGET=$(bazel query "kind(\".*_binary\", ${target}/...)" 2>/dev/null | head -1 || true)
-                CHECK_TARGET="${LIB_TARGET:-$BIN_TARGET}"
+            CHANGED_FILES=$(git diff --name-only "$DIFF_BASE" HEAD 2>/dev/null || echo "")
+            if [ -z "$CHANGED_FILES" ]; then
+              echo "Could not determine changed files — scanning all services"
+              AFFECTED_DIRS="$ALL_SERVICES"
+            else
+              echo "Changed files:"
+              echo "$CHANGED_FILES" | head -30
 
-                if [ -z "$CHECK_TARGET" ]; then
-                  CHECK_TARGET=$(bazel query "${target}/..." 2>/dev/null | head -1 || true)
-                fi
+              AFFECTED_DIRS=""
+              nix develop ./nix#ci --command bash << 'NIXEOF'
+                set -uo pipefail
 
-                if [ -z "$CHECK_TARGET" ]; then
-                  continue
-                fi
+                CHANGED_FILES=$(git diff --name-only "$0" HEAD 2>/dev/null)
 
-                if ! bazel build --check_up_to_date --config=ci "$CHECK_TARGET" 2>/dev/null; then
-                  echo "CHANGED:$dir"
-                fi
-              done
-            ' 2>/dev/null > /tmp/cache_check.txt || true
+                AFFECTED_TARGETS=""
+                while IFS= read -r file; do
+                  [ -z "$file" ] && continue
+                  [ ! -f "$file" ] && continue
 
-            CHANGED_SERVICES=$(grep "^CHANGED:" /tmp/cache_check.txt 2>/dev/null | sed 's/^CHANGED://' || true)
+                  FILE_LABEL=$(bazel query "$file" 2>/dev/null || true)
+                  if [ -n "$FILE_LABEL" ]; then
+                    RDEPS=$(bazel query "rdeps(//apps/..., $FILE_LABEL)" 2>/dev/null || true)
+                    AFFECTED_TARGETS="$AFFECTED_TARGETS
+          $RDEPS"
+                  fi
+                done <<< "$CHANGED_FILES"
+
+                echo "$AFFECTED_TARGETS" | grep -oE "//apps/[^/]+/[^/:]+[:/]" | \
+                  sed 's|^//||; s|[:/]$||' | sort -u > /tmp/affected_dirs.txt
+
+                while read -r dir; do
+                  [ -z "$dir" ] && continue
+                  echo "AFFECTED: $dir"
+                done < /tmp/affected_dirs.txt
+          NIXEOF
+
+              if [ -f /tmp/affected_dirs.txt ]; then
+                AFFECTED_DIRS=$(cat /tmp/affected_dirs.txt | grep -v '^$' || true)
+              fi
+
+              if [ -z "$AFFECTED_DIRS" ]; then
+                echo "Bazel rdeps found no affected targets, falling back to directory matching"
+                for dir in $ALL_SERVICES; do
+                  if echo "$CHANGED_FILES" | grep -q "^${dir}/"; then
+                    echo "FALLBACK MATCH: $dir"
+                    AFFECTED_DIRS="$AFFECTED_DIRS $dir"
+                  fi
+                done
+              fi
+            fi
           fi
 
-          SERVICES=$(echo "$CHANGED_SERVICES" | tr ' ' '\n' | grep -v '^$' | sort -u | \
+          FILTERED=$(echo "$AFFECTED_DIRS" | tr ' ' '\n' | grep -v '^$' | sort -u | \
+            while read -r dir; do
+              svc=$(basename "$dir")
+              if echo "$svc" | grep -qE "^($SKIP_NAMES)$"; then
+                continue
+              fi
+              echo "$dir"
+            done)
+
+          SERVICES=$(echo "$FILTERED" | grep -v '^$' | \
             while read -r dir; do
               app=$(basename "$(dirname "$dir")")
               service=$(basename "$dir")
@@ -107,7 +145,7 @@ jobs:
 
           if [ "$SERVICES" = "[]" ] || [ -z "$SERVICES" ] || [ "$SERVICES" = "null" ]; then
             SERVICES="[]"
-            echo "No services need SonarQube analysis (all up-to-date in cache)"
+            echo "No services affected — skipping SonarQube analysis"
           fi
 
           echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
