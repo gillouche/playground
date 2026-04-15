@@ -107,6 +107,7 @@ def analyze_python_rest(src_dir, endpoints):
         "listReservations": "list_reservations",
         "getReservation": "get_reservation",
         "returnReservation": "return_reservation",
+        "updateReservation": "return_reservation",
         "healthCheck": "healthz",
         "readinessCheck": "ready",
         "serviceInfo": "info",
@@ -469,6 +470,29 @@ def build_coverage_data(repo_root):
     return endpoints, grpc_methods, rest_rows, grpc_rows, languages, summary
 
 
+def enforce_coverage(languages_to_enforce, summary, rest_rows, grpc_rows):
+    failed = []
+    for lang in languages_to_enforce:
+        if lang not in summary:
+            print(f"Unknown language: {lang}", file=sys.stderr)
+            sys.exit(2)
+        if summary[lang]["percentage"] < 100:
+            missing = []
+            for row in rest_rows:
+                if row["status"].get(lang) not in (DONE, NA):
+                    missing.append(row["name"])
+            for row in grpc_rows:
+                if row["status"].get(lang) not in (DONE, NA):
+                    missing.append(row["name"])
+            failed.append((lang, summary[lang]["percentage"], missing))
+    if failed:
+        for lang, pct, missing in failed:
+            print(f"FAIL: {lang} coverage is {pct}%, expected 100%", file=sys.stderr)
+            for ep in missing:
+                print(f"  missing: {ep}", file=sys.stderr)
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(description="API Implementation Coverage Tracker")
     parser.add_argument("--repo-root", help="Repository root (auto-detected)")
@@ -478,6 +502,13 @@ def main():
         "--github-summary", action="store_true", help="Write markdown to $GITHUB_STEP_SUMMARY"
     )
     parser.add_argument("--no-color", action="store_true", help="Disable ANSI colors")
+    parser.add_argument(
+        "--enforce",
+        metavar="LANG",
+        action="append",
+        default=[],
+        help="Fail with exit code 1 if LANG coverage is not 100%% (can be repeated)",
+    )
     args = parser.parse_args()
 
     repo_root = args.repo_root or find_repo_root()
@@ -553,6 +584,9 @@ def main():
         print(f"  {lang + ':':<14} {rest_str:<12} {grpc_str:<12} {overall_str}")
 
     print()
+
+    if args.enforce:
+        enforce_coverage(args.enforce, summary, rest_rows, grpc_rows)
 
 
 if __name__ == "__main__":

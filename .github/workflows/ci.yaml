@@ -151,8 +151,7 @@ jobs:
 
       - name: API Coverage Report
         if: always()
-        continue-on-error: true
-        run: python3 apps/api-lab/tools/api_coverage.py --github-summary
+        run: python3 apps/api-lab/tools/api_coverage.py --github-summary --enforce Python
 
       - name: Push images (Main Only)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
