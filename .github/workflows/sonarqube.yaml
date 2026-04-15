@@ -26,11 +26,11 @@ jobs:
         id: gate
 
   discover-services:
-    name: Discover Services
+    name: Discover Changed Services
     needs: security-check
     if: needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
-    timeout-minutes: 5
+    timeout-minutes: 10
     outputs:
       matrix: ${{ steps.services.outputs.matrix }}
     steps:
@@ -40,16 +40,63 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Find all services
+      - name: Setup Nix Cache Profile
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
+        with:
+          profile: nix
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
+      - name: Setup Nix Environment
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+
+      - name: Detect services with uncached changes
         id: services
         run: |
           { set +x; } 2>/dev/null
-          SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type d ! -name deploy ! -name monitoring ! -name __pycache__ ! -name system-tests | \
+
+          SKIP_NAMES="deploy|monitoring|__pycache__|system-tests|scripts|tools"
+
+          ALL_SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type d | \
+            grep -vE "($SKIP_NAMES)" | sort)
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual dispatch — scanning all services"
+            CHANGED_SERVICES="$ALL_SERVICES"
+          else
+            CHANGED_SERVICES=""
+            nix develop ./nix#ci --command bash -c '
+              for dir in '"$(echo $ALL_SERVICES)"'; do
+                app=$(basename "$(dirname "$dir")")
+                service=$(basename "$dir")
+                target="//apps/${app}/${service}"
+
+                LIB_TARGET=$(bazel query "kind(py_library, ${target}/...)" 2>/dev/null | head -1 || true)
+                BIN_TARGET=$(bazel query "kind(\".*_binary\", ${target}/...)" 2>/dev/null | head -1 || true)
+                CHECK_TARGET="${LIB_TARGET:-$BIN_TARGET}"
+
+                if [ -z "$CHECK_TARGET" ]; then
+                  CHECK_TARGET=$(bazel query "${target}/..." 2>/dev/null | head -1 || true)
+                fi
+
+                if [ -z "$CHECK_TARGET" ]; then
+                  continue
+                fi
+
+                if ! bazel build --check_up_to_date --config=ci "$CHECK_TARGET" 2>/dev/null; then
+                  echo "CHANGED:$dir"
+                fi
+              done
+            ' 2>/dev/null > /tmp/cache_check.txt || true
+
+            CHANGED_SERVICES=$(grep "^CHANGED:" /tmp/cache_check.txt 2>/dev/null | sed 's/^CHANGED://' || true)
+          fi
+
+          SERVICES=$(echo "$CHANGED_SERVICES" | tr ' ' '\n' | grep -v '^$' | sort -u | \
             while read -r dir; do
               app=$(basename "$(dirname "$dir")")
               service=$(basename "$dir")
               project_key="${app}:${service}"
-              # Create JSON object using jq
               jq -n -c \
                 --arg app "$app" \
                 --arg service "$service" \
@@ -57,13 +104,24 @@ jobs:
                 --arg pk "$project_key" \
                 '{app: $app, service: $service, path: $path, project_key: $pk}'
             done | jq -sc '.')
+
+          if [ "$SERVICES" = "[]" ] || [ -z "$SERVICES" ] || [ "$SERVICES" = "null" ]; then
+            SERVICES="[]"
+            echo "No services need SonarQube analysis (all up-to-date in cache)"
+          fi
+
           echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
-          echo "Found services: $SERVICES"
+          echo "Services to analyze: $SERVICES"
+        env:
+          AWS_PROFILE: "nix"
 
   sonarqube:
     name: Analyze ${{ matrix.service.project_key }}
     needs: [security-check, discover-services]
-    if: needs.security-check.outputs.is_safe == 'true' && needs.discover-services.outputs.matrix != '[]'
+    if: >-
+      needs.security-check.outputs.is_safe == 'true' &&
+      needs.discover-services.outputs.matrix != '[]' &&
+      needs.discover-services.outputs.matrix != ''
     runs-on: playground-runner
     timeout-minutes: 15
     strategy:
@@ -98,7 +156,6 @@ jobs:
 
             cd "$SERVICE_PATH"
 
-            # Python projects
             REQS_DIR="."
             if [ -f "requirements_lock.txt" ] || [ -f "requirements.txt" ]; then
               REQS_DIR="."
@@ -109,11 +166,9 @@ jobs:
             if [ "$REQS_DIR" != "." ] || [ -f "requirements_lock.txt" ] || [ -f "requirements.txt" ]; then
               echo "Detected Python project (requirements in $REQS_DIR)"
               if [ -d "tests" ]; then
-                # Create virtual environment using uv (more reliable in Nix environments)
                 uv venv .venv
                 source .venv/bin/activate
 
-                # Install dependencies using uv
                 if [ -f "$REQS_DIR/requirements_dev_lock.txt" ]; then
                   uv pip install -r "$REQS_DIR/requirements_dev_lock.txt" -q
                 elif [ -f "$REQS_DIR/requirements_lock.txt" ]; then
@@ -130,7 +185,6 @@ jobs:
                   PYTHONPATH_EXTRA="${PYTHONPATH_EXTRA}src/generated:"
                 fi
 
-                # Run pytest with coverage
                 set +e
                 PYTHONPATH="${PYTHONPATH_EXTRA}src:." pytest tests/ \
                   --cov=src \
@@ -154,13 +208,11 @@ jobs:
               fi
             fi
 
-            # Go projects
             if [ -f "go.mod" ]; then
               echo "Detected Go project"
               go test -coverprofile=coverage.out ./... || true
             fi
 
-            # TypeScript/JavaScript projects
             if [ -f "package.json" ]; then
               echo "Detected Node.js project"
               if command -v pnpm &> /dev/null; then
@@ -183,7 +235,6 @@ jobs:
 
             echo "Analyzing $PROJECT_KEY at $SERVICE_PATH"
 
-            # Determine sources path relative to service dir
             if [ -d "$SERVICE_PATH/src" ]; then
               SOURCES_PATH="src"
             else
