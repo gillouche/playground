@@ -375,7 +375,8 @@ jobs:
       - name: Send Success Notification
         if: >-
           needs.api-lab.result == 'success' &&
-          needs.demo-app.result == 'success'
+          needs.demo-app.result == 'success' &&
+          needs.system-test-api-lab.result == 'success'
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
@@ -396,7 +397,8 @@ jobs:
       - name: Send Failure Notification
         if: >-
           needs.api-lab.result != 'success' ||
-          needs.demo-app.result != 'success'
+          needs.demo-app.result != 'success' ||
+          needs.system-test-api-lab.result != 'success'
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}

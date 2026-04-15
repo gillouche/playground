@@ -44,7 +44,7 @@ jobs:
         id: services
         run: |
           { set +x; } 2>/dev/null
-          SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type d ! -name deploy ! -name monitoring ! -name __pycache__ | \
+          SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type d ! -name deploy ! -name monitoring ! -name __pycache__ ! -name system-tests | \
             while read -r dir; do
               app=$(basename "$(dirname "$dir")")
               service=$(basename "$dir")
