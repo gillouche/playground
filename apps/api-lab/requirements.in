@@ -57,3 +57,4 @@ requests>=2.33.0
 # Auth
 PyJWT[crypto]>=2.10.0
 cryptography>=44.0.0
+python-multipart>=0.0.26
