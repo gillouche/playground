@@ -7,9 +7,6 @@ from datetime import UTC, datetime, timedelta
 
 from cache.redis_cache import BOOK_TTL, BOOKS_ALL_TTL, RedisCache
 from config import app_config
-from database.models import Book as BookModel
-from database.models import Reservation as ReservationModel
-from database.models import ReservationStatus
 from generated.models import (
     Book,
     BookCreate,
@@ -36,6 +33,10 @@ from observability.tracing import get_tracer
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from database.models import Book as BookModel
+from database.models import Reservation as ReservationModel
+from database.models import ReservationStatus
 
 logger = logging.getLogger("api-lab.service")
 
@@ -115,7 +116,7 @@ def _build_list_books_query(query: ListBooksQuery, sort_column, limit: int, offs
     if query.genre:
         stmt = stmt.where(BookModel.genre == query.genre)
     if query.author:
-        stmt = stmt.where(BookModel.author.ilike(f"%{_escape_like(query.author)}%"))
+        stmt = stmt.where(BookModel.author.ilike(f"%{_escape_like(query.author)}%", escape="\\"))
     if query.search:
         try:
             ts_vector = func.to_tsvector(
@@ -127,9 +128,9 @@ def _build_list_books_query(query: ListBooksQuery, sort_column, limit: int, offs
         except Exception:
             stmt = stmt.where(
                 or_(
-                    BookModel.title.ilike(f"%{_escape_like(query.search)}%"),
-                    BookModel.author.ilike(f"%{_escape_like(query.search)}%"),
-                    BookModel.isbn.ilike(f"%{_escape_like(query.search)}%"),
+                    BookModel.title.ilike(f"%{_escape_like(query.search)}%", escape="\\"),
+                    BookModel.author.ilike(f"%{_escape_like(query.search)}%", escape="\\"),
+                    BookModel.isbn.ilike(f"%{_escape_like(query.search)}%", escape="\\"),
                 )
             )
 
@@ -363,7 +364,7 @@ class BookService:
                     )
                     active_count = active_count_result.scalar() or 0
                     if active_count > 0:
-                        raise ActiveReservationsError()
+                        raise ActiveReservationsError
 
                     await session.delete(found_book)
                     await session.commit()

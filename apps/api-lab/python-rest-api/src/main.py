@@ -17,11 +17,12 @@ _redis_client_ref: list = []
 async def lifespan(_application: FastAPI):
     from cache.redis_cache import RedisCache
     from config import app_config
-    from database.engine import async_session_factory, engine
     from observability.tracing import shutdown_tracing
     from routers import health as health_module
     from routers import rest as rest_module
     from services.book_service import BookService
+
+    from database.engine import async_session_factory, engine
 
     logger.info("Starting api-lab python-rest-api...")
     logger.info("Environment: %s", app_config.environment)
@@ -62,25 +63,66 @@ def _create_app() -> FastAPI:
     )
 
     from auth.permissions import PermissionDeniedError
+    from fastapi.exceptions import RequestValidationError
+    from fastapi.responses import JSONResponse as FastAPIJSONResponse
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
+    _STATUS_ERROR_CODES = {
+        400: "bad_request",
+        401: "unauthorized",
+        403: "forbidden",
+        404: "not_found",
+        409: "conflict",
+        412: "precondition_failed",
+        413: "payload_too_large",
+        422: "validation_error",
+        429: "rate_limit_exceeded",
+        500: "internal_server_error",
+        503: "service_unavailable",
+    }
+
+    def _status_to_error_code(status_code: int) -> str:
+        return _STATUS_ERROR_CODES.get(status_code, f"error_{status_code}")
 
     @application.exception_handler(PermissionDeniedError)
-    async def permission_denied_handler(_request, exc):
-        from fastapi.responses import JSONResponse as FastAPIJSONResponse
-
+    async def permission_denied_handler(request, exc):
+        request_id = getattr(getattr(request, "state", None), "request_id", None)
         return FastAPIJSONResponse(
             status_code=403,
-            content={"detail": str(exc)},
+            content={"error": "forbidden", "detail": str(exc), "request_id": request_id},
+        )
+
+    @application.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(request, exc):
+        request_id = getattr(getattr(request, "state", None), "request_id", None)
+        return FastAPIJSONResponse(
+            status_code=exc.status_code,
+            content={
+                "error": _status_to_error_code(exc.status_code),
+                "detail": exc.detail,
+                "request_id": request_id,
+            },
+        )
+
+    @application.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request, exc):
+        request_id = getattr(getattr(request, "state", None), "request_id", None)
+        return FastAPIJSONResponse(
+            status_code=422,
+            content={"error": "validation_error", "detail": str(exc), "request_id": request_id},
         )
 
     @application.exception_handler(Exception)
     async def global_exception_handler(request, _exc):
         request_id = getattr(getattr(request, "state", None), "request_id", None)
         logger.exception("Unhandled exception", extra={"request_id": request_id})
-        from fastapi.responses import JSONResponse as FastAPIJSONResponse
-
         return FastAPIJSONResponse(
             status_code=500,
-            content={"error": "internal_server_error", "request_id": request_id},
+            content={
+                "error": "internal_server_error",
+                "detail": "An unexpected error occurred",
+                "request_id": request_id,
+            },
         )
 
     from fastapi.middleware.cors import CORSMiddleware

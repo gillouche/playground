@@ -16,7 +16,7 @@ class KeycloakError(Exception):
 
 class KeycloakClient:
     def __init__(self):
-        self._http = httpx.AsyncClient(timeout=30.0)
+        self._http = httpx.AsyncClient(timeout=float(keycloak_config.timeout))
         self._admin_token: str | None = None
         self._admin_token_expires_at: float = 0
         self._server_url = keycloak_config.server_url

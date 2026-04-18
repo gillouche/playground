@@ -6,7 +6,7 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_create_book(rest_client, create_sample_book):  # noqa: ARG001
+async def test_create_book(rest_client, create_sample_book):
     book = await create_sample_book(isbn="9780000000001")
     assert book["isbn"] == "9780000000001"
     assert book["title"] == "Test Book"

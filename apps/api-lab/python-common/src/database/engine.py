@@ -3,9 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 engine = create_async_engine(
     postgres_config.url,
-    pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
+    pool_pre_ping=postgres_config.pool_pre_ping,
+    pool_size=postgres_config.pool_size,
+    max_overflow=postgres_config.max_overflow,
     echo=False,
 )
 

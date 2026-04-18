@@ -9,6 +9,9 @@ class PostgresConfig(BaseSettings):
     database: str = "api_lab"
     user: str = "api_lab"
     password: str = "api_lab"
+    pool_size: int = 20
+    max_overflow: int = 10
+    pool_pre_ping: bool = True
 
     model_config = {"env_prefix": "POSTGRES_"}
 
@@ -45,6 +48,7 @@ class KeycloakConfig(BaseSettings):
     client_secret: str = "api-lab-secret"
     auth_service_client_id: str = "api-lab-auth-service"
     auth_service_client_secret: str = "api-lab-auth-service-secret"
+    timeout: int = 30
 
     model_config = {"env_prefix": "KEYCLOAK_"}
 
@@ -63,6 +67,26 @@ class KeycloakConfig(BaseSettings):
     @property
     def admin_url(self) -> str:
         return f"{self.server_url}/admin/realms/{self.realm}"
+
+
+class CacheConfig(BaseSettings):
+    books_all_ttl: int = 30
+    book_ttl: int = 60
+    inventory_ttl: int = 15
+
+    model_config = {"env_prefix": "CACHE_"}
+
+
+class RateLimitConfig(BaseSettings):
+    auth_limit: int = 10
+    auth_window: int = 60
+    write_limit: int = 50
+    write_window: int = 60
+    read_limit: int = 200
+    read_window: int = 60
+    trusted_proxies: str = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+
+    model_config = {"env_prefix": "RATE_LIMIT_"}
 
 
 class AppConfig(BaseSettings):
@@ -84,4 +108,6 @@ postgres_config = PostgresConfig()
 redis_config = RedisConfig()
 grpc_config = GrpcConfig()
 keycloak_config = KeycloakConfig()
+cache_config = CacheConfig()
+rate_limit_config = RateLimitConfig()
 app_config = AppConfig()

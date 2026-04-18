@@ -5,10 +5,11 @@ from auth.dependencies import require_roles
 from auth.models import AuthenticatedUser
 from cache.redis_cache import RedisCache
 from config import app_config
-from database.engine import async_session_factory
 from fastapi import APIRouter, Depends
 from generated.models import HealthResponse, InfoResponse
 from sqlalchemy import text
+
+from database.engine import async_session_factory
 
 router = APIRouter(tags=["health"])
 
@@ -49,7 +50,7 @@ async def ready():
 
 @router.get("/info", response_model=InfoResponse)
 async def info(
-    _admin: AuthenticatedUser = Depends(require_roles("admin")),  # noqa: B008
+    _admin: AuthenticatedUser = Depends(require_roles("admin")),
 ):
     return InfoResponse(
         hostname=os.environ.get("HOSTNAME", platform.node()),

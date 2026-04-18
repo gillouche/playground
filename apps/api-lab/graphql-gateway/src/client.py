@@ -1,4 +1,5 @@
 import logging
+import os
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -6,6 +7,8 @@ from typing import Any
 import httpx
 
 logger = logging.getLogger("api-lab.graphql-gateway.client")
+
+GATEWAY_HTTP_TIMEOUT = int(os.environ.get("GATEWAY_HTTP_TIMEOUT", "10"))
 
 
 @dataclass
@@ -77,7 +80,9 @@ class LibraryClient:
         self._client: httpx.AsyncClient | None = None
 
     async def connect(self) -> None:
-        self._client = httpx.AsyncClient(base_url=self._base_url, timeout=10.0)
+        self._client = httpx.AsyncClient(
+            base_url=self._base_url, timeout=float(GATEWAY_HTTP_TIMEOUT)
+        )
         logger.info("Connected to REST API at %s", self._base_url)
 
     async def disconnect(self) -> None:

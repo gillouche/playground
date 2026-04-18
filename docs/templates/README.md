@@ -7,6 +7,7 @@ This directory contains templates for creating new services in the monorepo.
 To create a new Python service:
 
 1. Copy the template:
+
    ```bash
    cp -r docs/templates/python-service apps/<app-name>/<service-name>
    ```
@@ -20,6 +21,7 @@ To create a new Python service:
 3. Rename `BUILD.bazel.template` to `BUILD.bazel`
 
 4. Generate lockfiles:
+
    ```bash
    cd apps/<app-name>/<service-name>
    nix develop ./nix#python
@@ -28,6 +30,7 @@ To create a new Python service:
    ```
 
 5. Add pip.parse entries to `MODULE.bazel`:
+
    ```starlark
    pip.parse(
        hub_name = "pip_<service_name>",
@@ -39,6 +42,7 @@ To create a new Python service:
    ```
 
 6. Build and test:
+
    ```bash
    bazel build //apps/<app-name>/<service-name>:...
    bazel test //apps/<app-name>/<service-name>:..._unit_test
@@ -49,6 +53,7 @@ To create a new Python service:
 To create a new Go service:
 
 1. Copy the template:
+
    ```bash
    cp -r docs/templates/go-service apps/<app-name>/<service-name>
    ```
@@ -58,12 +63,14 @@ To create a new Go service:
    - `{{APP_NAME}}` - Parent app name
 
 3. Rename template files:
+
    ```bash
    mv BUILD.bazel.template BUILD.bazel
    mv go.mod.template go.mod
    ```
 
 4. Initialize dependencies:
+
    ```bash
    cd apps/<app-name>/<service-name>
    nix develop ./nix#go
@@ -71,6 +78,7 @@ To create a new Go service:
    ```
 
 5. Add go_deps to `MODULE.bazel` (if using external dependencies):
+
    ```starlark
    go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
    go_deps.from_file(go_mod = "//apps/<app-name>/<service-name>:go.mod")
@@ -78,6 +86,7 @@ To create a new Go service:
    ```
 
 6. Build and test:
+
    ```bash
    bazel build //apps/<app-name>/<service-name>:...
    bazel test //apps/<app-name>/<service-name>:..._unit_test
@@ -88,6 +97,7 @@ To create a new Go service:
 To create a new Rust service:
 
 1. Copy the template:
+
    ```bash
    cp -r docs/templates/rust-service apps/<app-name>/<service-name>
    ```
@@ -97,12 +107,14 @@ To create a new Rust service:
    - `{{APP_NAME}}` - Parent app name
 
 3. Rename template files:
+
    ```bash
    mv BUILD.bazel.template BUILD.bazel
    mv Cargo.toml.template Cargo.toml
    ```
 
 4. Initialize dependencies:
+
    ```bash
    cd apps/<app-name>/<service-name>
    nix develop ./nix#rust
@@ -110,6 +122,7 @@ To create a new Rust service:
    ```
 
 5. Add crate_universe to `MODULE.bazel`:
+
    ```starlark
    crate = use_extension("@rules_rust//crate_universe:extension.bzl", "crate")
    crate.from_cargo(
@@ -121,6 +134,7 @@ To create a new Rust service:
    ```
 
 6. Build and test:
+
    ```bash
    bazel build //apps/<app-name>/<service-name>:...
    bazel test //apps/<app-name>/<service-name>:..._unit_test
@@ -131,6 +145,7 @@ To create a new Rust service:
 To create a new TypeScript service:
 
 1. Copy the template:
+
    ```bash
    cp -r docs/templates/typescript-service apps/<app-name>/<service-name>
    ```
@@ -141,12 +156,14 @@ To create a new TypeScript service:
    - `{{APP_NAME}}` - Parent app name
 
 3. Rename template files:
+
    ```bash
    mv BUILD.bazel.template BUILD.bazel
    mv package.json.template package.json
    ```
 
 4. Initialize dependencies:
+
    ```bash
    cd apps/<app-name>/<service-name>
    nix develop ./nix#node
@@ -154,6 +171,7 @@ To create a new TypeScript service:
    ```
 
 5. Add npm_translate_lock to `MODULE.bazel`:
+
    ```starlark
    npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm")
    npm.npm_translate_lock(
@@ -164,6 +182,7 @@ To create a new TypeScript service:
    ```
 
 6. Build and test:
+
    ```bash
    bazel build //apps/<app-name>/<service-name>:...
    bazel test //apps/<app-name>/<service-name>:..._unit_test
@@ -203,11 +222,13 @@ bazel test //apps/... --test_tag_filters=lint
 ## Cross-Compilation
 
 Build for ARM64 (Raspberry Pi):
+
 ```bash
 bazel build --config=arm64 //apps/<app-name>/<service-name>:..._image
 ```
 
 Build for AMD64 (x86_64):
+
 ```bash
 bazel build --config=amd64 //apps/<app-name>/<service-name>:..._image
 ```

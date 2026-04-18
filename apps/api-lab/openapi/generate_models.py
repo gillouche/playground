@@ -145,7 +145,7 @@ def _format_field_call(kwargs: dict[str, object], default: object = ...) -> str:
     return f"Field({', '.join(parts)})"
 
 
-def _generate_models(spec: dict) -> str:  # noqa: PLR0912
+def _generate_models(spec: dict) -> str:
     """Generate Pydantic model classes from OpenAPI schemas."""
     schemas = spec.get("components", {}).get("schemas", {})
 
@@ -270,7 +270,7 @@ class _ModelGenContext:
     model_name: str
 
 
-def _generate_property_line(  # noqa: PLR0912
+def _generate_property_line(
     prop_name: str, prop_schema: dict, is_required: bool, ctx: _ModelGenContext
 ) -> str:
     """Generate a single property line for a Pydantic model class."""

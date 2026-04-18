@@ -1,8 +1,8 @@
 import ipaddress
 import logging
-import os
 import time
 
+from config import rate_limit_config
 from observability.metrics import rate_limit_rejections_total
 from observability.security_events import log_rate_limit
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -13,9 +13,9 @@ logger = logging.getLogger("api-lab.rate_limit")
 
 RATE_TIERS = {
     "exempt": None,
-    "auth": (10, 60),
-    "write": (50, 60),
-    "read": (200, 60),
+    "auth": (rate_limit_config.auth_limit, rate_limit_config.auth_window),
+    "write": (rate_limit_config.write_limit, rate_limit_config.write_window),
+    "read": (rate_limit_config.read_limit, rate_limit_config.read_window),
 }
 
 EXEMPT_PATHS = {"/healthz", "/ready", "/metrics"}
@@ -24,12 +24,9 @@ AUTH_PATHS = {"/api/v1/auth/login", "/api/v1/auth/register"}
 
 
 def _get_client_ip(request: Request) -> str:
-    trusted_proxies_str = os.environ.get(
-        "TRUSTED_PROXIES", "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
-    )
     trusted_networks = [
         ipaddress.ip_network(cidr.strip())
-        for cidr in trusted_proxies_str.split(",")
+        for cidr in rate_limit_config.trusted_proxies.split(",")
         if cidr.strip()
     ]
 

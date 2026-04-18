@@ -40,7 +40,7 @@ def _format_user(user: dict) -> UserResponse:
 @router.post("", status_code=201, response_model=CreateUserResponse)
 async def create_user(
     request: RegisterRequest,
-    _user: AuthenticatedUser = Depends(require_roles("admin")),  # noqa: B008
+    _user: AuthenticatedUser = Depends(require_roles("admin")),
 ):
     client = get_keycloak_client()
     try:
@@ -57,7 +57,7 @@ async def create_user(
 async def list_users(
     first: int = 0,
     max_results: int = 20,
-    _user: AuthenticatedUser = Depends(require_roles("admin")),  # noqa: B008
+    _user: AuthenticatedUser = Depends(require_roles("admin")),
 ):
     client = get_keycloak_client()
     try:
@@ -71,7 +71,7 @@ async def list_users(
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: str,
-    _user: AuthenticatedUser = Depends(require_roles("admin")),  # noqa: B008
+    _user: AuthenticatedUser = Depends(require_roles("admin")),
 ):
     client = get_keycloak_client()
     try:
@@ -88,7 +88,7 @@ async def get_user(
 async def update_roles(
     user_id: str,
     role_update: RoleUpdate,
-    _user: AuthenticatedUser = Depends(require_roles("admin")),  # noqa: B008
+    _user: AuthenticatedUser = Depends(require_roles("admin")),
 ):
     client = get_keycloak_client()
     try:
@@ -105,7 +105,7 @@ async def update_roles(
 @router.delete("/{user_id}", status_code=204)
 async def deactivate_user(
     user_id: str,
-    _user: AuthenticatedUser = Depends(require_roles("admin")),  # noqa: B008
+    _user: AuthenticatedUser = Depends(require_roles("admin")),
 ):
     client = get_keycloak_client()
     try:

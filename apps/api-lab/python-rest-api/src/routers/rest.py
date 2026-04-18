@@ -41,9 +41,9 @@ def get_book_service() -> BookService:
 
 @router.get("/books", response_model=PaginatedBooks)
 async def list_books(
-    query: ListBooksQuery = Depends(),  # noqa: B008
-    service: BookService = Depends(get_book_service),  # noqa: B008
-    _user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
+    query: ListBooksQuery = Depends(),
+    service: BookService = Depends(get_book_service),
+    _user: AuthenticatedUser = Depends(get_current_user),
 ):
     return await service.list_books(query)
 
@@ -52,8 +52,8 @@ async def list_books(
 async def get_book(
     book_id: uuid.UUID,
     response: Response,
-    service: BookService = Depends(get_book_service),  # noqa: B008
-    _user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
+    service: BookService = Depends(get_book_service),
+    _user: AuthenticatedUser = Depends(get_current_user),
 ):
     book = await service.get_book(book_id)
     if not book:
@@ -66,8 +66,8 @@ async def get_book(
 async def create_book(
     data: BookCreate,
     response: Response,
-    service: BookService = Depends(get_book_service),  # noqa: B008
-    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
+    service: BookService = Depends(get_book_service),
+    user: AuthenticatedUser = Depends(get_current_user),
 ):
     check_permission(user, "book", None, "create")
     try:
@@ -80,13 +80,13 @@ async def create_book(
 
 
 @router.put("/books/{book_id}", response_model=Book)
-async def update_book(  # noqa: PLR0913
+async def update_book(
     book_id: uuid.UUID,
     data: BookUpdate,
     response: Response,
     if_match: str = Header(...),
-    service: BookService = Depends(get_book_service),  # noqa: B008
-    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
+    service: BookService = Depends(get_book_service),
+    user: AuthenticatedUser = Depends(get_current_user),
 ):
     check_permission(user, "book", book_id, "update")
     try:
@@ -110,8 +110,8 @@ async def update_book(  # noqa: PLR0913
 @router.delete("/books/{book_id}", status_code=204)
 async def delete_book(
     book_id: uuid.UUID,
-    service: BookService = Depends(get_book_service),  # noqa: B008
-    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
+    service: BookService = Depends(get_book_service),
+    user: AuthenticatedUser = Depends(get_current_user),
 ):
     check_permission(user, "book", book_id, "delete")
     try:
@@ -125,8 +125,8 @@ async def delete_book(
 @router.post("/reservations", response_model=list[Reservation], status_code=201)
 async def reserve_books(
     data: ReservationCreate,
-    service: BookService = Depends(get_book_service),  # noqa: B008
-    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
+    service: BookService = Depends(get_book_service),
+    user: AuthenticatedUser = Depends(get_current_user),
 ):
     try:
         return await service.reserve_books(data, user_id=user.sub)
@@ -138,8 +138,8 @@ async def reserve_books(
 async def return_reservation(
     reservation_id: uuid.UUID,
     data: ReservationUpdate,
-    service: BookService = Depends(get_book_service),  # noqa: B008
-    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
+    service: BookService = Depends(get_book_service),
+    user: AuthenticatedUser = Depends(get_current_user),
 ):
     from generated.models import ReservationStatus
 
@@ -160,9 +160,9 @@ async def return_reservation(
 
 @router.get("/reservations", response_model=PaginatedReservations)
 async def list_reservations(
-    query: ListReservationsQuery = Depends(),  # noqa: B008
-    service: BookService = Depends(get_book_service),  # noqa: B008
-    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
+    query: ListReservationsQuery = Depends(),
+    service: BookService = Depends(get_book_service),
+    user: AuthenticatedUser = Depends(get_current_user),
 ):
     if not user.is_admin:
         query.user_id = user.sub
@@ -172,8 +172,8 @@ async def list_reservations(
 @router.get("/reservations/{reservation_id}", response_model=Reservation)
 async def get_reservation(
     reservation_id: uuid.UUID,
-    service: BookService = Depends(get_book_service),  # noqa: B008
-    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
+    service: BookService = Depends(get_book_service),
+    user: AuthenticatedUser = Depends(get_current_user),
 ):
     reservation = await service.get_reservation(reservation_id)
     if not reservation:

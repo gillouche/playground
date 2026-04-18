@@ -172,3 +172,13 @@ repos:
         args: [-c, .yamllint.yaml]
         files: \.(yaml|yml)$
         exclude: (pnpm-lock|\.ytt\.)
+
+  # =============================================================================
+  # Markdown - markdownlint
+  # =============================================================================
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.18.1
+    hooks:
+      - id: markdownlint-cli2
+        args: ["--config", ".markdownlint.yaml"]
+        types: [markdown]

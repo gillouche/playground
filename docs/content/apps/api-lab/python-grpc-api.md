@@ -26,11 +26,27 @@ A gRPC server implementing the same library service as the REST API, using async
 | `ListReservations` | `ListReservationsRequest` | `ListReservationsResponse` | List with filters |
 | `GetReservation` | `GetReservationRequest` | `ReservationResponse` | Single reservation |
 
+## Authentication
+
+All RPC methods require a valid JWT passed as a Bearer token in the `authorization` metadata key. An `AuthInterceptor` validates tokens before the request reaches the handler.
+
+Exempt methods (no auth required):
+
+- gRPC health check (`Check`, `Watch`)
+- gRPC reflection
+
+Unauthenticated or invalid requests receive `UNAUTHENTICATED` status.
+
 ## Implementation Details
 
-The gRPC server uses a `GenericRpcHandler` with JSON serialization rather than generated protobuf stubs. Request and response bodies are JSON-encoded, allowing the same `BookService` business logic layer to be shared with the REST API.
+The gRPC server uses a `GenericRpcHandler` with JSON serialization rather than generated protobuf stubs.
+Request and response bodies are JSON-encoded, allowing the same `BookService` business logic layer to be shared with the REST API.
 
 gRPC reflection is enabled for service discovery.
+
+## Metrics Endpoint
+
+Prometheus metrics are served via a separate HTTP server on port **9090**. This is independent of the gRPC port and allows Prometheus to scrape metrics without gRPC client support.
 
 ## Error Handling
 

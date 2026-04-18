@@ -36,6 +36,31 @@ Generated targets:
 
 Go (`tools/go_defs.bzl`), Rust (`tools/rust_defs.bzl`), and TypeScript (`tools/ts_defs.bzl`) follow the same pattern.
 
+### Generated Models from OpenAPI
+
+Services that use OpenAPI specs generate Python models via a Bazel genrule:
+
+```python
+genrule(
+    name = "generate_models",
+    srcs = ["openapi.yaml"],
+    outs = ["src/generated/models.py"],
+    cmd = "$(location //tools:openapi_codegen) --input $< --output $@",
+)
+```
+
+Generated files are excluded from linting and formatting hooks.
+
+### Dependency Lockfiles
+
+Python dependencies use `pip-compile` with hash checking to produce deterministic lockfiles:
+
+```bash
+pip-compile --generate-hashes requirements.in -o requirements.txt
+```
+
+Bazel consumes these lockfiles for hermetic builds.
+
 ## Cross-Compilation
 
 Build for specific architectures:

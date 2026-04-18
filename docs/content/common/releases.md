@@ -23,6 +23,21 @@ Immutable version records stored in `releases/versions/<app>/v1.0.0.yaml`. Creat
 
 ## Workflow
 
+### Releasable Components
+
+| App | Component | Notes |
+|-----|-----------|-------|
+| demo-app | greeting-service, infra-check-service, traffic-generator-service | Go, Python |
+| api-lab | python-rest-api, python-grpc-api, graphql-gateway, python-auth-api | Python |
+
+### Release Checklist
+
+Before promoting to test or production:
+
+- All CI checks pass (including system tests)
+- Keycloak realm configuration is up to date (`apps/api-lab/keycloak/realm-export.json`)
+- BOM files reference correct image digests
+
 ### 1. Sync Dev
 
 Pull latest component images from Nexus and update the dev BOM:

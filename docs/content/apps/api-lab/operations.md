@@ -1,8 +1,71 @@
 # API Lab Operations
 
+## Development Scripts
+
+### Starting the Stack
+
+```bash
+./apps/api-lab/scripts/dev-start.sh
+```
+
+Starts the full development stack in order:
+
+1. PostgreSQL, Redis, Jaeger via Docker Compose
+2. Keycloak (with its own PostgreSQL database)
+3. Keycloak realm setup (clients, roles, service accounts)
+4. Database migrations
+5. All four Python services (REST API, gRPC API, GraphQL Gateway, Auth API)
+6. Health check verification
+
+After startup, services are available at:
+
+| Service | URL |
+|---------|-----|
+| REST API | `http://localhost:8080` |
+| Auth API | `http://localhost:8084` |
+| GraphQL Gateway | `http://localhost:8083` |
+| gRPC API | `localhost:50051` |
+| Keycloak | `http://localhost:8180` |
+| Jaeger UI | `http://localhost:16686` |
+| PostgreSQL | `localhost:5432` |
+| Redis | `localhost:6379` |
+
+### Stopping the Stack
+
+```bash
+./apps/api-lab/scripts/dev-stop.sh
+```
+
+Stops all running services and tears down Docker Compose infrastructure.
+
+## Keycloak Setup
+
+### Realm Configuration
+
+The `api-lab` realm is configured automatically by `infra/sandbox/localhost/keycloak/setup-realm.sh` during `dev-start.sh`. It creates:
+
+- **Realm:** `api-lab`
+- **Clients:**
+  - `api-lab` -- user-facing client for password and refresh token grants
+  - `api-lab-auth-service` -- service account client for admin operations (user creation, role management)
+- **Realm roles:** `admin`, `user`
+- **Service account roles:** The `api-lab-auth-service` client receives realm management permissions
+
+### Dev Credentials
+
+| Resource | Username | Password |
+|----------|----------|----------|
+| Keycloak admin console | `admin` | `admin` |
+| PostgreSQL | `playground` | `playground` |
+| Redis | - | `playground` |
+
+Client secrets for local development are set in `dev-start.sh` environment variables (`KEYCLOAK_CLIENT_SECRET=dev-secret`, `KEYCLOAK_AUTH_SERVICE_CLIENT_SECRET=dev-auth-secret`).
+
 ## System Tests
 
 End-to-end tests that validate all three API protocols (REST, gRPC, GraphQL) and cross-protocol data consistency. The test runner supports two targets: docker compose (local) and minikube.
+
+**Prerequisites:** Keycloak must be running and the realm must be configured before system tests can execute, as all API endpoints require authentication.
 
 ### Local (Docker Compose)
 
@@ -68,3 +131,15 @@ Each service has:
 - ServiceMonitor (Prometheus scraping)
 - ScaledObject (KEDA autoscaling)
 - NetworkPolicy (egress rules for database/Redis)
+
+## Secrets Management
+
+Sensitive configuration (Keycloak client secrets, database passwords, Redis passwords) is managed via **SealedSecrets** for deployed environments.
+Credential templates live in each service's deploy directory (e.g., `apps/api-lab/python-rest-api/deploy/templates/credentials.ytt.yaml`)
+and sealed versions are stored per environment:
+
+- `apps/api-lab/deploy/dev/` -- dev cluster credentials
+- `apps/api-lab/deploy/test/` -- test cluster credentials
+- `apps/api-lab/deploy/prod/` -- production cluster credentials
+
+Local development uses plaintext environment variables set by `dev-start.sh`.

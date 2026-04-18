@@ -3,14 +3,14 @@ import logging
 from typing import Any
 
 import redis.asyncio as aioredis
-from config import redis_config
+from config import cache_config, redis_config
 
 logger = logging.getLogger("api-lab.cache")
 
 CACHE_PREFIX = "api-lab"
-BOOKS_ALL_TTL = 30
-BOOK_TTL = 60
-INVENTORY_TTL = 15
+BOOKS_ALL_TTL = cache_config.books_all_ttl
+BOOK_TTL = cache_config.book_ttl
+INVENTORY_TTL = cache_config.inventory_ttl
 
 
 class RedisCache:

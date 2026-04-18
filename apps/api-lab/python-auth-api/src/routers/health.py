@@ -44,7 +44,7 @@ async def ready():
 
 @router.get("/info", response_model=InfoResponse)
 async def info(
-    _user: AuthenticatedUser = Depends(require_roles("admin")),  # noqa: B008
+    _user: AuthenticatedUser = Depends(require_roles("admin")),
 ):
     return InfoResponse(
         hostname=os.environ.get("HOSTNAME", platform.node()),

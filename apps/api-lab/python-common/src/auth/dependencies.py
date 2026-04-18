@@ -41,7 +41,7 @@ async def get_current_user(request: Request) -> AuthenticatedUser:
 
 
 def require_roles(*required_roles: str):
-    async def _check(user: AuthenticatedUser = Depends(get_current_user)):  # noqa: B008
+    async def _check(user: AuthenticatedUser = Depends(get_current_user)):
         for role in required_roles:
             if role in user.roles:
                 return user

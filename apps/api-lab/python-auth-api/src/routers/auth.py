@@ -80,7 +80,14 @@ async def login(request: LoginRequest, raw_request: Request):
             raise HTTPException(status_code=401, detail="Invalid username or password") from e
         raise HTTPException(status_code=e.status_code, detail=e.detail) from e
 
-    log_login_success(user_id=tokens.get("access_token", "unknown"), ip=ip)
+    import jwt as pyjwt
+
+    try:
+        unverified = pyjwt.decode(tokens["access_token"], options={"verify_signature": False})
+        user_sub = unverified.get("sub", "unknown")
+    except Exception:
+        user_sub = "unknown"
+    log_login_success(user_id=user_sub, ip=ip)
     login_attempts_total.labels(status="success").inc()
     return TokenResponse(**tokens)
 

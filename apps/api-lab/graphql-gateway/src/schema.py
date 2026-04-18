@@ -121,7 +121,7 @@ def _to_reservation_type(data: dict[str, Any]) -> ReservationType:
 @strawberry.type
 class Query:
     @strawberry.field
-    async def books(  # noqa: PLR0913
+    async def books(
         self,
         info: Info,
         available_only: bool = False,
@@ -160,7 +160,7 @@ class Query:
         return _to_book_type(result) if result else None
 
     @strawberry.field
-    async def reservations(  # noqa: PLR0913
+    async def reservations(
         self,
         info: Info,
         user_id: uuid.UUID | None = None,
@@ -200,7 +200,7 @@ class Query:
 @strawberry.type
 class Mutation:
     @strawberry.mutation
-    async def create_book(  # noqa: PLR0913
+    async def create_book(
         self,
         info: Info,
         isbn: str,
@@ -226,7 +226,7 @@ class Mutation:
         return _to_book_type(result)
 
     @strawberry.mutation
-    async def update_book(  # noqa: PLR0913
+    async def update_book(
         self,
         info: Info,
         book_id: uuid.UUID,
@@ -368,7 +368,8 @@ def _create_complexity_validator(max_complexity: int) -> type[ValidationRule]:
                 if complexity > max_complexity:
                     self.report_error(
                         GraphQLError(
-                            f"Query complexity {complexity} exceeds maximum allowed complexity of {max_complexity}"
+                            f"Query complexity {complexity} exceeds maximum "
+                            f"allowed complexity of {max_complexity}"
                         )
                     )
 

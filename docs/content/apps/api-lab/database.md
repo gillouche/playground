@@ -68,7 +68,7 @@ python apps/api-lab/database/migrate.py --check
 
 Add a SQL file to `apps/api-lab/database/migrations/`:
 
-```
+```text
 V002__add_categories_table.sql
 ```
 

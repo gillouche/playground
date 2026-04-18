@@ -140,7 +140,7 @@ def rust_application(
 
         oci_load(
             name = name + "_load",
-            image = ":" + name + "_image_arm64",
+            image = ":" + name + "_image",
             repo_tags = ["{}:latest".format(name)],
             tags = ["manual"],
             visibility = visibility,

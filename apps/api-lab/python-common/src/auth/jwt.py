@@ -33,7 +33,7 @@ class JWTValidator:
                             algorithms=["RS256"],
                             issuer=self._issuer,
                             audience=self._audience,
-                            leeway=5,
+                            leeway=2,
                         )
                         break
                     except jwt.InvalidSignatureError:
@@ -48,7 +48,7 @@ class JWTValidator:
                     algorithms=["RS256"],
                     issuer=self._issuer,
                     audience=self._audience,
-                    leeway=5,
+                    leeway=2,
                 )
         except jwt.ExpiredSignatureError:
             raise InvalidTokenError("expired") from None

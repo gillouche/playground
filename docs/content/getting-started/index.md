@@ -25,7 +25,7 @@ nix develop ./nix#node     # Node.js + pnpm
 
 ## Repository Layout
 
-```
+```text
 playground/
   apps/                    # Application source code
     api-lab/               # Multi-protocol library API

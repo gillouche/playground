@@ -30,7 +30,7 @@ class ChangePasswordRequest(BaseModel):
 
 @router.get("", response_model=ProfileResponse)
 async def get_profile(
-    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
+    user: AuthenticatedUser = Depends(get_current_user),
 ):
     client = get_keycloak_client()
     try:
@@ -51,7 +51,7 @@ async def get_profile(
 @router.patch("", response_model=ProfileResponse)
 async def update_profile(
     update: ProfileUpdate,
-    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
+    user: AuthenticatedUser = Depends(get_current_user),
 ):
     client = get_keycloak_client()
 
@@ -87,7 +87,7 @@ async def update_profile(
 @router.post("/change-password", status_code=204)
 async def change_password(
     request: ChangePasswordRequest,
-    user: AuthenticatedUser = Depends(get_current_user),  # noqa: B008
+    user: AuthenticatedUser = Depends(get_current_user),
 ):
     client = get_keycloak_client()
 

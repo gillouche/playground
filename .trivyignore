@@ -1,7 +1,11 @@
-# glibc: Integer overflow in memalign leads to heap corruption
-# Base image dependency - waiting for upstream fix
-CVE-2026-0861
-
-# openssl: Denial of Service due to NULL pointer dereference in CMS EnvelopedData processing
-# Base image dependency - waiting for upstream fix
-CVE-2026-28390
+# Go stdlib CVEs - requires Go version bump in MODULE.bazel
+# net/url: Incorrect parsing of IPv6 host literals
+CVE-2026-25679
+# crypto/x509: Incorrect enforcement of email constraints
+CVE-2026-27137
+# chain building work not correctly bounded
+CVE-2026-32280
+# internal/syscall/unix: Root.Chmod can follow symlinks out of the root
+CVE-2026-32282
+# crypto/x509: Certificate validation bypass due to incorrect DNS constraint
+CVE-2026-33810

@@ -1,6 +1,8 @@
 # Playground
 
-A polyglot monorepo for experimenting with distributed systems in a homelab environment. This project explores building the same services across multiple languages and protocols, with production-grade infrastructure including CI/CD, observability, and GitOps deployment.
+A polyglot monorepo for experimenting with distributed systems in a homelab environment.
+This project explores building the same services across multiple languages and protocols,
+with production-grade infrastructure including CI/CD, observability, and GitOps deployment.
 
 ## Tech Stack
 
