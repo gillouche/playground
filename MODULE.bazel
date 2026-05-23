@@ -30,6 +30,11 @@ pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
     hub_name = "pip_greeting_service",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/demo-app/greeting-service:requirements_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
@@ -40,6 +45,11 @@ pip.parse(
 pip.parse(
     hub_name = "pip_greeting_service_dev",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/demo-app/greeting-service:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
@@ -50,6 +60,11 @@ pip.parse(
 pip.parse(
     hub_name = "pip_infra_check_service",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/demo-app/infra-check-service:requirements_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
@@ -60,6 +75,11 @@ pip.parse(
 pip.parse(
     hub_name = "pip_infra_check_service_dev",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/demo-app/infra-check-service:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
@@ -70,6 +90,11 @@ pip.parse(
 pip.parse(
     hub_name = "pip_traffic_generator_service",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/demo-app/traffic-generator-service:requirements_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
@@ -80,6 +105,11 @@ pip.parse(
 pip.parse(
     hub_name = "pip_traffic_generator_service_dev",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/demo-app/traffic-generator-service:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
@@ -90,6 +120,11 @@ pip.parse(
 pip.parse(
     hub_name = "pip_apilab",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/api-lab:requirements_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
@@ -100,6 +135,11 @@ pip.parse(
 pip.parse(
     hub_name = "pip_apilab_dev",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/api-lab:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
