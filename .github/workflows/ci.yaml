@@ -252,17 +252,29 @@ jobs:
             COMPOSE="docker-compose"
           fi
           COMPOSE_CMD="$COMPOSE --project-directory infra/sandbox/localhost -f infra/sandbox/localhost/docker-compose.yaml"
-          $COMPOSE_CMD up -d postgres redis
-          until $COMPOSE_CMD exec -T postgres pg_isready -U playground; do
-            sleep 2
-          done
-          until $COMPOSE_CMD exec -T redis redis-cli -a playground ping \
-            | grep PONG; do sleep 2; done
+
+          # Clear any leftover state from a canceled previous run on this runner.
+          $COMPOSE_CMD down -v --remove-orphans || true
+
+          # Use --wait so docker compose blocks until healthchecks pass.
+          if ! $COMPOSE_CMD up -d --wait --wait-timeout 120 postgres redis; then
+            echo "::error::postgres or redis failed to become healthy. Logs:"
+            $COMPOSE_CMD ps
+            $COMPOSE_CMD logs --tail 80 postgres
+            $COMPOSE_CMD logs --tail 40 redis
+            exit 1
+          fi
+
           $COMPOSE_CMD exec -T postgres \
             psql -U playground -c "CREATE DATABASE api_lab" || true
           $COMPOSE_CMD exec -T postgres \
             psql -U playground -c "CREATE DATABASE keycloak" || true
-          $COMPOSE_CMD up -d keycloak
+
+          if ! $COMPOSE_CMD up -d keycloak; then
+            echo "::error::keycloak failed to start"
+            $COMPOSE_CMD logs --tail 80 keycloak
+            exit 1
+          fi
           echo "Waiting for Keycloak (up to 180s)..."
           for i in $(seq 1 60); do
             if curl -sf http://localhost:8180/realms/master > /dev/null 2>&1; then
@@ -270,8 +282,8 @@ jobs:
               break
             fi
             if [ "$i" -eq 60 ]; then
-              echo "Keycloak failed to start. Logs:"
-              $COMPOSE_CMD logs keycloak --tail 30
+              echo "::error::Keycloak failed to start. Logs:"
+              $COMPOSE_CMD logs keycloak --tail 80
               exit 1
             fi
             sleep 3

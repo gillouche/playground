@@ -9,12 +9,24 @@ services:
       POSTGRES_DB: playground
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U playground -d playground"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
   redis:
     image: nexus.gillouche.homelab/docker-hub/library/redis:8-alpine
     ports:
       - "6379:6379"
     command: redis-server --requirepass playground
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "playground", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   kafka:
     image: nexus.gillouche.homelab/docker-hub/apache/kafka:latest
@@ -56,7 +68,8 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
     command: start-dev
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   jaeger:
     image: nexus.gillouche.homelab/docker-hub/jaegertracing/all-in-one:latest
