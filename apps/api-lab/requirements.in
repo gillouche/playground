@@ -18,7 +18,7 @@ asyncpg>=0.30.0
 redis>=5.0.0
 
 # GraphQL (gateway)
-strawberry-graphql[fastapi]>=0.312.3
+strawberry-graphql[fastapi]>=0.315.4  # CVE-2026-45739
 
 # gRPC
 grpcio>=1.68.0
@@ -57,4 +57,10 @@ requests>=2.33.0
 # Auth
 PyJWT[crypto]>=2.10.0
 cryptography>=44.0.0
-python-multipart>=0.0.26
+python-multipart>=0.0.27  # CVE-2026-42561
+
+# Transitive bumps for CVEs
+idna>=3.15  # CVE-2026-45409
+urllib3>=2.7.0  # PYSEC-2026-141, PYSEC-2026-142
+# starlette is pinned <1.0.0 by prometheus-fastapi-instrumentator; PYSEC-2026-161
+# is ignored via pip-audit --ignore-vuln until upstream updates.
