@@ -5,7 +5,7 @@ bazel_dep(name = "platforms", version = "1.0.0")
 
 # Go support - uses host Go from Nix
 bazel_dep(name = "rules_go", version = "0.60.0")
-bazel_dep(name = "gazelle", version = "0.50.0")
+bazel_dep(name = "gazelle", version = "0.51.0")
 
 # Rust support - uses host Rust from Nix
 bazel_dep(name = "rules_rust", version = "0.69.0")
