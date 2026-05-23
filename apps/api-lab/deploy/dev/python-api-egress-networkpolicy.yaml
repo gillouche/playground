@@ -1,9 +1,15 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-egress-infra-dns
+  name: python-api-allow-egress
+  labels:
+    app: api-lab
+    component: python-api
+    environment: dev
 spec:
-  podSelector: {}
+  podSelector:
+    matchLabels:
+      component: python-api
   policyTypes:
   - Egress
   egress:

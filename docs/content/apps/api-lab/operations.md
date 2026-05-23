@@ -121,7 +121,19 @@ All Python services expose Prometheus metrics at `/metrics` via `prometheus-fast
 
 ### Deployment
 
-Services deploy via Kustomize overlays with environment-specific patches. Production deployments use Argo Rollouts with canary strategy (20% -> 40% -> 60% -> 80% with analysis).
+Services deploy via Kustomize overlays generated from ytt templates in each
+service's `deploy/templates/`. The current branch ships the `dev` overlay
+only; `test` and `prod` are produced by `bazel run //tools/release:promote`
+after a dev release is validated. Production deployments use Argo Rollouts
+with a canary strategy (20% -> pause -> 100% with analysis templates).
+
+Regenerate the dev manifests after editing a template:
+
+```bash
+./tools/deploy/ytt_gen.sh --env dev api-lab
+```
+
+CI fails if the committed manifests differ from a fresh render (drift detection).
 
 Each service has:
 
@@ -130,16 +142,20 @@ Each service has:
 - Ingress rule
 - ServiceMonitor (Prometheus scraping)
 - ScaledObject (KEDA autoscaling)
-- NetworkPolicy (egress rules for database/Redis)
+- NetworkPolicy (egress rules for database/Redis/Keycloak/monitoring)
 
 ## Secrets Management
 
-Sensitive configuration (Keycloak client secrets, database passwords, Redis passwords) is managed via **SealedSecrets** for deployed environments.
-Credential templates live in each service's deploy directory (e.g., `apps/api-lab/python-rest-api/deploy/templates/credentials.ytt.yaml`)
-and sealed versions are stored per environment:
+This repository **references** Kubernetes Secrets by name; it does not create
+SealedSecrets here. The `home-cluster-gitops` project seals and applies the
+secrets. The following Secrets must exist in `playground-apps-dev-api-lab`:
 
-- `apps/api-lab/deploy/dev/` -- dev cluster credentials
-- `apps/api-lab/deploy/test/` -- test cluster credentials
-- `apps/api-lab/deploy/prod/` -- production cluster credentials
+| Secret name                       | Keys                                                          | Consumer                |
+|-----------------------------------|---------------------------------------------------------------|-------------------------|
+| `python-api-credentials`          | `POSTGRES_PASSWORD`, `REDIS_PASSWORD`                          | python-api Rollout      |
+| `python-grpc-api-credentials`     | `POSTGRES_PASSWORD`, `REDIS_PASSWORD`                          | python-grpc-api Rollout |
+| `python-auth-api-credentials`     | `POSTGRES_PASSWORD`, `REDIS_PASSWORD`                          | python-auth-api Rollout |
+| `api-lab-keycloak-credentials`    | `KEYCLOAK_CLIENT_SECRET`, `KEYCLOAK_AUTH_SERVICE_CLIENT_SECRET` | python-auth-api Rollout |
 
-Local development uses plaintext environment variables set by `dev-start.sh`.
+Plain-text Secret templates for sealing live in `secrets/dev/`. Local
+development uses plaintext environment variables set by `dev-start.sh`.

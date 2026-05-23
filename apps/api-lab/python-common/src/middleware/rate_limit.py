@@ -3,7 +3,7 @@ import logging
 import time
 
 from config import rate_limit_config
-from observability.metrics import rate_limit_rejections_total
+from observability.metrics import rate_limit_redis_failures_total, rate_limit_rejections_total
 from observability.security_events import log_rate_limit
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
@@ -61,10 +61,13 @@ def _get_rate_key(request: Request, tier: str) -> str:
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, redis_client=None, redis_client_ref=None):
+    def __init__(
+        self, app, redis_client=None, redis_client_ref=None, fail_open: bool | None = None
+    ):
         super().__init__(app)
         self._redis_client = redis_client
         self._redis_client_ref = redis_client_ref
+        self.fail_open = rate_limit_config.fail_open if fail_open is None else fail_open
 
     @property
     def redis_client(self):
@@ -74,19 +77,36 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return self._redis_client_ref[0]
         return None
 
+    def _redis_unavailable_response(self) -> Response:
+        rate_limit_redis_failures_total.inc()
+        if self.fail_open:
+            return None
+        logger.error("Redis unavailable for rate limiting and fail_open=False; rejecting request")
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Rate limiting unavailable", "status_code": 503},
+            headers={"Retry-After": "5"},
+        )
+
+    async def _handle_redis_unavailable(self, call_next, request) -> Response:
+        rejected = self._redis_unavailable_response()
+        if rejected is not None:
+            return rejected
+        return await call_next(request)
+
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         tier = _get_tier(request)
 
         if tier == "exempt":
             return await call_next(request)
 
-        if self.redis_client is None:
-            return await call_next(request)
-
         limits = RATE_TIERS[tier]
         if limits is None:
             return await call_next(request)
         rate_limit, window_seconds = limits
+
+        if self.redis_client is None:
+            return await self._handle_redis_unavailable(call_next, request)
 
         key = _get_rate_key(request, tier)
         current_window = int(time.time()) // window_seconds
@@ -97,36 +117,34 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             current_count = await self.redis_client.incr(redis_key)
             if current_count == 1:
                 await self.redis_client.expire(redis_key, window_seconds)
+        except Exception as e:
+            logger.warning("Redis error during rate limiting: %s", e)
+            return await self._handle_redis_unavailable(call_next, request)
 
-            remaining = max(0, rate_limit - current_count)
+        if current_count > rate_limit:
+            client_ip = _get_client_ip(request)
+            log_rate_limit(
+                ip=client_ip,
+                user_id=None,
+                endpoint=str(request.url.path),
+                tier=tier,
+                count=current_count,
+            )
+            rate_limit_rejections_total.labels(endpoint=str(request.url.path), tier=tier).inc()
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit exceeded", "status_code": 429},
+                headers={
+                    "X-RateLimit-Limit": str(rate_limit),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": str(window_reset),
+                    "Retry-After": str(window_reset - int(time.time())),
+                },
+            )
 
-            if current_count > rate_limit:
-                client_ip = _get_client_ip(request)
-                log_rate_limit(
-                    ip=client_ip,
-                    user_id=None,
-                    endpoint=str(request.url.path),
-                    tier=tier,
-                    count=current_count,
-                )
-                rate_limit_rejections_total.labels(endpoint=str(request.url.path), tier=tier).inc()
-                return JSONResponse(
-                    status_code=429,
-                    content={"detail": "Rate limit exceeded", "status_code": 429},
-                    headers={
-                        "X-RateLimit-Limit": str(rate_limit),
-                        "X-RateLimit-Remaining": "0",
-                        "X-RateLimit-Reset": str(window_reset),
-                        "Retry-After": str(window_reset - int(time.time())),
-                    },
-                )
-
-            response = await call_next(request)
-            response.headers["X-RateLimit-Limit"] = str(rate_limit)
-            response.headers["X-RateLimit-Remaining"] = str(remaining)
-            response.headers["X-RateLimit-Reset"] = str(window_reset)
-            return response
-
-        except Exception:
-            logger.debug("Redis unavailable for rate limiting, allowing request through")
-            return await call_next(request)
+        response = await call_next(request)
+        remaining = max(0, rate_limit - current_count)
+        response.headers["X-RateLimit-Limit"] = str(rate_limit)
+        response.headers["X-RateLimit-Remaining"] = str(remaining)
+        response.headers["X-RateLimit-Reset"] = str(window_reset)
+        return response

@@ -25,8 +25,8 @@ data:
   #@ end
   POSTGRES_HOST: #@ get_host("postgres")
   POSTGRES_PORT: "5432"
-  POSTGRES_DB: api_lab
-  POSTGRES_USER: api_lab
+  POSTGRES_DB: playground
+  POSTGRES_USER: #@ "playground-" + data.values.env
   REDIS_HOST: #@ get_host("redis")
   REDIS_PORT: "6379"
   GRPC_PORT: "50051"

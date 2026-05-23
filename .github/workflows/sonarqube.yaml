@@ -58,6 +58,9 @@ jobs:
         run: |
           { set +x; } 2>/dev/null
 
+          # system-tests are integration scaffolding (not production code), so we
+          # exclude them from SonarQube quality analysis. tools/scripts are dev
+          # utilities; deploy/monitoring/__pycache__ aren't source.
           SKIP_NAMES="deploy|monitoring|__pycache__|system-tests|scripts|tools"
           ALL_SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type d | \
             grep -vE "($SKIP_NAMES)" | sort)

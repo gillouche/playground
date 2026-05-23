@@ -82,7 +82,7 @@ spec:
             name: python-auth-api-config
         #@ if data.values.env != "sandbox":
         - secretRef:
-            name: python-auth-api-credentials
+            name: api-lab-credentials
         #@ else:
         - secretRef:
             name: python-auth-api-secrets

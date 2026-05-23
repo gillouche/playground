@@ -10,7 +10,5 @@ data:
   COMPONENT: rust-traffic-generator
   LOG_LEVEL: DEBUG
   PYTHON_API_URL: http://python-api:8080
-  GO_API_URL: http://go-api:8080
-  TS_API_URL: http://ts-api:8080
   CONCURRENCY: "10"
   REQUEST_INTERVAL_MS: "1000"

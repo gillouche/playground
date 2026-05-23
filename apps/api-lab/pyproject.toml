@@ -30,19 +30,30 @@ select = [
     "LOG",
 ]
 ignore = [
+    # PLR0913/PLR0912/PLR0915: function size heuristics — we let reviewers judge
     "PLR0913",
     "PLR0912",
     "PLR0915",
+    # ARG001/ARG002: unused args are common with FastAPI dependency injection
     "ARG001",
     "ARG002",
+    # B008: FastAPI uses Depends() as default arg — intentional
     "B008",
+    # S101: assert is fine outside of test helpers; we never use it for auth
     "S101",
+    # RET504: unnecessary assignment before return reduces traceback noise
     "RET504",
+    # PLR2004: magic value comparisons read fine for HTTP status codes
     "PLR2004",
+    # S104: 0.0.0.0 bind is required inside containers (k8s controls exposure)
     "S104",
+    # S105: false positives on field names like "password" in pydantic models
     "S105",
+    # S603: subprocess invocations in tools/ scripts are trusted
     "S603",
+    # A005: module shadowing a stdlib name is OK when it's an internal namespace
     "A005",
+    # PERF102/PERF401: micro-optimisations hurt readability with no real impact
     "PERF102",
     "PERF401",
 ]

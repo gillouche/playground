@@ -162,9 +162,10 @@ generate_component_env() {
             fi
         done < "$bom_file"
 
+        # Components without an image entry (e.g. monitoring/dashboards) are still rendered
+        # with default placeholder values; only warn so the user notices missing image refs.
         if [ -z "$GIT_TAG" ] || [ "$GIT_TAG" = "unknown" ]; then
-            echo "Component $component not found in BOM for $env. Skipping."
-            return
+            echo "Note: $component has no image entry in BOM for $env, rendering with defaults."
         fi
     fi
 

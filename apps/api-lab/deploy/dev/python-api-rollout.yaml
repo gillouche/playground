@@ -63,7 +63,7 @@ spec:
         - configMapRef:
             name: python-api-config
         - secretRef:
-            name: python-api-credentials
+            name: api-lab-credentials
         env:
         - name: PYTHONUNBUFFERED
           value: "1"

@@ -1,2 +1,7 @@
+# bandit configuration for api-lab.
+#
+# All skips must be justified. If a finding is a true positive, fix it instead.
 skips:
+  # B104: hardcoded_bind_all_interfaces — services intentionally bind to 0.0.0.0
+  # inside Kubernetes pods (NetworkPolicies and Services control exposure).
   - B104

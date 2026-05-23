@@ -1,8 +1,13 @@
+import logging
+
+import jwt as pyjwt
 from fastapi import APIRouter, HTTPException, Request
 from keycloak_client import KeycloakClient, KeycloakError
 from observability.metrics import login_attempts_total, registrations_total
 from observability.security_events import log_login_failure, log_login_success, log_registration
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger("api-lab.auth")
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -80,12 +85,11 @@ async def login(request: LoginRequest, raw_request: Request):
             raise HTTPException(status_code=401, detail="Invalid username or password") from e
         raise HTTPException(status_code=e.status_code, detail=e.detail) from e
 
-    import jwt as pyjwt
-
     try:
         unverified = pyjwt.decode(tokens["access_token"], options={"verify_signature": False})
         user_sub = unverified.get("sub", "unknown")
-    except Exception:
+    except pyjwt.DecodeError as e:
+        logger.warning("Failed to decode access_token for audit logging: %s", e)
         user_sub = "unknown"
     log_login_success(user_id=user_sub, ip=ip)
     login_attempts_total.labels(status="success").inc()

@@ -1,15 +1,15 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: python-grpc-api-allow-egress
+  name: python-auth-api-allow-egress
   labels:
     app: api-lab
-    component: python-grpc-api
+    component: python-auth-api
     environment: dev
 spec:
   podSelector:
     matchLabels:
-      component: python-grpc-api
+      component: python-auth-api
   policyTypes:
   - Egress
   egress:
@@ -32,6 +32,8 @@ spec:
       port: 5432
     - protocol: TCP
       port: 6379
+    - protocol: TCP
+      port: 8080
   - to:
     - namespaceSelector:
         matchLabels:

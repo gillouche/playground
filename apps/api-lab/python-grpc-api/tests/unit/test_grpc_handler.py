@@ -8,6 +8,7 @@ import pytest
 from generated.models import PaginatedBooks, PaginatedReservations
 from google.protobuf import timestamp_pb2
 from grpc_server import (
+    ENVIRONMENTS_WITH_REFLECTION,
     LibraryServiceServicer,
     _book_to_proto,
     _datetime_to_timestamp,
@@ -57,8 +58,21 @@ def mock_book_service():
 
 
 @pytest.fixture
+def mock_cache():
+    cache = AsyncMock()
+    cache.get_bytes = AsyncMock(return_value=None)
+    cache.set_bytes = AsyncMock()
+    return cache
+
+
+@pytest.fixture
 def servicer(mock_book_service):
     return LibraryServiceServicer(mock_book_service)
+
+
+@pytest.fixture
+def servicer_with_cache(mock_book_service, mock_cache):
+    return LibraryServiceServicer(mock_book_service, cache=mock_cache)
 
 
 @pytest.fixture
@@ -707,6 +721,118 @@ class TestListReservations:
         query = mock_book_service.list_reservations.call_args[0][0]
         assert query.limit == 10
         assert query.continuation_token == "prev_tok"
+
+
+class TestReflectionEnvironments:
+    def test_reflection_enabled_only_in_dev_local_sandbox(self):
+        assert {"local", "sandbox", "dev"} == ENVIRONMENTS_WITH_REFLECTION
+
+    def test_reflection_disabled_in_test_and_prod(self):
+        assert "test" not in ENVIRONMENTS_WITH_REFLECTION
+        assert "prod" not in ENVIRONMENTS_WITH_REFLECTION
+
+
+class TestGrpcInputValidation:
+    @pytest.mark.asyncio
+    async def test_get_book_with_invalid_uuid_aborts_invalid_argument(
+        self, servicer, mock_book_service, context
+    ):
+        req = library_pb2.GetBookRequest(book_id="not-a-uuid")
+
+        with pytest.raises(_AbortError):
+            await servicer.GetBook(req, context)
+
+        call_args = context.abort.call_args
+        assert call_args[0][0] == grpc.StatusCode.INVALID_ARGUMENT
+        mock_book_service.get_book.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_reserve_books_with_invalid_user_id_aborts_invalid_argument(
+        self, servicer, mock_book_service, context
+    ):
+        req = library_pb2.ReserveBooksRequest(user_id="garbage", book_ids=[str(uuid.uuid4())])
+
+        with pytest.raises(_AbortError):
+            await servicer.ReserveBooks(req, context)
+
+        assert context.abort.call_args[0][0] == grpc.StatusCode.INVALID_ARGUMENT
+
+
+class TestGrpcIdempotency:
+    @pytest.mark.asyncio
+    async def test_create_book_with_idempotency_caches_response(
+        self, servicer_with_cache, mock_book_service, mock_cache, context
+    ):
+        book = _make_book()
+        mock_book_service.create_book.return_value = book
+        req = library_pb2.CreateBookRequest(
+            isbn="9780134685991",
+            title="Idempotent Book",
+            author="Author",
+            genre="Tech",
+            published_year=2025,
+            total_copies=5,
+            idempotency_key="abc-123",
+        )
+
+        await servicer_with_cache.CreateBook(req, context)
+
+        mock_cache.set_bytes.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_create_book_returns_cached_on_repeat_key(
+        self, servicer_with_cache, mock_book_service, mock_cache, context
+    ):
+        cached_proto = _book_to_proto(_make_book(title="Cached"))
+        mock_cache.get_bytes.return_value = cached_proto.SerializeToString()
+        req = library_pb2.CreateBookRequest(
+            isbn="9780134685991",
+            title="Idempotent Book",
+            author="Author",
+            genre="Tech",
+            published_year=2025,
+            total_copies=5,
+            idempotency_key="abc-123",
+        )
+
+        resp = await servicer_with_cache.CreateBook(req, context)
+
+        assert resp.title == "Cached"
+        mock_book_service.create_book.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_reserve_books_caches_response_with_idempotency_key(
+        self, servicer_with_cache, mock_book_service, mock_cache, context
+    ):
+        mock_book_service.reserve_books.return_value = [_make_reservation()]
+        req = library_pb2.ReserveBooksRequest(
+            user_id=str(uuid.uuid4()),
+            book_ids=[str(uuid.uuid4())],
+            idempotency_key="reserve-key",
+        )
+
+        await servicer_with_cache.ReserveBooks(req, context)
+
+        mock_cache.set_bytes.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_no_caching_when_idempotency_key_empty(
+        self, servicer_with_cache, mock_book_service, mock_cache, context
+    ):
+        mock_book_service.create_book.return_value = _make_book()
+        req = library_pb2.CreateBookRequest(
+            isbn="9780134685991",
+            title="No Idempotency",
+            author="Author",
+            genre="Tech",
+            published_year=2025,
+            total_copies=5,
+        )
+
+        await servicer_with_cache.CreateBook(req, context)
+
+        mock_cache.set_bytes.assert_not_called()
+        mock_cache.get_bytes.assert_not_called()
 
 
 class TestGetReservation:

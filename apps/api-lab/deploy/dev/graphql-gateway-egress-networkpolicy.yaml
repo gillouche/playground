@@ -1,7 +1,11 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: allow-egress-graphql-gateway
+  name: graphql-gateway-allow-egress
+  labels:
+    app: api-lab
+    component: graphql-gateway
+    environment: dev
 spec:
   podSelector:
     matchLabels:

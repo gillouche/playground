@@ -44,7 +44,7 @@ spec:
 
         - alert: ApiLabRestartLoop
           expr: |
-            increase(kube_pod_container_status_restarts_total{container=~"python-api|go-api|ts-api", namespace=~".*api-lab.*"}[1h]) > 3
+            increase(kube_pod_container_status_restarts_total{container=~"python-api|python-auth-api|python-grpc-api|graphql-gateway", namespace=~".*api-lab.*"}[1h]) > 3
           for: 5m
           labels:
             severity: critical

@@ -162,3 +162,28 @@ class TestLogout:
                 json={"refresh_token": "some-refresh-token"},
             )
             assert response.status_code == 204
+
+
+class TestLoginTokenAuditing:
+    async def test_login_with_malformed_token_logs_and_returns_200(self, client_with_mock, caplog):
+        app, mock_kc = client_with_mock
+        mock_kc.login.return_value = {
+            "access_token": "not-a-real-jwt",
+            "refresh_token": "refresh",
+            "expires_in": 3600,
+            "token_type": "Bearer",
+        }
+
+        import logging
+
+        with caplog.at_level(logging.WARNING, logger="api-lab.auth"):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post(
+                    "/api/v1/auth/login",
+                    json={"username": "alice", "password": "correct-horse"},
+                )
+
+        assert response.status_code == 200
+        assert any("Failed to decode access_token" in r.message for r in caplog.records)

@@ -25,8 +25,6 @@ nav = [
             "apps/api-lab/graphql-gateway.md",
             "apps/api-lab/python-auth-api.md",
             "apps/api-lab/database.md",
-            "apps/api-lab/go-api.md",
-            "apps/api-lab/ts-api.md",
             "apps/api-lab/rust-traffic-generator.md",
             { "API Reference" = [
                 "apps/api-lab/api-reference/index.md",

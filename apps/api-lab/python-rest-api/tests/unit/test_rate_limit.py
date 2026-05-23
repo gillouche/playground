@@ -5,9 +5,9 @@ from middleware.rate_limit import RateLimitMiddleware
 from starlette.testclient import TestClient
 
 
-def create_app(redis_client):
+def create_app(redis_client, fail_open: bool = True):
     app = FastAPI()
-    app.add_middleware(RateLimitMiddleware, redis_client=redis_client)
+    app.add_middleware(RateLimitMiddleware, redis_client=redis_client, fail_open=fail_open)
 
     @app.get("/test")
     async def test_endpoint():
@@ -261,3 +261,36 @@ class TestRateLimitMiddleware:
 
         assert len(captured_keys) == 1
         assert "8.8.8.8" in captured_keys[0]
+
+    def test_fail_open_allows_request_when_redis_missing(self):
+        client = TestClient(create_app(None, fail_open=True))
+
+        response = client.get("/test")
+
+        assert response.status_code == 200
+
+    def test_fail_closed_rejects_request_when_redis_missing(self):
+        client = TestClient(create_app(None, fail_open=False))
+
+        response = client.get("/test")
+
+        assert response.status_code == 503
+        assert response.headers["Retry-After"] == "5"
+
+    def test_fail_closed_rejects_when_redis_raises(self):
+        redis_client = AsyncMock()
+        redis_client.incr = AsyncMock(side_effect=RuntimeError("boom"))
+        client = TestClient(create_app(redis_client, fail_open=False))
+
+        response = client.get("/test")
+
+        assert response.status_code == 503
+
+    def test_fail_open_allows_when_redis_raises(self):
+        redis_client = AsyncMock()
+        redis_client.incr = AsyncMock(side_effect=RuntimeError("boom"))
+        client = TestClient(create_app(redis_client, fail_open=True))
+
+        response = client.get("/test")
+
+        assert response.status_code == 200

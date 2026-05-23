@@ -40,7 +40,11 @@ async def serve():
     logger.info("Prometheus metrics server started on port 9090")
 
     server = await start_grpc_server(
-        book_service, grpc_config.port, interceptors=[metrics_interceptor, auth_interceptor]
+        book_service,
+        grpc_config.port,
+        interceptors=[metrics_interceptor, auth_interceptor],
+        cache=cache,
+        environment=app_config.environment,
     )
     logger.info("api-lab python-grpc-api started successfully")
 

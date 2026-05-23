@@ -8,7 +8,11 @@ import httpx
 
 logger = logging.getLogger("api-lab.graphql-gateway.client")
 
-GATEWAY_HTTP_TIMEOUT = int(os.environ.get("GATEWAY_HTTP_TIMEOUT", "10"))
+GATEWAY_HTTP_TIMEOUT = float(os.environ.get("GATEWAY_HTTP_TIMEOUT", "10"))
+GATEWAY_HTTP_CONNECT_TIMEOUT = float(os.environ.get("GATEWAY_HTTP_CONNECT_TIMEOUT", "5"))
+GATEWAY_HTTP_MAX_CONNECTIONS = int(os.environ.get("GATEWAY_HTTP_MAX_CONNECTIONS", "100"))
+GATEWAY_HTTP_MAX_KEEPALIVE = int(os.environ.get("GATEWAY_HTTP_MAX_KEEPALIVE", "20"))
+GATEWAY_HTTP_KEEPALIVE_SECONDS = float(os.environ.get("GATEWAY_HTTP_KEEPALIVE_SECONDS", "30"))
 
 
 @dataclass
@@ -80,10 +84,37 @@ class LibraryClient:
         self._client: httpx.AsyncClient | None = None
 
     async def connect(self) -> None:
-        self._client = httpx.AsyncClient(
-            base_url=self._base_url, timeout=float(GATEWAY_HTTP_TIMEOUT)
+        timeout = httpx.Timeout(
+            timeout=GATEWAY_HTTP_TIMEOUT,
+            connect=GATEWAY_HTTP_CONNECT_TIMEOUT,
         )
-        logger.info("Connected to REST API at %s", self._base_url)
+        limits = httpx.Limits(
+            max_connections=GATEWAY_HTTP_MAX_CONNECTIONS,
+            max_keepalive_connections=GATEWAY_HTTP_MAX_KEEPALIVE,
+            keepalive_expiry=GATEWAY_HTTP_KEEPALIVE_SECONDS,
+        )
+        self._client = httpx.AsyncClient(
+            base_url=self._base_url,
+            timeout=timeout,
+            limits=limits,
+            http2=False,
+        )
+        logger.info(
+            "Connected to REST API at %s (timeout=%.1fs, max_conns=%d)",
+            self._base_url,
+            GATEWAY_HTTP_TIMEOUT,
+            GATEWAY_HTTP_MAX_CONNECTIONS,
+        )
+
+    async def health_check(self) -> bool:
+        if not self._client:
+            return False
+        try:
+            response = await self._client.get("/healthz", timeout=2.0)
+        except Exception as e:
+            logger.warning("REST API health check failed: %s", e)
+            return False
+        return bool(response.status_code == 200)
 
     async def disconnect(self) -> None:
         if self._client:

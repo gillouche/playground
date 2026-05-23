@@ -1,16 +1,16 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: python-grpc-api-config
+  name: python-auth-api-config
   labels:
-    component: python-grpc-api
+    component: python-auth-api
 data:
   ENVIRONMENT: dev
   APP: api-lab
-  COMPONENT: python-grpc-api
+  COMPONENT: python-auth-api
   APP_VERSION: dev
   COMPONENT_VERSION: latest
-  GIT_TAG: api-lab/python-grpc-api/latest
+  GIT_TAG: api-lab/python-auth-api/latest
   GIT_COMMIT: latest
   LOG_LEVEL: DEBUG
   POSTGRES_HOST: postgres.playground-infra-dev.svc.cluster.local
@@ -22,3 +22,7 @@ data:
   GRPC_PORT: "50051"
   ENABLE_TRACING: "true"
   OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring.svc.cluster.local:4317
+  KEYCLOAK_SERVER_URL: http://keycloak.playground-infra-dev.svc.cluster.local:8080
+  KEYCLOAK_REALM: api-lab
+  KEYCLOAK_CLIENT_ID: api-lab
+  KEYCLOAK_AUTH_SERVICE_CLIENT_ID: api-lab-auth-service

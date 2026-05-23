@@ -16,6 +16,10 @@ def set_jwt_validator(validator: JWTValidator):
     _jwt_validator = validator
 
 
+def is_jwt_validator_initialized() -> bool:
+    return _jwt_validator is not None
+
+
 def _extract_token(request: Request) -> str:
     auth_header = request.headers.get("Authorization")
     if not auth_header:

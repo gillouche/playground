@@ -140,6 +140,54 @@ jobs:
         run: |
           nix develop ./nix#ci --command uv tool run pip-audit -r apps/api-lab/requirements_lock.txt
 
+      - name: Load images for scanning
+        id: load_images
+        run: |
+          nix develop ./nix#ci --command bash -c '
+            set -e
+            bazel run --config=ci //apps/api-lab/python-rest-api:python-rest-api_load
+            bazel run --config=ci //apps/api-lab/python-auth-api:python-auth-api_load
+            bazel run --config=ci //apps/api-lab/python-grpc-api:python-grpc-api_load
+            bazel run --config=ci //apps/api-lab/graphql-gateway:graphql-gateway_load
+          '
+
+      - name: Trivy scan python-rest-api
+        uses: gillouche/homelab-ci/actions/trivy-scan@main
+        with:
+          image: python-rest-api:latest
+          trivyignore: .trivyignore
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
+
+      - name: Trivy scan python-auth-api
+        uses: gillouche/homelab-ci/actions/trivy-scan@main
+        with:
+          image: python-auth-api:latest
+          trivyignore: .trivyignore
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
+
+      - name: Trivy scan python-grpc-api
+        uses: gillouche/homelab-ci/actions/trivy-scan@main
+        with:
+          image: python-grpc-api:latest
+          trivyignore: .trivyignore
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
+
+      - name: Trivy scan graphql-gateway
+        uses: gillouche/homelab-ci/actions/trivy-scan@main
+        with:
+          image: graphql-gateway:latest
+          trivyignore: .trivyignore
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
+
+      - name: Manifest drift check
+        run: |
+          nix develop ./nix#ci --command ./tools/deploy/ytt_gen.sh --env dev api-lab
+          if ! git diff --quiet -- apps/api-lab/deploy/dev; then
+            echo "::error::Generated dev manifests differ from committed files. Run './tools/deploy/ytt_gen.sh --env dev api-lab' and commit the result."
+            git --no-pager diff -- apps/api-lab/deploy/dev
+            exit 1
+          fi
+
       - name: Publish test results
         if: always() && hashFiles('bazel-testlogs/**/test.xml') != ''
         uses: dorny/test-reporter@v2
@@ -152,18 +200,6 @@ jobs:
       - name: API Coverage Report
         if: always()
         run: python3 apps/api-lab/tools/api_coverage.py --github-summary --enforce Python
-
-      - name: Push images (Main Only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          { set +x; } 2>/dev/null
-          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
-          nix develop ./nix#ci --command bazel run --config=ci \
-            //apps/api-lab/go-api:go-api_push \
-            -- --tag latest --tag "$SHORT_SHA"
-        env:
-          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
 
   system-test-api-lab:
     name: api-lab/system-tests

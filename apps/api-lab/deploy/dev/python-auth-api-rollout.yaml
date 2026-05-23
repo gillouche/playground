@@ -1,9 +1,9 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: python-grpc-api
+  name: python-auth-api
   labels:
-    component: python-grpc-api
+    component: python-auth-api
     app: api-lab
     environment: dev
 spec:
@@ -11,7 +11,7 @@ spec:
   revisionHistoryLimit: 3
   selector:
     matchLabels:
-      component: python-grpc-api
+      component: python-auth-api
   strategy:
     canary:
       analysis:
@@ -20,7 +20,7 @@ spec:
         - templateName: error-rate
         args:
         - name: service
-          value: python-grpc-api
+          value: python-auth-api
       steps:
       - setWeight: 20
       - pause:
@@ -29,7 +29,7 @@ spec:
   template:
     metadata:
       labels:
-        component: python-grpc-api
+        component: python-auth-api
         app: api-lab
         environment: dev
     spec:
@@ -47,8 +47,8 @@ spec:
                 values:
                 - rpi
       containers:
-      - name: python-grpc-api
-        image: nexus.gillouche.homelab/docker-hosted/api-lab/python-grpc-api
+      - name: python-auth-api
+        image: nexus.gillouche.homelab/docker-hosted/api-lab/python-auth-api
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false
@@ -61,7 +61,7 @@ spec:
           mountPath: /tmp
         envFrom:
         - configMapRef:
-            name: python-grpc-api-config
+            name: python-auth-api-config
         - secretRef:
             name: api-lab-credentials
         env:
@@ -76,8 +76,8 @@ spec:
             fieldRef:
               fieldPath: status.podIP
         ports:
-        - containerPort: 50051
-          name: grpc
+        - containerPort: 8084
+          name: http
         resources:
           requests:
             memory: 256Mi
@@ -86,22 +86,25 @@ spec:
             memory: 1Gi
             cpu: 500m
         livenessProbe:
-          grpc:
-            port: 50051
+          httpGet:
+            path: /healthz
+            port: http
           initialDelaySeconds: 15
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
         readinessProbe:
-          grpc:
-            port: 50051
+          httpGet:
+            path: /ready
+            port: http
           initialDelaySeconds: 5
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
         startupProbe:
-          grpc:
-            port: 50051
+          httpGet:
+            path: /healthz
+            port: http
           failureThreshold: 30
           periodSeconds: 10
       volumes:

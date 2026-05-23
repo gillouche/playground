@@ -6,9 +6,15 @@ from middleware.idempotency import IdempotencyMiddleware
 from starlette.testclient import TestClient
 
 
-def create_app(redis_client, ttl=86400):
+def create_app(redis_client, ttl=86400, max_body_bytes=1024 * 1024, fail_open=True):
     app = FastAPI()
-    app.add_middleware(IdempotencyMiddleware, redis_client=redis_client, ttl=ttl)
+    app.add_middleware(
+        IdempotencyMiddleware,
+        redis_client=redis_client,
+        ttl=ttl,
+        max_body_bytes=max_body_bytes,
+        fail_open=fail_open,
+    )
 
     @app.post("/test")
     async def post_endpoint():
@@ -23,6 +29,10 @@ def create_app(redis_client, ttl=86400):
         from starlette.responses import JSONResponse
 
         return JSONResponse(status_code=422, content={"detail": "validation error"})
+
+    @app.post("/test-big")
+    async def post_big_endpoint():
+        return {"data": "x" * 2048}
 
     return app
 
@@ -155,3 +165,40 @@ class TestIdempotencyMiddleware:
 
         call_args = redis_client.set.call_args
         assert call_args.kwargs["ex"] == 3600
+
+    def test_skips_cache_when_response_exceeds_max_body_bytes(self):
+        redis_client = AsyncMock()
+        redis_client.get = AsyncMock(return_value=None)
+        redis_client.set = AsyncMock()
+        client = TestClient(create_app(redis_client, max_body_bytes=128))
+
+        response = client.post(
+            "/test-big",
+            headers={"Idempotency-Key": "f6a7b8c9-d0e1-2345-fabc-456789012345"},
+        )
+
+        assert response.status_code == 200
+        redis_client.set.assert_not_called()
+
+    def test_fail_closed_returns_503_when_redis_missing(self):
+        client = TestClient(create_app(None, fail_open=False))
+
+        response = client.post(
+            "/test",
+            headers={"Idempotency-Key": "a7b8c9d0-e1f2-3456-abcd-567890123456"},
+        )
+
+        assert response.status_code == 503
+        assert response.headers["Retry-After"] == "5"
+
+    def test_fail_closed_returns_503_when_redis_get_raises(self):
+        redis_client = AsyncMock()
+        redis_client.get = AsyncMock(side_effect=ConnectionError("Redis down"))
+        client = TestClient(create_app(redis_client, fail_open=False))
+
+        response = client.post(
+            "/test",
+            headers={"Idempotency-Key": "b8c9d0e1-f2a3-4567-bcde-678901234567"},
+        )
+
+        assert response.status_code == 503

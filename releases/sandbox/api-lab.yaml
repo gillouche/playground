@@ -11,19 +11,26 @@ images:
     image:
       ref: python-api:latest
       digest: local
-  go-api:
+  python-auth-api:
     tag: latest
     commit: local
-    full_tag: local/go-api/latest
+    full_tag: local/python-auth-api/latest
     image:
-      ref: go-api:latest
+      ref: python-auth-api:latest
       digest: local
-  ts-api:
+  python-grpc-api:
     tag: latest
     commit: local
-    full_tag: local/ts-api/latest
+    full_tag: local/python-grpc-api/latest
     image:
-      ref: ts-api:latest
+      ref: python-grpc-api:latest
+      digest: local
+  graphql-gateway:
+    tag: latest
+    commit: local
+    full_tag: local/graphql-gateway/latest
+    image:
+      ref: graphql-gateway:latest
       digest: local
   rust-traffic-generator:
     tag: latest

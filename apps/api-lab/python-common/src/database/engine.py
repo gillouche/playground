@@ -6,6 +6,15 @@ engine = create_async_engine(
     pool_pre_ping=postgres_config.pool_pre_ping,
     pool_size=postgres_config.pool_size,
     max_overflow=postgres_config.max_overflow,
+    pool_recycle=postgres_config.pool_recycle_seconds,
+    pool_timeout=postgres_config.pool_timeout_seconds,
+    connect_args={
+        "timeout": postgres_config.connect_timeout_seconds,
+        "server_settings": {
+            "statement_timeout": str(postgres_config.statement_timeout_ms),
+            "application_name": "api-lab",
+        },
+    },
     echo=False,
 )
 

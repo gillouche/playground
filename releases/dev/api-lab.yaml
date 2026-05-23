@@ -10,19 +10,12 @@ images:
     image:
       ref: nexus.gillouche.homelab/docker-hosted/api-lab/python-api:latest
       digest: unknown
-  go-api:
+  python-auth-api:
     tag: latest
     commit: latest
-    full_tag: api-lab/go-api/latest
+    full_tag: api-lab/python-auth-api/latest
     image:
-      ref: nexus.gillouche.homelab/docker-hosted/api-lab/go-api:latest
-      digest: unknown
-  ts-api:
-    tag: latest
-    commit: latest
-    full_tag: api-lab/ts-api/latest
-    image:
-      ref: nexus.gillouche.homelab/docker-hosted/api-lab/ts-api:latest
+      ref: nexus.gillouche.homelab/docker-hosted/api-lab/python-auth-api:latest
       digest: unknown
   python-grpc-api:
     tag: latest

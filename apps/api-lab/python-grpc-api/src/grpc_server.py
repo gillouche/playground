@@ -2,6 +2,7 @@ import logging
 import uuid
 
 import grpc
+from cache.redis_cache import RedisCache
 from generated.models import (
     BookCreate,
     BookUpdate,
@@ -20,6 +21,10 @@ from services.book_service import (
     DuplicateISBNError,
     StaleVersionError,
 )
+
+ENVIRONMENTS_WITH_REFLECTION = {"local", "sandbox", "dev"}
+IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60
+IDEMPOTENCY_KEY_PREFIX = "idempotency:grpc:"
 
 logger = logging.getLogger("api-lab.grpc")
 
@@ -105,6 +110,17 @@ def _reservation_to_proto(reservation) -> library_pb2.Reservation:
     return library_pb2.Reservation(**kwargs)
 
 
+def _parse_uuid_or_abort(value: str, field_name: str, context):
+    try:
+        return uuid.UUID(value)
+    except (ValueError, AttributeError) as e:
+        raise _InvalidArgumentError(f"Invalid {field_name}: {e}") from e
+
+
+class _InvalidArgumentError(ValueError):
+    """Raised when proto input fails validation; handler maps to INVALID_ARGUMENT."""
+
+
 def _build_update_kwargs(request) -> dict:
     if request.HasField("update_mask") and request.update_mask.paths:
         return {
@@ -120,21 +136,44 @@ def _build_update_kwargs(request) -> dict:
 
 
 class LibraryServiceServicer(library_pb2_grpc.LibraryServiceServicer):
-    def __init__(self, book_service: BookService):
+    def __init__(self, book_service: BookService, cache: RedisCache | None = None):
         self._service = book_service
+        self._cache = cache
 
-    async def ListBooks(self, request, _context):
+    async def _check_idempotency(self, op: str, key: str, response_cls):
+        if not self._cache or not key:
+            return None
+        cached = await self._cache.get_bytes(f"{IDEMPOTENCY_KEY_PREFIX}{op}:{key}")
+        if cached is None:
+            return None
+        message = response_cls()
+        message.ParseFromString(cached)
+        return message
+
+    async def _store_idempotency(self, op: str, key: str, response) -> None:
+        if not self._cache or not key:
+            return
+        await self._cache.set_bytes(
+            f"{IDEMPOTENCY_KEY_PREFIX}{op}:{key}",
+            response.SerializeToString(),
+            ttl=IDEMPOTENCY_TTL_SECONDS,
+        )
+
+    async def ListBooks(self, request, context):
         with _tracer.start_as_current_span("grpc.ListBooks"):
-            query = ListBooksQuery(
-                available_only=request.available_only,
-                genre=request.genre or None,
-                author=request.author or None,
-                search=request.search or None,
-                limit=request.page_size or 20,
-                continuation_token=request.page_token or None,
-                sort_by=_BOOK_SORT_FIELD_MAP.get(request.sort_by, "created_at"),
-                sort_order=_SORT_ORDER_MAP.get(request.sort_order, "asc"),
-            )
+            try:
+                query = ListBooksQuery(
+                    available_only=request.available_only,
+                    genre=request.genre or None,
+                    author=request.author or None,
+                    search=request.search or None,
+                    limit=request.page_size or 20,
+                    continuation_token=request.page_token or None,
+                    sort_by=_BOOK_SORT_FIELD_MAP.get(request.sort_by, "created_at"),
+                    sort_order=_SORT_ORDER_MAP.get(request.sort_order, "asc"),
+                )
+            except ValueError as e:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
             result = await self._service.list_books(query)
             return library_pb2.ListBooksResponse(
                 books=[_book_to_proto(b) for b in result.items],
@@ -143,15 +182,22 @@ class LibraryServiceServicer(library_pb2_grpc.LibraryServiceServicer):
 
     async def GetBook(self, request, context):
         with _tracer.start_as_current_span("grpc.GetBook"):
-            book = await self._service.get_book(uuid.UUID(request.book_id))
+            try:
+                book_id = _parse_uuid_or_abort(request.book_id, "book_id", context)
+            except _InvalidArgumentError as e:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
+            book = await self._service.get_book(book_id)
             if not book:
                 await context.abort(grpc.StatusCode.NOT_FOUND, "Book not found")
             return _book_to_proto(book)
 
     async def CreateBook(self, request, context):
         with _tracer.start_as_current_span("grpc.CreateBook"):
-            if request.idempotency_key:
-                logger.debug("CreateBook idempotency_key=%s", request.idempotency_key)
+            cached = await self._check_idempotency(
+                "CreateBook", request.idempotency_key, library_pb2.Book
+            )
+            if cached is not None:
+                return cached
             try:
                 data = BookCreate(
                     isbn=request.isbn,
@@ -161,80 +207,127 @@ class LibraryServiceServicer(library_pb2_grpc.LibraryServiceServicer):
                     published_year=request.published_year,
                     total_copies=request.total_copies,
                 )
+            except ValueError as e:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
+            try:
                 book = await self._service.create_book(data)
-                return _book_to_proto(book)
             except DuplicateISBNError as e:
                 await context.abort(grpc.StatusCode.ALREADY_EXISTS, str(e))
+            response = _book_to_proto(book)
+            await self._store_idempotency("CreateBook", request.idempotency_key, response)
+            return response
 
     async def UpdateBook(self, request, context):
         with _tracer.start_as_current_span("grpc.UpdateBook"):
             try:
+                book_id = _parse_uuid_or_abort(request.book_id, "book_id", context)
+            except _InvalidArgumentError as e:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
+            try:
                 update_kwargs = _build_update_kwargs(request)
                 data = BookUpdate(**update_kwargs)
-                expected_version = request.expected_version if request.expected_version else None
+            except ValueError as e:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
+            expected_version = request.expected_version if request.expected_version else None
+            try:
                 book = await self._service.update_book(
-                    uuid.UUID(request.book_id), data, expected_version=expected_version
+                    book_id, data, expected_version=expected_version
                 )
-                if not book:
-                    await context.abort(grpc.StatusCode.NOT_FOUND, "Book not found")
-                return _book_to_proto(book)
             except DuplicateISBNError as e:
                 await context.abort(grpc.StatusCode.ALREADY_EXISTS, str(e))
             except StaleVersionError:
                 await context.abort(grpc.StatusCode.ABORTED, "Version mismatch")
+            if not book:
+                await context.abort(grpc.StatusCode.NOT_FOUND, "Book not found")
+            return _book_to_proto(book)
 
     async def DeleteBook(self, request, context):
         with _tracer.start_as_current_span("grpc.DeleteBook"):
             try:
-                deleted = await self._service.delete_book(uuid.UUID(request.book_id))
-                if not deleted:
-                    await context.abort(grpc.StatusCode.NOT_FOUND, "Book not found")
-                return library_pb2.DeleteBookResponse()
+                book_id = _parse_uuid_or_abort(request.book_id, "book_id", context)
+            except _InvalidArgumentError as e:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
+            try:
+                deleted = await self._service.delete_book(book_id)
             except ActiveReservationsError:
                 await context.abort(
                     grpc.StatusCode.FAILED_PRECONDITION,
                     "Cannot delete book with active reservations",
                 )
+            if not deleted:
+                await context.abort(grpc.StatusCode.NOT_FOUND, "Book not found")
+            return library_pb2.DeleteBookResponse()
 
     async def ReserveBooks(self, request, context):
         with _tracer.start_as_current_span("grpc.ReserveBooks"):
-            if request.idempotency_key:
-                logger.debug("ReserveBooks idempotency_key=%s", request.idempotency_key)
+            cached = await self._check_idempotency(
+                "ReserveBooks",
+                request.idempotency_key,
+                library_pb2.ReserveBooksResponse,
+            )
+            if cached is not None:
+                return cached
             try:
-                user_id = uuid.UUID(request.user_id)
-                data = ReservationCreate(
-                    book_ids=[uuid.UUID(bid) for bid in request.book_ids],
-                )
+                user_id = _parse_uuid_or_abort(request.user_id, "user_id", context)
+                book_ids = [
+                    _parse_uuid_or_abort(bid, "book_ids[]", context) for bid in request.book_ids
+                ]
+            except _InvalidArgumentError as e:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
+            try:
+                data = ReservationCreate(book_ids=book_ids)
                 reservations = await self._service.reserve_books(data, user_id=user_id)
-                return library_pb2.ReserveBooksResponse(
-                    reservations=[_reservation_to_proto(r) for r in reservations]
-                )
             except ValueError as e:
                 await context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
+            response = library_pb2.ReserveBooksResponse(
+                reservations=[_reservation_to_proto(r) for r in reservations]
+            )
+            await self._store_idempotency("ReserveBooks", request.idempotency_key, response)
+            return response
 
     async def ReturnReservation(self, request, context):
         with _tracer.start_as_current_span("grpc.ReturnReservation"):
             try:
-                reservation = await self._service.return_reservation(
-                    uuid.UUID(request.reservation_id)
+                reservation_id = _parse_uuid_or_abort(
+                    request.reservation_id, "reservation_id", context
                 )
-                if not reservation:
-                    await context.abort(grpc.StatusCode.NOT_FOUND, "Reservation not found")
-                return _reservation_to_proto(reservation)
+            except _InvalidArgumentError as e:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
+            try:
+                reservation = await self._service.return_reservation(reservation_id)
             except ValueError as e:
                 await context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(e))
+            if not reservation:
+                await context.abort(grpc.StatusCode.NOT_FOUND, "Reservation not found")
+            return _reservation_to_proto(reservation)
 
-    async def ListReservations(self, request, _context):
+    async def ListReservations(self, request, context):
         with _tracer.start_as_current_span("grpc.ListReservations"):
-            query = ListReservationsQuery(
-                user_id=uuid.UUID(request.user_id) if request.user_id else None,
-                status=_RESERVATION_STATUS_PROTO_TO_STRING.get(request.status),
-                book_id=uuid.UUID(request.book_id) if request.book_id else None,
-                limit=request.page_size or 20,
-                continuation_token=request.page_token or None,
-                sort_by=_RESERVATION_SORT_FIELD_MAP.get(request.sort_by, "reserved_at"),
-                sort_order=_SORT_ORDER_MAP.get(request.sort_order, "asc"),
-            )
+            try:
+                user_id = (
+                    _parse_uuid_or_abort(request.user_id, "user_id", context)
+                    if request.user_id
+                    else None
+                )
+                book_id = (
+                    _parse_uuid_or_abort(request.book_id, "book_id", context)
+                    if request.book_id
+                    else None
+                )
+            except _InvalidArgumentError as e:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
+            try:
+                query = ListReservationsQuery(
+                    user_id=user_id,
+                    status=_RESERVATION_STATUS_PROTO_TO_STRING.get(request.status),
+                    book_id=book_id,
+                    limit=request.page_size or 20,
+                    continuation_token=request.page_token or None,
+                    sort_by=_RESERVATION_SORT_FIELD_MAP.get(request.sort_by, "reserved_at"),
+                    sort_order=_SORT_ORDER_MAP.get(request.sort_order, "asc"),
+                )
+            except ValueError as e:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
             result = await self._service.list_reservations(query)
             return library_pb2.ListReservationsResponse(
                 reservations=[_reservation_to_proto(r) for r in result.items],
@@ -243,16 +336,45 @@ class LibraryServiceServicer(library_pb2_grpc.LibraryServiceServicer):
 
     async def GetReservation(self, request, context):
         with _tracer.start_as_current_span("grpc.GetReservation"):
-            reservation = await self._service.get_reservation(uuid.UUID(request.reservation_id))
+            try:
+                reservation_id = _parse_uuid_or_abort(
+                    request.reservation_id, "reservation_id", context
+                )
+            except _InvalidArgumentError as e:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(e))
+            reservation = await self._service.get_reservation(reservation_id)
             if not reservation:
                 await context.abort(grpc.StatusCode.NOT_FOUND, "Reservation not found")
             return _reservation_to_proto(reservation)
 
 
-async def start_grpc_server(book_service: BookService, port: int = 50051, interceptors=None):
-    server = aio.server(interceptors=interceptors or [])
+def _build_server_options() -> list[tuple[str, int]]:
+    """Server-side gRPC channel options: keepalive + max message size."""
+    return [
+        ("grpc.keepalive_time_ms", 30_000),
+        ("grpc.keepalive_timeout_ms", 5_000),
+        ("grpc.keepalive_permit_without_calls", 1),
+        ("grpc.http2.max_pings_without_data", 0),
+        ("grpc.http2.min_time_between_pings_ms", 10_000),
+        ("grpc.http2.min_ping_interval_without_data_ms", 5_000),
+        ("grpc.max_send_message_length", 4 * 1024 * 1024),
+        ("grpc.max_receive_message_length", 4 * 1024 * 1024),
+    ]
 
-    servicer = LibraryServiceServicer(book_service)
+
+async def start_grpc_server(
+    book_service: BookService,
+    port: int = 50051,
+    interceptors=None,
+    cache: RedisCache | None = None,
+    environment: str = "local",
+):
+    server = aio.server(
+        interceptors=interceptors or [],
+        options=_build_server_options(),
+    )
+
+    servicer = LibraryServiceServicer(book_service, cache=cache)
     library_pb2_grpc.add_LibraryServiceServicer_to_server(servicer, server)
 
     health_servicer = health.HealthServicer()
@@ -260,14 +382,18 @@ async def start_grpc_server(book_service: BookService, port: int = 50051, interc
     health_servicer.set("", health_pb2.HealthCheckResponse.SERVING)
     health_servicer.set("library.v1.LibraryService", health_pb2.HealthCheckResponse.SERVING)
 
-    from grpc_reflection.v1alpha import reflection
+    if environment in ENVIRONMENTS_WITH_REFLECTION:
+        from grpc_reflection.v1alpha import reflection
 
-    service_names = (
-        library_pb2.DESCRIPTOR.services_by_name["LibraryService"].full_name,
-        health_pb2.DESCRIPTOR.services_by_name["Health"].full_name,
-        reflection.SERVICE_NAME,
-    )
-    reflection.enable_server_reflection(service_names, server)
+        service_names = (
+            library_pb2.DESCRIPTOR.services_by_name["LibraryService"].full_name,
+            health_pb2.DESCRIPTOR.services_by_name["Health"].full_name,
+            reflection.SERVICE_NAME,
+        )
+        reflection.enable_server_reflection(service_names, server)
+        logger.info("gRPC reflection enabled for environment=%s", environment)
+    else:
+        logger.info("gRPC reflection disabled for environment=%s", environment)
 
     server.add_insecure_port(f"[::]:{port}")
     await server.start()

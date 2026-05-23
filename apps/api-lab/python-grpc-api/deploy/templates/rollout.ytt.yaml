@@ -82,10 +82,10 @@ spec:
             name: python-grpc-api-config
         #@ if data.values.env != "sandbox":
         - secretRef:
-            name: python-api-credentials
+            name: api-lab-credentials
         #@ else:
         - secretRef:
-            name: python-api-secrets
+            name: python-grpc-api-secrets
         #@ end
         env:
         - name: PYTHONUNBUFFERED

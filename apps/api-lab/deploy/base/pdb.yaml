@@ -11,22 +11,12 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: go-api-pdb
+  name: python-auth-api-pdb
 spec:
   minAvailable: 1
   selector:
     matchLabels:
-      component: go-api
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: ts-api-pdb
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      component: ts-api
+      component: python-auth-api
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget

@@ -8,14 +8,14 @@ A library book management system implemented across multiple API protocols and l
 
 ## Services
 
+This branch covers the Python stack only. Go and TypeScript REST implementations are out of scope and will land in follow-up branches.
+
 | Service | Protocol | Language | Port | Status |
 |---------|----------|----------|------|--------|
 | [Python REST API](python-rest-api.md) | REST (OpenAPI) | Python / FastAPI | 8080 | Implemented |
 | [Python gRPC API](python-grpc-api.md) | gRPC | Python / asyncio | 50051 | Implemented |
 | [GraphQL Gateway](graphql-gateway.md) | GraphQL | Python / Strawberry | 8083 | Implemented |
 | [Python Auth API](python-auth-api.md) | REST | Python / FastAPI | 8084 | Implemented |
-| [Go API](go-api.md) | REST | Go / Chi | 8081 | Planned |
-| [TypeScript API](ts-api.md) | REST | TypeScript / Fastify | 8082 | Planned |
 | [Rust Traffic Generator](rust-traffic-generator.md) | HTTP client | Rust | - | Planned |
 
 ## Authentication & Authorization
@@ -36,12 +36,15 @@ The shared `auth` module (in python-common) provides JWT validation, role extrac
 
 All Python services apply a common set of security hardening:
 
-- **Rate limiting** per IP with tiered windows (auth, write, read) backed by Redis
-- **Security headers** on all responses (X-Content-Type-Options, X-Frame-Options, Cache-Control, Referrer-Policy, Permissions-Policy)
-- **Request body size limit** (1 MB default) to prevent payload abuse
-- **Input validation** via Pydantic models with field constraints
-- **CORS** restricted to explicit origins (empty allow list by default)
-- **OWASP compliance** across authentication, authorization, and input handling
+- **Rate limiting** per IP with tiered windows (auth, write, read) backed by Redis. Configurable `RATE_LIMIT_FAIL_OPEN` flips between fail-open (default for dev) and fail-closed (503 when Redis is unreachable).
+- **Idempotency** for POST endpoints via `Idempotency-Key` header, response cache capped at `IDEMPOTENCY_MAX_BODY_BYTES` (1 MiB default).
+- **Security headers** on all responses (X-Content-Type-Options, X-Frame-Options, Cache-Control, Referrer-Policy, Permissions-Policy).
+- **Request body size limit** (1 MB default) to prevent payload abuse.
+- **Input validation** via Pydantic models with field constraints.
+- **CORS** restricted to explicit origins, configurable via `CORS_ALLOWED_ORIGINS`.
+- **OWASP compliance** across authentication, authorization, and input handling.
+- **gRPC reflection** is enabled only for `local`/`sandbox`/`dev`; disabled for `test`/`prod` to avoid schema enumeration.
+- **gRPC idempotency** is enforced via Redis-backed response caching keyed on `idempotency_key`.
 
 ## Shared Components
 

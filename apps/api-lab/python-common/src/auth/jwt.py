@@ -33,7 +33,7 @@ class JWTValidator:
                             algorithms=["RS256"],
                             issuer=self._issuer,
                             audience=self._audience,
-                            leeway=2,
+                            leeway=1,
                         )
                         break
                     except jwt.InvalidSignatureError:

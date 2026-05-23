@@ -25,6 +25,19 @@ authz_failures_total = Counter(
 rate_limit_rejections_total = Counter(
     "api_lab_rate_limit_rejections_total", "Rate limit rejections", ["endpoint", "tier"]
 )
+rate_limit_redis_failures_total = Counter(
+    "api_lab_rate_limit_redis_failures_total",
+    "Redis errors during rate limiting",
+)
+idempotency_redis_failures_total = Counter(
+    "api_lab_idempotency_redis_failures_total",
+    "Redis errors during idempotency caching",
+    ["operation"],
+)
+idempotency_oversize_total = Counter(
+    "api_lab_idempotency_oversize_total",
+    "Responses skipped from idempotency cache because they exceed max_body_bytes",
+)
 login_attempts_total = Counter("api_lab_login_attempts_total", "Login attempts", ["status"])
 registrations_total = Counter("api_lab_registrations_total", "User registrations")
 

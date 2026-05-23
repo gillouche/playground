@@ -5,7 +5,5 @@ resources:
   - python-api
   - python-grpc-api
   - python-auth-api
-  - go-api
-  - ts-api
   - rust-traffic-generator
   - graphql-gateway

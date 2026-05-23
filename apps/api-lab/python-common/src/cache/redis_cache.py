@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 from typing import Any
@@ -86,3 +87,24 @@ class RedisCache:
         await self.delete("books:all")
         await self.delete("inventory")
         await self.delete_pattern("books:*")
+
+    async def get_bytes(self, key: str) -> bytes | None:
+        if not self._redis:
+            return None
+        try:
+            encoded = await self._redis.get(f"{CACHE_PREFIX}:{key}")
+            if encoded is None:
+                return None
+            return base64.b64decode(encoded)
+        except Exception as e:
+            logger.warning("Cache get_bytes error for %s: %s", key, e)
+            return None
+
+    async def set_bytes(self, key: str, value: bytes, ttl: int = 60) -> None:
+        if not self._redis:
+            return
+        try:
+            encoded = base64.b64encode(value).decode("ascii")
+            await self._redis.set(f"{CACHE_PREFIX}:{key}", encoded, ex=ttl)
+        except Exception as e:
+            logger.warning("Cache set_bytes error for %s: %s", key, e)

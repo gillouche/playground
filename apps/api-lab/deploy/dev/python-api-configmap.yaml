@@ -15,8 +15,8 @@ data:
   LOG_LEVEL: DEBUG
   POSTGRES_HOST: postgres.playground-infra-dev.svc.cluster.local
   POSTGRES_PORT: "5432"
-  POSTGRES_DB: api_lab
-  POSTGRES_USER: api_lab
+  POSTGRES_DB: playground
+  POSTGRES_USER: playground-dev
   REDIS_HOST: redis.playground-infra-dev.svc.cluster.local
   REDIS_PORT: "6379"
   GRPC_PORT: "50051"

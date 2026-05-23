@@ -1,10 +1,11 @@
 import os
 import platform
 
-from auth.dependencies import require_roles
+from auth.dependencies import is_jwt_validator_initialized, require_roles
 from auth.models import AuthenticatedUser
 from config import app_config
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from generated.models import HealthResponse, InfoResponse
 from keycloak_client import KeycloakClient
 
@@ -34,9 +35,10 @@ async def ready():
     else:
         errors.append("keycloak: not initialized")
 
-    if errors:
-        from fastapi.responses import JSONResponse
+    if not is_jwt_validator_initialized():
+        errors.append("jwt_validator: not initialized")
 
+    if errors:
         return JSONResponse(status_code=503, content={"status": "not ready", "errors": errors})
 
     return HealthResponse(status="ready")

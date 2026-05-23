@@ -12,6 +12,10 @@ class PostgresConfig(BaseSettings):
     pool_size: int = 20
     max_overflow: int = 10
     pool_pre_ping: bool = True
+    pool_recycle_seconds: int = 1800
+    pool_timeout_seconds: int = 30
+    statement_timeout_ms: int = 30000
+    connect_timeout_seconds: int = 10
 
     model_config = {"env_prefix": "POSTGRES_"}
 
@@ -85,8 +89,17 @@ class RateLimitConfig(BaseSettings):
     read_limit: int = 200
     read_window: int = 60
     trusted_proxies: str = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+    fail_open: bool = True
 
     model_config = {"env_prefix": "RATE_LIMIT_"}
+
+
+class IdempotencyConfig(BaseSettings):
+    ttl: int = 86400
+    max_body_bytes: int = 1024 * 1024
+    fail_open: bool = True
+
+    model_config = {"env_prefix": "IDEMPOTENCY_"}
 
 
 class AppConfig(BaseSettings):
@@ -110,4 +123,5 @@ grpc_config = GrpcConfig()
 keycloak_config = KeycloakConfig()
 cache_config = CacheConfig()
 rate_limit_config = RateLimitConfig()
+idempotency_config = IdempotencyConfig()
 app_config = AppConfig()

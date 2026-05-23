@@ -1,11 +1,12 @@
 import os
 import platform
 
-from auth.dependencies import require_roles
+from auth.dependencies import is_jwt_validator_initialized, require_roles
 from auth.models import AuthenticatedUser
 from cache.redis_cache import RedisCache
 from config import app_config
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from generated.models import HealthResponse, InfoResponse
 from sqlalchemy import text
 
@@ -39,10 +40,13 @@ async def ready():
         healthy = await _cache.health_check()
         if not healthy:
             errors.append("redis: ping failed")
+    else:
+        errors.append("redis: not initialized")
+
+    if not is_jwt_validator_initialized():
+        errors.append("jwt_validator: not initialized")
 
     if errors:
-        from fastapi.responses import JSONResponse
-
         return JSONResponse(status_code=503, content={"status": "not ready", "errors": errors})
 
     return HealthResponse(status="ready")
