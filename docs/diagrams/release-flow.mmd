@@ -1,0 +1,23 @@
+flowchart LR
+    subgraph Build
+        CI[CI Build] --> NEXUS[Push to Nexus]
+    end
+
+    subgraph Release
+        NEXUS --> SYNC[sync_dev.py<br/>Update dev BOM]
+        SYNC --> DEV[releases/dev/]
+        DEV --> FREEZE[freeze.py<br/>Create version snapshot]
+        FREEZE --> VER[releases/versions/v1.0.0.yaml]
+    end
+
+    subgraph Promote
+        VER --> PTEST[promote.py --target test]
+        PTEST --> TEST[releases/test/]
+        TEST --> PPROD[promote.py --target prod]
+        PPROD --> PROD[releases/prod/]
+    end
+
+    subgraph Rollback
+        PROD --> RB[rollback.py<br/>Revert to previous version]
+        RB --> PROD
+    end

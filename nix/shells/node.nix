@@ -11,7 +11,8 @@ pkgs.mkShell {
   ]);
 
   shellHook = base.shellHook + ''
-    echo "Node $(node --version)"
-    echo "pnpm $(pnpm --version)"
+    if [ -z "$_NODE_SHELL_LOADED" ]; then
+      export _NODE_SHELL_LOADED=1
+    fi
   '';
 }

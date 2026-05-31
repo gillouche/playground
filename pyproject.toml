@@ -2,9 +2,9 @@
 # Individual services may have their own pyproject.toml for specific overrides
 
 [tool.ruff]
-target-version = "py314"
+target-version = "py313"
 line-length = 100
-src = ["apps"]
+src = ["apps", "tools"]
 
 [tool.ruff.lint]
 select = [
@@ -44,7 +44,7 @@ warn_unused_configs = true
 ignore_missing_imports = true
 explicit_package_bases = true
 namespace_packages = true
-mypy_path = "apps/demo-app/greeting-service:apps/demo-app/infra-check-service:apps/demo-app/traffic-generator-service"
+mypy_path = "apps/demo-app/greeting-service:apps/demo-app/infra-check-service:apps/demo-app/traffic-generator-service:apps/api-lab/python-api"
 exclude = [
     "tests/",
     "build/",

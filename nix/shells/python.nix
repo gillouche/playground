@@ -8,11 +8,9 @@ pkgs.mkShell {
   ]);
 
   shellHook = base.shellHook + ''
-    echo "Python version -> $(python --version)"
-    echo "uv version -> $(uv --version)"
-    echo ""
-    echo "Run 'uv sync --all-extras' to install project dependencies"
-
-    export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH
+    if [ -z "$_PYTHON_SHELL_LOADED" ]; then
+      export _PYTHON_SHELL_LOADED=1
+      export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH
+    fi
   '';
 }

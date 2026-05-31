@@ -1,0 +1,12 @@
+resources:
+  - service.yaml
+  - configmap.yaml
+images:
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/python-grpc-api
+    newName: nexus.gillouche.homelab/docker-hosted/api-lab/python-grpc-api
+    newTag: latest
+labels:
+  - pairs:
+      component: python-grpc-api
+    includeSelectors: false
+    includeTemplates: true

@@ -1,0 +1,109 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: python-grpc-api
+  labels:
+    component: python-grpc-api
+    app: api-lab
+    environment: dev
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      component: python-grpc-api
+  strategy:
+    canary:
+      analysis:
+        templates:
+        - templateName: success-rate
+        - templateName: error-rate
+        args:
+        - name: service
+          value: python-grpc-api
+      steps:
+      - setWeight: 20
+      - pause:
+          duration: 30s
+      - setWeight: 100
+  template:
+    metadata:
+      labels:
+        component: python-grpc-api
+        app: api-lab
+        environment: dev
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/node-group
+                operator: In
+                values:
+                - rpi
+      containers:
+      - name: python-grpc-api
+        image: nexus.gillouche.homelab/docker-hosted/api-lab/python-grpc-api
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        envFrom:
+        - configMapRef:
+            name: python-grpc-api-config
+        - secretRef:
+            name: api-lab-credentials
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        ports:
+        - containerPort: 50051
+          name: grpc
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 1Gi
+            cpu: 500m
+        livenessProbe:
+          grpc:
+            port: 50051
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          grpc:
+            port: 50051
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          grpc:
+            port: 50051
+          failureThreshold: 30
+          periodSeconds: 10
+      volumes:
+      - name: tmp
+        emptyDir: {}

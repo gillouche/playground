@@ -11,6 +11,7 @@ Usage in BUILD.bazel:
 load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load", "oci_push")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("//tools:transitions.bzl", "transition_rule")
 
 def rust_application(
         name,
@@ -22,7 +23,7 @@ def rust_application(
         data = [],
         env = {},
         edition = "2021",
-        base_image = "@distroless_base_linux_arm64",
+        base_image = "@rust_base_linux_arm64",
         image_repository = "",
         visibility = ["//visibility:public"]):
     """
@@ -121,10 +122,19 @@ def rust_application(
             visibility = visibility,
         )
 
+        transition_rule(
+            name = name + "_image_arm64",
+            actual = ":" + name + "_image",
+            platform = "//tools/platforms:linux_arm64",
+            tags = ["manual"],
+            visibility = visibility,
+        )
+
         oci_push(
             name = name + "_push",
-            image = ":" + name + "_image",
+            image = ":" + name + "_image_arm64",
             repository = image_repository,
+            tags = ["manual"],
             visibility = visibility,
         )
 
@@ -132,5 +142,6 @@ def rust_application(
             name = name + "_load",
             image = ":" + name + "_image",
             repo_tags = ["{}:latest".format(name)],
+            tags = ["manual"],
             visibility = visibility,
         )

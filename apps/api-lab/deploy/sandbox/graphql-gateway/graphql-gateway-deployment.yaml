@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graphql-gateway
+  labels:
+    component: graphql-gateway
+    app: api-lab
+    environment: sandbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: graphql-gateway
+  template:
+    metadata:
+      labels:
+        component: graphql-gateway
+        app: api-lab
+        environment: sandbox
+    spec:
+      containers:
+        - name: graphql-gateway
+          image: nexus.gillouche.homelab/docker-hosted/api-lab/graphql-gateway
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: graphql-gateway-config
+            - secretRef:
+                name: graphql-gateway-secrets
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          ports:
+            - containerPort: 8083
+              name: http
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 1Gi
+              cpu: 500m
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5

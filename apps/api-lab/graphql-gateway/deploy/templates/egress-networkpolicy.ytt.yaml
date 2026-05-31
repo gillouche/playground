@@ -1,0 +1,44 @@
+#@ load("@ytt:data", "data")
+
+#@ if data.values.env != "sandbox":
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: #@ data.values.component + "-allow-egress"
+  labels:
+    app: #@ data.values.app
+    component: #@ data.values.component
+    environment: #@ data.values.env
+spec:
+  podSelector:
+    matchLabels:
+      component: #@ data.values.component
+  policyTypes:
+  - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              component: python-api
+      ports:
+        - protocol: TCP
+          port: 8080
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
+#@ end

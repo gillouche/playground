@@ -1,4 +1,4 @@
-bazel_dep(name = "rules_python", version = "1.9.0")
+bazel_dep(name = "rules_python", version = "2.0.2")
 bazel_dep(name = "rules_oci", version = "2.3.0")
 bazel_dep(name = "rules_pkg", version = "1.2.0")
 bazel_dep(name = "platforms", version = "1.0.0")
@@ -30,6 +30,11 @@ pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
 pip.parse(
     hub_name = "pip_greeting_service",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/demo-app/greeting-service:requirements_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
@@ -40,6 +45,11 @@ pip.parse(
 pip.parse(
     hub_name = "pip_greeting_service_dev",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/demo-app/greeting-service:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
@@ -50,6 +60,11 @@ pip.parse(
 pip.parse(
     hub_name = "pip_infra_check_service",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/demo-app/infra-check-service:requirements_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
@@ -60,6 +75,11 @@ pip.parse(
 pip.parse(
     hub_name = "pip_infra_check_service_dev",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/demo-app/infra-check-service:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
@@ -70,6 +90,11 @@ pip.parse(
 pip.parse(
     hub_name = "pip_traffic_generator_service",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/demo-app/traffic-generator-service:requirements_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
@@ -80,8 +105,43 @@ pip.parse(
 pip.parse(
     hub_name = "pip_traffic_generator_service_dev",
     python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
     requirements_by_platform = {
         "//apps/demo-app/traffic-generator-service:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
+    },
+    experimental_index_url = "https://nexus.gillouche.homelab/repository/pypi-proxy/simple",
+)
+
+# API Lab shared Python dependencies (all Python services in api-lab)
+pip.parse(
+    hub_name = "pip_apilab",
+    python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
+    requirements_by_platform = {
+        "//apps/api-lab:requirements_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
+    },
+    experimental_index_url = "https://nexus.gillouche.homelab/repository/pypi-proxy/simple",
+)
+
+# API Lab shared Python dev dependencies (for tests)
+pip.parse(
+    hub_name = "pip_apilab_dev",
+    python_version = "3.14",
+    target_platforms = [
+        "linux_aarch64",
+        "linux_x86_64",
+        "osx_aarch64",
+    ],
+    requirements_by_platform = {
+        "//apps/api-lab:requirements_dev_lock.txt": "linux_aarch64,linux_x86_64,osx_aarch64",
     },
     experimental_index_url = "https://nexus.gillouche.homelab/repository/pypi-proxy/simple",
 )
@@ -94,6 +154,8 @@ use_repo(
     "pip_infra_check_service_dev",
     "pip_traffic_generator_service",
     "pip_traffic_generator_service_dev",
+    "pip_apilab",
+    "pip_apilab_dev",
 )
 
 # OCI base images - multi-platform (ARM64 for Raspberry Pi, AMD64 for local testing)
@@ -110,21 +172,53 @@ oci.pull(
 )
 use_repo(oci, "python_base", "python_base_linux_arm64", "python_base_linux_amd64")
 
-# Distroless base for future Go/Rust services (smaller, more secure)
+# Go distroless base for Go services (smaller, more secure)
 oci.pull(
-    name = "distroless_base",
-    image = "nexus.gillouche.homelab/gcr-proxy/distroless/base-debian12",
+    name = "go_base",
+    image = "nexus.gillouche.homelab/docker-hosted/base/go-distroless",
     platforms = [
         "linux/arm64",
         "linux/amd64",
     ],
-    tag = "nonroot",
+    tag = "1.26.0",
+    digest = "sha256:e0863cc5a7dd7da4f17d0353dc573b53645ff761aceeec873211d05cad23e85a",
 )
-use_repo(oci, "distroless_base", "distroless_base_linux_arm64", "distroless_base_linux_amd64")
+use_repo(oci, "go_base", "go_base_linux_arm64", "go_base_linux_amd64")
+
+# TypeScript/Node runtime distroless base (Node.js LTS, no build toolchain)
+oci.pull(
+    name = "typescript_base",
+    image = "nexus.gillouche.homelab/docker-hosted/base/typescript-distroless",
+    platforms = [
+        "linux/arm64",
+        "linux/amd64",
+    ],
+    tag = "24.14.0",
+    digest = "sha256:03a2d9ccace5baa23560285afdff3015c5ca31fb681f7e463cf6ed899f6c82ec",
+)
+use_repo(oci, "typescript_base", "typescript_base_linux_arm64", "typescript_base_linux_amd64")
+
+# Rust runtime distroless base (glibc runtime, no build toolchain)
+oci.pull(
+    name = "rust_base",
+    image = "nexus.gillouche.homelab/docker-hosted/base/rust-distroless",
+    platforms = [
+        "linux/arm64",
+        "linux/amd64",
+    ],
+    tag = "1.94.0",
+    digest = "sha256:1e397f3326d4e9859952d4b2b5908fd186737545e5b605b4916c7bc5c19a59b9",
+)
+use_repo(oci, "rust_base", "rust_base_linux_arm64", "rust_base_linux_amd64")
 
 # Go SDK - hermetic download (no host Go needed)
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
-go_sdk.download(version = "1.24.4")
+go_sdk.download(version = "1.24.13")
+
+# Go third-party dependencies (managed by gazelle)
+go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
+go_deps.from_file(go_mod = "//apps/api-lab/go-api:go.mod")
+use_repo(go_deps, "com_github_google_uuid")
 
 # Rust toolchain - hermetic download (no host Rust needed)
 rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")

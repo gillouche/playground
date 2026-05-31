@@ -1,0 +1,211 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+data:
+  api-lab-realm.json: |
+    {
+      "realm": "api-lab",
+      "enabled": true,
+      "registrationAllowed": false,
+      "bruteForceProtected": true,
+      "failureFactor": 5,
+      "maxFailureWaitSeconds": 300,
+      "waitIncrementSeconds": 60,
+      "accessTokenLifespan": 300,
+      "ssoSessionIdleTimeout": 1800,
+      "roles": {
+        "realm": [
+          {
+            "name": "admin",
+            "composite": false,
+            "clientRole": false
+          },
+          {
+            "name": "user",
+            "composite": false,
+            "clientRole": false
+          }
+        ],
+        "client": {
+          "realm-management": [
+            {
+              "name": "manage-users",
+              "composite": false,
+              "clientRole": true,
+              "containerId": "realm-management"
+            },
+            {
+              "name": "manage-realm",
+              "composite": false,
+              "clientRole": true,
+              "containerId": "realm-management"
+            }
+          ]
+        }
+      },
+      "defaultRole": {
+            "name": "default-roles-api-lab",
+            "composites": {
+              "realm": ["user"]
+            }
+          },
+      "clients": [
+        {
+          "clientId": "api-lab",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "secret": "api-lab-secret",
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": true,
+          "standardFlowEnabled": true,
+          "redirectUris": ["*"],
+          "webOrigins": ["*"],
+          "defaultClientScopes": [
+            "openid",
+            "profile",
+            "email",
+            "roles"
+          ]
+        },
+        {
+          "clientId": "api-lab-auth-service",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "secret": "api-lab-auth-service-secret",
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": true,
+          "standardFlowEnabled": false,
+          "redirectUris": [],
+          "webOrigins": [],
+          "defaultClientScopes": [
+            "openid",
+            "profile",
+            "email",
+            "roles"
+          ]
+        },
+        {
+          "clientId": "api-lab-traffic-gen",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": true,
+          "directAccessGrantsEnabled": true,
+          "serviceAccountsEnabled": false,
+          "standardFlowEnabled": true,
+          "redirectUris": ["*"],
+          "webOrigins": ["*"],
+          "defaultClientScopes": [
+            "openid",
+            "profile",
+            "email",
+            "roles"
+          ]
+        }
+      ],
+      "users": [
+        {
+          "username": "admin-user",
+          "enabled": true,
+          "credentials": [
+            {
+              "type": "password",
+              "value": "admin",
+              "temporary": false
+            }
+          ],
+          "realmRoles": ["admin", "user"]
+        },
+        {
+          "username": "test-user",
+          "enabled": true,
+          "credentials": [
+            {
+              "type": "password",
+              "value": "test",
+              "temporary": false
+            }
+          ],
+          "realmRoles": ["user"]
+        },
+        {
+          "username": "service-account-api-lab-auth-service",
+          "enabled": true,
+          "serviceAccountClientId": "api-lab-auth-service",
+          "clientRoles": {
+            "realm-management": ["manage-users", "manage-realm"]
+          }
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels:
+    app: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: nexus.gillouche.homelab/docker-hub/keycloak/keycloak:26.2
+          args:
+            - start-dev
+            - --import-realm
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL
+              value: jdbc:postgresql://postgres.playground-infra-sandbox.svc.cluster.local:5432/keycloak
+            - name: KC_DB_USERNAME
+              value: playground
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: infra-secrets
+                  key: POSTGRES_PASSWORD
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: admin
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: infra-secrets
+                  key: KEYCLOAK_ADMIN_PASSWORD
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 250m
+            limits:
+              memory: 1536Mi
+              cpu: 1000m
+          volumeMounts:
+            - name: realm-config
+              mountPath: /opt/keycloak/data/import
+      volumes:
+        - name: realm-config
+          configMap:
+            name: keycloak-realm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+spec:
+  selector:
+    app: keycloak
+  ports:
+    - port: 8080
+      targetPort: 8080

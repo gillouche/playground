@@ -14,37 +14,66 @@ result/
 *.drv
 .envrc
 
-# macOS system files
+# macOS / Windows system files
 .DS_Store
+Thumbs.db
 
-# Editor files
+# Editor / IDE files
 *.swp
 *.swo
 *.swn
-*.idea/
-*.vscode/
+.idea/
+.vscode/
 
-# Python / other languages (optional)
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-**/.coverage
+*.egg-info/
+.eggs/
+dist/
+build/
 **/.venv
+**/.coverage
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.tox/
+.nox/
+htmlcov/
+coverage.xml
 
-# Node
+# Go
+vendor/
+
+# Rust
+**/target/
+
+# Node / TypeScript
 **/node_modules/
+.next/
+.turbo/
+.pnpm-store/
+
 # Logs
 *.log
 
-# IDE files and folders
-.idea
-
-# secrets
+# Secrets and credentials
 secrets/
+.env
+.env.*
+!.env.example
+*.key
+
+# Java truststore (generated from ca-bundle.pem for Bazel JVM)
+.truststore.jks
 
 # CI Temporary Artifacts
 matrix.json
 trivy-results.json
 failure-*.txt
 .bazelrc.ci
+
+# Docker
+docker-compose.override.yml

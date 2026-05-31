@@ -2,15 +2,18 @@ name: Build & Test
 
 on:
   push:
-    branches: ['**']
-    tags-ignore:
-      - '**'
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
+  checks: write
   packages: none
   actions: none
   id-token: none
@@ -27,43 +30,12 @@ jobs:
       - uses: gillouche/homelab-ci/actions/security-gate@main
         id: gate
 
-  discover-services:
-    name: Discover Services
+  demo-app:
+    name: demo-app
     needs: security-check
     if: needs.security-check.outputs.is_safe == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      matrix: ${{ steps.services.outputs.matrix }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-          persist-credentials: false
-
-      - name: Find all services
-        id: services
-        run: |
-          SERVICES=$(find apps -mindepth 3 -maxdepth 3 -type f -name BUILD.bazel | while read -r f; do
-            dir=$(dirname "$f")
-            app=$(basename "$(dirname "$dir")")
-            service=$(basename "$dir")
-            jq -n -c --arg app "$app" --arg service "$service" '{app: $app, service: $service}'
-          done | jq -sc '.')
-          echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
-          echo "Found services: $SERVICES"
-
-  build-and-test:
-    name: ${{ matrix.service.app }}/${{ matrix.service.service }}
-    needs: [security-check, discover-services]
-    if: needs.security-check.outputs.is_safe == 'true' && needs.discover-services.outputs.matrix != '[]'
     runs-on: playground-runner
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        service: ${{ fromJson(needs.discover-services.outputs.matrix) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -84,7 +56,8 @@ jobs:
       - name: Inject Nexus CA into Docker Daemon
         run: |
           sudo mkdir -p /etc/docker/certs.d/nexus.gillouche.homelab
-          sudo cp /usr/local/share/ca-certificates/nexus-ca.crt /etc/docker/certs.d/nexus.gillouche.homelab/ca.crt
+          sudo cp /usr/local/share/ca-certificates/nexus-ca.crt \
+            /etc/docker/certs.d/nexus.gillouche.homelab/ca.crt
 
       - name: Login to Nexus registry
         run: |
@@ -93,34 +66,321 @@ jobs:
             -u "${{ secrets.NEXUS_USERNAME }}" \
             --password-stdin
 
-      - name: Build
+      - name: Build & Test
         run: |
           { set +x; } 2>/dev/null
-          nix develop ./nix#ci --command bazel \
-            build --config=ci //apps/${{ matrix.service.app }}/${{ matrix.service.service }}/...
+          nix develop ./nix#ci --command bazel build --config=ci \
+            //apps/demo-app/...
+          nix develop ./nix#ci --command bazel test --config=ci \
+            //apps/demo-app/... \
+            || { rc=$?; if [ $rc -eq 4 ]; then \
+            echo "No test targets found, skipping"; else exit $rc; fi; }
 
-      - name: Test
-        run: |
-          { set +x; } 2>/dev/null
-          nix develop ./nix#ci --command bazel \
-            test --config=ci //apps/${{ matrix.service.app }}/${{ matrix.service.service }}/... \
-            || { rc=$?; if [ $rc -eq 4 ]; then echo "No test targets found, skipping"; else exit $rc; fi; }
+      - name: Publish test results
+        if: always() && hashFiles('bazel-testlogs/**/test.xml') != ''
+        uses: dorny/test-reporter@v2
+        with:
+          name: demo-app tests
+          path: bazel-testlogs/**/test.xml
+          reporter: java-junit
+          fail-on-error: true
 
-      - name: Push image (Main Only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  api-lab:
+    name: api-lab
+    needs: security-check
+    if: needs.security-check.outputs.is_safe == 'true'
+    runs-on: playground-runner
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Nix Cache Profile
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
+        with:
+          profile: nix
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
+      - name: Setup Nix Environment
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+
+      - name: Inject Nexus CA into Docker Daemon
+        run: |
+          sudo mkdir -p /etc/docker/certs.d/nexus.gillouche.homelab
+          sudo cp /usr/local/share/ca-certificates/nexus-ca.crt \
+            /etc/docker/certs.d/nexus.gillouche.homelab/ca.crt
+
+      - name: Login to Nexus registry
         run: |
           { set +x; } 2>/dev/null
-          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7)
-          nix develop ./nix#ci --command bazel \
-            run --config=ci //apps/${{ matrix.service.app }}/${{ matrix.service.service }}:${{ matrix.service.service }}_push \
-            -- --tag latest --tag "$SHORT_SHA"
-        env:
-          NEXUS_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab \
+            -u "${{ secrets.NEXUS_USERNAME }}" \
+            --password-stdin
+
+      - name: Build & Test
+        run: |
+          { set +x; } 2>/dev/null
+          nix develop ./nix#ci --command bazel build --config=ci \
+            //apps/api-lab/...
+          nix develop ./nix#ci --command bazel test --config=ci \
+            --test_tag_filters=-system \
+            //apps/api-lab/... \
+            || { rc=$?; if [ $rc -eq 4 ]; then \
+            echo "No test targets found, skipping"; else exit $rc; fi; }
+
+      - name: Run bandit security scan
+        run: |
+          nix develop ./nix#ci --command uv tool run bandit -r apps/api-lab/python-rest-api/src apps/api-lab/python-common/src apps/api-lab/python-auth-api/src apps/api-lab/graphql-gateway/src apps/api-lab/python-grpc-api/src -c apps/api-lab/.bandit.yaml
+
+      - name: Run pip-audit
+        # PYSEC-2026-161 (starlette): unavoidable transitive pin from
+        # prometheus-fastapi-instrumentator which requires starlette<1.0.0.
+        # Remove once that lib supports starlette 1.x.
+        run: |
+          nix develop ./nix#ci --command uv tool run pip-audit \
+            -r apps/api-lab/requirements_lock.txt \
+            --ignore-vuln PYSEC-2026-161
+
+      - name: Load images for scanning
+        id: load_images
+        run: |
+          nix develop ./nix#ci --command bash -c '
+            set -e
+            bazel run --config=ci //apps/api-lab/python-rest-api:python-rest-api_load
+            bazel run --config=ci //apps/api-lab/python-auth-api:python-auth-api_load
+            bazel run --config=ci //apps/api-lab/python-grpc-api:python-grpc-api_load
+            bazel run --config=ci //apps/api-lab/graphql-gateway:graphql-gateway_load
+          '
+
+      - name: Trivy scan python-rest-api
+        uses: gillouche/homelab-ci/actions/trivy-scan@main
+        with:
+          image: python-rest-api:latest
+          trivyignore: .trivyignore
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
+
+      - name: Trivy scan python-auth-api
+        uses: gillouche/homelab-ci/actions/trivy-scan@main
+        with:
+          image: python-auth-api:latest
+          trivyignore: .trivyignore
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
+
+      - name: Trivy scan python-grpc-api
+        uses: gillouche/homelab-ci/actions/trivy-scan@main
+        with:
+          image: python-grpc-api:latest
+          trivyignore: .trivyignore
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
+
+      - name: Trivy scan graphql-gateway
+        uses: gillouche/homelab-ci/actions/trivy-scan@main
+        with:
+          image: graphql-gateway:latest
+          trivyignore: .trivyignore
+          discord-webhook: ${{ secrets.DISCORD_WEBHOOK_SECURITY }}
+
+      - name: Manifest drift check
+        run: |
+          nix develop ./nix#ci --command ./tools/deploy/ytt_gen.sh --env dev api-lab
+          if ! git diff --quiet -- apps/api-lab/deploy/dev; then
+            echo "::error::Generated dev manifests differ from committed files. Run './tools/deploy/ytt_gen.sh --env dev api-lab' and commit the result."
+            git --no-pager diff -- apps/api-lab/deploy/dev
+            exit 1
+          fi
+
+      - name: Publish test results
+        if: always() && hashFiles('bazel-testlogs/**/test.xml') != ''
+        uses: dorny/test-reporter@v2
+        with:
+          name: api-lab tests
+          path: bazel-testlogs/**/test.xml
+          reporter: java-junit
+          fail-on-error: true
+
+      - name: API Coverage Report
+        if: always()
+        run: python3 apps/api-lab/tools/api_coverage.py --github-summary --enforce Python
+
+  system-test-api-lab:
+    name: api-lab/system-tests
+    needs: [security-check, api-lab]
+    if: >-
+      needs.security-check.outputs.is_safe == 'true' &&
+      needs.api-lab.result == 'success'
+    runs-on: playground-runner
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Nix Cache Profile
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
+        with:
+          profile: nix
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
+      - name: Setup Nix Environment
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+
+      - name: Inject Nexus CA into Docker Daemon
+        run: |
+          sudo mkdir -p /etc/docker/certs.d/nexus.gillouche.homelab
+          sudo cp /usr/local/share/ca-certificates/nexus-ca.crt \
+            /etc/docker/certs.d/nexus.gillouche.homelab/ca.crt
+
+      - name: Login to Nexus registry
+        run: |
+          { set +x; } 2>/dev/null
+          echo "${{ secrets.NEXUS_PASSWORD }}" | docker login nexus.gillouche.homelab \
+            -u "${{ secrets.NEXUS_USERNAME }}" \
+            --password-stdin
+
+      - name: Start infrastructure
+        run: |
+          if docker compose version &>/dev/null; then
+            COMPOSE="docker compose"
+          else
+            COMPOSE="docker-compose"
+          fi
+          COMPOSE_CMD="$COMPOSE --project-directory infra/sandbox/localhost -f infra/sandbox/localhost/docker-compose.yaml"
+
+          # Clear any leftover state from a canceled previous run on this runner.
+          $COMPOSE_CMD down -v --remove-orphans || true
+
+          # Use --wait so docker compose blocks until healthchecks pass.
+          if ! $COMPOSE_CMD up -d --wait --wait-timeout 120 postgres redis; then
+            echo "::error::postgres or redis failed to become healthy. Logs:"
+            $COMPOSE_CMD ps
+            $COMPOSE_CMD logs --tail 80 postgres
+            $COMPOSE_CMD logs --tail 40 redis
+            exit 1
+          fi
+
+          $COMPOSE_CMD exec -T postgres \
+            psql -U playground -c "CREATE DATABASE api_lab" || true
+          $COMPOSE_CMD exec -T postgres \
+            psql -U playground -c "CREATE DATABASE keycloak" || true
+
+          if ! $COMPOSE_CMD up -d keycloak; then
+            echo "::error::keycloak failed to start"
+            $COMPOSE_CMD logs --tail 80 keycloak
+            exit 1
+          fi
+          echo "Waiting for Keycloak (up to 180s)..."
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8180/realms/master > /dev/null 2>&1; then
+              echo "Keycloak ready at attempt $i"
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "::error::Keycloak failed to start. Logs:"
+              $COMPOSE_CMD logs keycloak --tail 80
+              exit 1
+            fi
+            sleep 3
+          done
+          bash infra/sandbox/localhost/keycloak/setup-realm.sh
+
+      - name: Build, migrate, start services, and run system tests
+        run: |
+          { set +x; } 2>/dev/null
+          export POSTGRES_HOST=localhost POSTGRES_DATABASE=api_lab
+          export POSTGRES_USER=playground POSTGRES_PASSWORD=playground
+          export REDIS_HOST=localhost REDIS_PORT=6379
+          export REDIS_PASSWORD=playground
+          export ENABLE_TRACING=false
+          export REST_API_URL=http://localhost:8080
+          export API_BASE_URL=http://localhost:8080
+          export AUTH_API_URL=http://localhost:8084
+          export GRAPHQL_BASE_URL=http://localhost:8083
+          export GRPC_HOST=localhost:50051
+          export KEYCLOAK_SERVER_URL=http://localhost:8180
+          export KEYCLOAK_CLIENT_ID=api-lab
+          export KEYCLOAK_CLIENT_SECRET=api-lab-secret
+          export KEYCLOAK_AUTH_SERVICE_CLIENT_ID=api-lab-auth-service
+          export KEYCLOAK_AUTH_SERVICE_CLIENT_SECRET=api-lab-auth-service-secret
+
+          nix develop ./nix#ci --command bash -c '
+            set -e
+
+            echo "=== Building all targets ==="
+            bazel build --config=ci \
+              //apps/api-lab/database:migrate \
+              //apps/api-lab/python-rest-api \
+              //apps/api-lab/python-auth-api \
+              //apps/api-lab/python-grpc-api \
+              //apps/api-lab/graphql-gateway \
+              //apps/api-lab/system-tests:system-tests
+
+            echo "=== Running database migrations ==="
+            bazel run --config=ci //apps/api-lab/database:migrate
+
+            echo "=== Starting services ==="
+            bazel run --config=ci //apps/api-lab/python-rest-api &
+            bazel run --config=ci //apps/api-lab/python-auth-api &
+            bazel run --config=ci //apps/api-lab/python-grpc-api &
+            REST_API_URL=http://localhost:8080 \
+              bazel run --config=ci //apps/api-lab/graphql-gateway &
+
+            echo "Waiting for REST API..."
+            until curl -sf http://localhost:8080/healthz; do sleep 2; done
+            echo "Waiting for Auth API..."
+            until curl -sf http://localhost:8084/healthz; do sleep 2; done
+            echo "Waiting for GraphQL gateway..."
+            until curl -sf http://localhost:8083/healthz; do sleep 2; done
+            echo "Waiting for gRPC..."
+            sleep 3
+
+            echo "=== Running system tests ==="
+            bazel test --config=ci \
+              --test_tag_filters=system \
+              --test_env=API_BASE_URL \
+              --test_env=AUTH_API_URL \
+              --test_env=GRAPHQL_BASE_URL \
+              --test_env=GRPC_HOST \
+              --test_env=POSTGRES_HOST \
+              --test_env=POSTGRES_DATABASE \
+              --test_env=POSTGRES_USER \
+              --test_env=POSTGRES_PASSWORD \
+              --test_env=REDIS_HOST \
+              --test_env=REDIS_PORT \
+              --test_env=REDIS_PASSWORD \
+              --test_env=KEYCLOAK_SERVER_URL \
+              //apps/api-lab/system-tests:system-tests
+          '
+
+      - name: Publish test results
+        if: always() && hashFiles('bazel-testlogs/**/test.xml') != ''
+        uses: dorny/test-reporter@v2
+        with:
+          name: api-lab system tests
+          path: bazel-testlogs/**/test.xml
+          reporter: java-junit
+          fail-on-error: true
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if docker compose version &>/dev/null; then
+            docker compose --project-directory infra/sandbox/localhost \
+              -f infra/sandbox/localhost/docker-compose.yaml down -v || true
+          else
+            docker-compose --project-directory infra/sandbox/localhost \
+              -f infra/sandbox/localhost/docker-compose.yaml down -v || true
+          fi
 
   finalize:
     name: Finalize
-    needs: [security-check, build-and-test]
+    needs: [security-check, demo-app, api-lab, system-test-api-lab]
     if: always() && needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
     timeout-minutes: 10
@@ -132,7 +392,11 @@ jobs:
           persist-credentials: false
 
       - name: Setup Nix Cache Profile
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.result == 'success'
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          needs.api-lab.result == 'success' &&
+          needs.demo-app.result == 'success'
         uses: gillouche/homelab-ci/actions/setup-aws-profile@main
         with:
           profile: nix
@@ -140,25 +404,38 @@ jobs:
           secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
 
       - name: Setup Nix Environment
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.result == 'success'
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          needs.api-lab.result == 'success' &&
+          needs.demo-app.result == 'success'
         uses: gillouche/homelab-ci/actions/setup-nix-env@main
 
       - name: Push to Nix Cache (Main Only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build-and-test.result == 'success'
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          needs.api-lab.result == 'success' &&
+          needs.demo-app.result == 'success'
         run: |
           { set +x; } 2>/dev/null
           echo "Pushing build artifacts to Nix Cache..."
-          nix copy --to "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http&profile=nix" \
+          nix copy --to \
+            "s3://nix-cache?endpoint=http://seaweedfs-s3.seaweedfs.svc.cluster.local:8333&scheme=http&profile=nix" \
             ./nix#ci
 
       - name: Send Success Notification
-        if: needs.build-and-test.result == 'success'
+        if: >-
+          needs.api-lab.result == 'success' &&
+          needs.demo-app.result == 'success' &&
+          needs.system-test-api-lab.result == 'success'
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: success
           title: CI Pipeline Result
-          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          url: >-
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           message: "Build completed successfully"
           fields: |
             [
@@ -170,13 +447,17 @@ jobs:
             ]
 
       - name: Send Failure Notification
-        if: needs.build-and-test.result != 'success'
+        if: >-
+          needs.api-lab.result != 'success' ||
+          needs.demo-app.result != 'success' ||
+          needs.system-test-api-lab.result != 'success'
         uses: gillouche/homelab-ci/actions/discord-notify@main
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_GITHUB_ACTIONS }}
           status: failure
           title: CI Pipeline Result
-          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          url: >-
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           message: "Build failed"
           fields: |
             [

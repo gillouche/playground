@@ -20,6 +20,7 @@ def run_command(cmd: list[str], capture: bool = True) -> subprocess.CompletedPro
         cmd,
         capture_output=capture,
         text=True,
+        check=False,
     )
 
 
@@ -41,7 +42,7 @@ def get_local_image_digest(image_target: str) -> str | None:
     name = target_parts[1] if len(target_parts) > 1 else target_parts[0].split("/")[-1]
 
     # Find the image directory in bazel-bin
-    workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY", os.getcwd())
+    workspace_dir = os.environ.get("BUILD_WORKSPACE_DIRECTORY", str(Path.cwd()))
     image_dir = Path(workspace_dir) / "bazel-bin" / package / name
 
     index_path = image_dir / "index.json"
@@ -49,7 +50,7 @@ def get_local_image_digest(image_target: str) -> str | None:
         print(f"Image index not found at {index_path}", file=sys.stderr)
         return None
 
-    with open(index_path) as f:
+    with index_path.open() as f:
         index = json.load(f)
 
     # Get the digest from the manifest
@@ -84,14 +85,8 @@ def get_push_targets() -> list[dict]:
         image_target = line.replace("_push", "_image")
 
         # Query the repository attribute
-        repo_result = run_command([
-            "bazel", "query",
-            f"labels(repository, {line})",
-            "--output=build"
-        ])
+        run_command(["bazel", "query", f"labels(repository, {line})", "--output=build"])
 
-        # Parse repository from build output (simplified - actual parsing would be more complex)
-        # For now, we'll infer from the package path
         parts = line.split("/")
         # //apps/demo-app/greeting-service:greeting-service_push
         if len(parts) >= 4:
@@ -101,11 +96,13 @@ def get_push_targets() -> list[dict]:
         else:
             continue
 
-        targets.append({
-            "push_target": line,
-            "image_target": image_target,
-            "repository": repository,
-        })
+        targets.append(
+            {
+                "push_target": line,
+                "image_target": image_target,
+                "repository": repository,
+            }
+        )
 
     return targets
 
@@ -118,28 +115,71 @@ def push_image(push_target: str, tags: list[str]) -> bool:
 
     # Don't use --config=arm64 for the push - the push script runs on the host
     # and needs host-compatible tools (jq, etc.).
-    cmd = ["bazel", "run", "--config=ci", push_target, "--"] + tag_args
+    cmd = ["bazel", "run", "--config=ci", push_target, "--", *tag_args]
     result = run_command(cmd, capture=False)
     return result.returncode == 0
+
+
+def resolve_tags(tags: list[str]) -> list[str]:
+    """Resolve the final list of tags, adding git SHA if available."""
+    if not tags:
+        tags = ["latest"]
+
+    git_result = run_command(["git", "rev-parse", "--short", "HEAD"])
+    if git_result.returncode == 0:
+        sha_tag = git_result.stdout.strip()
+        if sha_tag not in tags:
+            tags.append(sha_tag)
+
+    return tags
+
+
+def should_skip_target(target: dict) -> bool:
+    """Return True if the target image is unchanged and should be skipped."""
+    local_digest = get_local_image_digest(target["image_target"])
+    if not local_digest:
+        print("  Could not get local digest, will push anyway")
+        return False
+
+    print(f"  Local digest: {local_digest}")
+    remote_digest = get_remote_image_digest(target["repository"])
+    if not remote_digest:
+        print("  Remote image not found, will push")
+        return False
+
+    print(f"  Remote digest: {remote_digest}")
+    if local_digest == remote_digest:
+        print("  SKIPPED: Image unchanged")
+        return True
+
+    return False
+
+
+def execute_push(push_target: str, tags: list[str], dry_run: bool) -> str:
+    """Push or simulate pushing an image. Returns 'pushed' or 'failed'."""
+    if dry_run:
+        print(f"  DRY-RUN: Would push with tags {tags}")
+        return "pushed"
+
+    print(f"  Pushing with tags {tags}...")
+    if push_image(push_target, tags):
+        print("  PUSHED successfully")
+        return "pushed"
+
+    print("  FAILED to push")
+    return "failed"
 
 
 def main():
     parser = argparse.ArgumentParser(description="Smart push - only push changed images")
     parser.add_argument("--dry-run", action="store_true", help="Don't actually push")
-    parser.add_argument("--tag", action="append", default=[], help="Tags to apply (can be repeated)")
+    parser.add_argument(
+        "--tag", action="append", default=[], help="Tags to apply (can be repeated)"
+    )
     parser.add_argument("--force", action="store_true", help="Push even if unchanged")
     args = parser.parse_args()
 
-    if not args.tag:
-        args.tag = ["latest"]
-
-    # Get git SHA for tagging
-    git_result = run_command(["git", "rev-parse", "--short", "HEAD"])
-    if git_result.returncode == 0:
-        sha_tag = git_result.stdout.strip()
-        if sha_tag not in args.tag:
-            args.tag.append(sha_tag)
-
+    args.tag = resolve_tags(args.tag)
     print(f"Tags to apply: {args.tag}")
 
     targets = get_push_targets()
@@ -154,39 +194,17 @@ def main():
     for target in targets:
         print(f"\nProcessing {target['push_target']}...")
 
-        if not args.force:
-            # Get local digest
-            local_digest = get_local_image_digest(target["image_target"])
-            if not local_digest:
-                print(f"  Could not get local digest, will push anyway")
-            else:
-                print(f"  Local digest: {local_digest}")
+        if not args.force and should_skip_target(target):
+            skipped += 1
+            continue
 
-                # Get remote digest
-                remote_digest = get_remote_image_digest(target["repository"])
-                if remote_digest:
-                    print(f"  Remote digest: {remote_digest}")
-
-                    if local_digest == remote_digest:
-                        print(f"  SKIPPED: Image unchanged")
-                        skipped += 1
-                        continue
-                else:
-                    print(f"  Remote image not found, will push")
-
-        if args.dry_run:
-            print(f"  DRY-RUN: Would push with tags {args.tag}")
+        result = execute_push(target["push_target"], args.tag, args.dry_run)
+        if result == "pushed":
             pushed += 1
         else:
-            print(f"  Pushing with tags {args.tag}...")
-            if push_image(target["push_target"], args.tag):
-                print(f"  PUSHED successfully")
-                pushed += 1
-            else:
-                print(f"  FAILED to push")
-                failed += 1
+            failed += 1
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"Summary: {pushed} pushed, {skipped} skipped, {failed} failed")
 
     return 1 if failed > 0 else 0

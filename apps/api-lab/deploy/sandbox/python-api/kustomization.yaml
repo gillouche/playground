@@ -1,0 +1,16 @@
+resources:
+  - ../../../python-api/deploy/base
+  - python-api-rollout.yaml
+  - python-api-secrets.yaml
+patches:
+  - path: python-api-configmap.yaml
+images:
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/python-rest-api
+    newName: python-rest-api
+    newTag: latest
+labels:
+  - pairs:
+      environment: sandbox
+      app: api-lab
+    includeSelectors: false
+    includeTemplates: true

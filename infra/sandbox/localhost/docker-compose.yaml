@@ -8,13 +8,27 @@ services:
       POSTGRES_PASSWORD: playground
       POSTGRES_DB: playground
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # PostgreSQL 18+ stores data under /var/lib/postgresql/<major>/docker
+      # so the mount must be the parent dir, not /var/lib/postgresql/data.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U playground -d playground"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
   redis:
     image: nexus.gillouche.homelab/docker-hub/library/redis:8-alpine
     ports:
       - "6379:6379"
     command: redis-server --requirepass playground
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "playground", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   kafka:
     image: nexus.gillouche.homelab/docker-hub/apache/kafka:latest
@@ -42,6 +56,31 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: playground
     volumes:
       - mongodb-data:/data/db
+
+  keycloak:
+    image: nexus.gillouche.homelab/docker-hub/keycloak/keycloak:26.2
+    ports:
+      - "8180:8080"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: playground
+      KC_DB_PASSWORD: playground
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    command: start-dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  jaeger:
+    image: nexus.gillouche.homelab/docker-hub/jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
 
 volumes:
   postgres-data:

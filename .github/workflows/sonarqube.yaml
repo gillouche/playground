@@ -3,9 +3,12 @@ name: SonarQube Analysis
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      scan_all:
+        description: "Scan all services (ignore change detection)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -26,11 +29,11 @@ jobs:
         id: gate
 
   discover-services:
-    name: Discover Services
+    name: Discover Changed Services
     needs: security-check
     if: needs.security-check.outputs.is_safe == 'true'
     runs-on: playground-runner
-    timeout-minutes: 5
+    timeout-minutes: 10
     outputs:
       matrix: ${{ steps.services.outputs.matrix }}
     steps:
@@ -40,16 +43,104 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Find all services
+      - name: Setup Nix Cache Profile
+        uses: gillouche/homelab-ci/actions/setup-aws-profile@main
+        with:
+          profile: nix
+          access-key-id: ${{ secrets.NIX_CACHE_ACCESS_KEY }}
+          secret-access-key: ${{ secrets.NIX_CACHE_SECRET_KEY }}
+
+      - name: Setup Nix Environment
+        uses: gillouche/homelab-ci/actions/setup-nix-env@main
+
+      - name: Detect affected services
         id: services
         run: |
           { set +x; } 2>/dev/null
-          SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type d ! -name deploy ! -name monitoring ! -name __pycache__ | \
+
+          # system-tests are integration scaffolding (not production code), so we
+          # exclude them from SonarQube quality analysis. tools/scripts are dev
+          # utilities; deploy/monitoring/__pycache__ aren't source.
+          SKIP_NAMES="deploy|monitoring|__pycache__|system-tests|scripts|tools"
+          ALL_SERVICES=$(find apps -mindepth 2 -maxdepth 2 -type d | \
+            grep -vE "($SKIP_NAMES)" | sort)
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.scan_all }}" = "true" ]; then
+            echo "Manual dispatch (scan all) — scanning all services"
+            AFFECTED_DIRS="$ALL_SERVICES"
+          else
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              DIFF_BASE="${{ github.event.pull_request.base.sha }}"
+            else
+              DIFF_BASE="HEAD~1"
+            fi
+
+            CHANGED_FILES=$(git diff --name-only "$DIFF_BASE" HEAD 2>/dev/null || echo "")
+            if [ -z "$CHANGED_FILES" ]; then
+              echo "Could not determine changed files — scanning all services"
+              AFFECTED_DIRS="$ALL_SERVICES"
+            else
+              echo "Changed files:"
+              echo "$CHANGED_FILES" | head -30
+
+              AFFECTED_DIRS=""
+              nix develop ./nix#ci --command bash << 'NIXEOF'
+                set -uo pipefail
+
+                CHANGED_FILES=$(git diff --name-only "$0" HEAD 2>/dev/null)
+
+                AFFECTED_TARGETS=""
+                while IFS= read -r file; do
+                  [ -z "$file" ] && continue
+                  [ ! -f "$file" ] && continue
+
+                  FILE_LABEL=$(bazel query "$file" 2>/dev/null || true)
+                  if [ -n "$FILE_LABEL" ]; then
+                    RDEPS=$(bazel query "rdeps(//apps/..., $FILE_LABEL)" 2>/dev/null || true)
+                    AFFECTED_TARGETS="$AFFECTED_TARGETS
+          $RDEPS"
+                  fi
+                done <<< "$CHANGED_FILES"
+
+                echo "$AFFECTED_TARGETS" | grep -oE "//apps/[^/]+/[^/:]+[:/]" | \
+                  sed 's|^//||; s|[:/]$||' | sort -u > /tmp/affected_dirs.txt
+
+                while read -r dir; do
+                  [ -z "$dir" ] && continue
+                  echo "AFFECTED: $dir"
+                done < /tmp/affected_dirs.txt
+          NIXEOF
+
+              if [ -f /tmp/affected_dirs.txt ]; then
+                AFFECTED_DIRS=$(cat /tmp/affected_dirs.txt | grep -v '^$' || true)
+              fi
+
+              if [ -z "$AFFECTED_DIRS" ]; then
+                echo "Bazel rdeps found no affected targets, falling back to directory matching"
+                for dir in $ALL_SERVICES; do
+                  if echo "$CHANGED_FILES" | grep -q "^${dir}/"; then
+                    echo "FALLBACK MATCH: $dir"
+                    AFFECTED_DIRS="$AFFECTED_DIRS $dir"
+                  fi
+                done
+              fi
+            fi
+          fi
+
+          FILTERED=$(echo "$AFFECTED_DIRS" | tr ' ' '\n' | grep -v '^$' | sort -u | \
+            while read -r dir; do
+              svc=$(basename "$dir")
+              if echo "$svc" | grep -qE "^($SKIP_NAMES)$"; then
+                continue
+              fi
+              echo "$dir"
+            done)
+
+          SERVICES=$(echo "$FILTERED" | grep -v '^$' | \
             while read -r dir; do
               app=$(basename "$(dirname "$dir")")
               service=$(basename "$dir")
               project_key="${app}:${service}"
-              # Create JSON object using jq
               jq -n -c \
                 --arg app "$app" \
                 --arg service "$service" \
@@ -57,13 +148,24 @@ jobs:
                 --arg pk "$project_key" \
                 '{app: $app, service: $service, path: $path, project_key: $pk}'
             done | jq -sc '.')
+
+          if [ "$SERVICES" = "[]" ] || [ -z "$SERVICES" ] || [ "$SERVICES" = "null" ]; then
+            SERVICES="[]"
+            echo "No services affected — skipping SonarQube analysis"
+          fi
+
           echo "matrix=$SERVICES" >> "$GITHUB_OUTPUT"
-          echo "Found services: $SERVICES"
+          echo "Services to analyze: $SERVICES"
+        env:
+          AWS_PROFILE: "nix"
 
   sonarqube:
     name: Analyze ${{ matrix.service.project_key }}
     needs: [security-check, discover-services]
-    if: needs.security-check.outputs.is_safe == 'true' && needs.discover-services.outputs.matrix != '[]'
+    if: >-
+      needs.security-check.outputs.is_safe == 'true' &&
+      needs.discover-services.outputs.matrix != '[]' &&
+      needs.discover-services.outputs.matrix != ''
     runs-on: playground-runner
     timeout-minutes: 15
     strategy:
@@ -98,26 +200,37 @@ jobs:
 
             cd "$SERVICE_PATH"
 
-            # Python projects
+            REQS_DIR="."
             if [ -f "requirements_lock.txt" ] || [ -f "requirements.txt" ]; then
-              echo "Detected Python project"
+              REQS_DIR="."
+            elif [ -f "../requirements_lock.txt" ] || [ -f "../requirements.txt" ]; then
+              REQS_DIR=".."
+            fi
+
+            if [ "$REQS_DIR" != "." ] || [ -f "requirements_lock.txt" ] || [ -f "requirements.txt" ]; then
+              echo "Detected Python project (requirements in $REQS_DIR)"
               if [ -d "tests" ]; then
-                # Create virtual environment using uv (more reliable in Nix environments)
                 uv venv .venv
                 source .venv/bin/activate
 
-                # Install dependencies using uv
-                if [ -f "requirements_dev_lock.txt" ]; then
-                  uv pip install -r requirements_dev_lock.txt -q
-                elif [ -f "requirements_lock.txt" ]; then
-                  uv pip install -r requirements_lock.txt -q
-                elif [ -f "requirements.txt" ]; then
-                  uv pip install -r requirements.txt -q
+                if [ -f "$REQS_DIR/requirements_dev_lock.txt" ]; then
+                  uv pip install -r "$REQS_DIR/requirements_dev_lock.txt" -q
+                elif [ -f "$REQS_DIR/requirements_lock.txt" ]; then
+                  uv pip install -r "$REQS_DIR/requirements_lock.txt" -q
+                elif [ -f "$REQS_DIR/requirements.txt" ]; then
+                  uv pip install -r "$REQS_DIR/requirements.txt" -q
                 fi
 
-                # Run pytest with coverage
+                PYTHONPATH_EXTRA=""
+                if [ -d "../python-common/src" ]; then
+                  PYTHONPATH_EXTRA="../python-common/src:../python-common/src/generated:"
+                fi
+                if [ -d "src/generated" ]; then
+                  PYTHONPATH_EXTRA="${PYTHONPATH_EXTRA}src/generated:"
+                fi
+
                 set +e
-                PYTHONPATH=src:. pytest tests/ \
+                PYTHONPATH="${PYTHONPATH_EXTRA}src:." pytest tests/ \
                   --cov=src \
                   --cov-report=xml:coverage.xml \
                   --cov-report=term \
@@ -139,13 +252,11 @@ jobs:
               fi
             fi
 
-            # Go projects
             if [ -f "go.mod" ]; then
               echo "Detected Go project"
               go test -coverprofile=coverage.out ./... || true
             fi
 
-            # TypeScript/JavaScript projects
             if [ -f "package.json" ]; then
               echo "Detected Node.js project"
               if command -v pnpm &> /dev/null; then
@@ -168,7 +279,6 @@ jobs:
 
             echo "Analyzing $PROJECT_KEY at $SERVICE_PATH"
 
-            # Determine sources path relative to service dir
             if [ -d "$SERVICE_PATH/src" ]; then
               SOURCES_PATH="src"
             else
@@ -183,7 +293,7 @@ jobs:
               "-Dsonar.host.url=$SONAR_HOST_URL"
               "-Dsonar.token=$SONAR_TOKEN"
               "-Dsonar.qualitygate.wait=true"
-              "-Dsonar.exclusions=**/.venv/**,**/node_modules/**,**/__pycache__/**"
+              "-Dsonar.exclusions=**/.venv/**,**/node_modules/**,**/__pycache__/**,**/generated/**"
             )
 
             if [ -d "$SERVICE_PATH/tests" ]; then
@@ -201,7 +311,19 @@ jobs:
               SONAR_ARGS+=("-Dsonar.go.coverage.reportPaths=coverage.out")
             fi
 
-            sonar-scanner "${SONAR_ARGS[@]}"
+            for attempt in 1 2 3; do
+              echo "SonarQube scan attempt $attempt/3"
+              if sonar-scanner "${SONAR_ARGS[@]}"; then
+                break
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "::warning::Attempt $attempt failed, retrying in 15s..."
+                sleep 15
+              else
+                echo "::error::All 3 attempts failed"
+                exit 1
+              fi
+            done
           '
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

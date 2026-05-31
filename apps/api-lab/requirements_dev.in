@@ -1,0 +1,16 @@
+# Development/test dependencies for all api-lab Python services
+# Edit this file, then run:
+#   SSL_CERT_FILE="$HOME/.local/share/ansible-home-cluster/pki/root-ca.crt" \
+#   uv pip compile requirements_dev.in -o requirements_dev_lock.txt --generate-hashes \
+#   --python-version 3.14 --index-url https://nexus.gillouche.homelab/repository/pypi-proxy/simple/ --native-tls
+
+-r requirements.in
+
+pytest>=8.3.4
+pytest-asyncio>=0.23.0
+pytest-cov>=7.0.0
+httpx>=0.27.0
+hypothesis>=6.0.0
+ruff>=0.14.13
+bandit>=1.8.0
+pip-audit>=2.7.0

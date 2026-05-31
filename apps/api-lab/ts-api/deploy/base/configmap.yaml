@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ts-api-config
+  labels:
+    component: ts-api
+data:
+  ENVIRONMENT: base
+  APP: api-lab
+  APP_VERSION: unknown
+  COMPONENT: ts-api
+  COMPONENT_VERSION: unknown
+  GIT_TAG: unknown
+  GIT_COMMIT: unknown
+  LOG_LEVEL: INFO

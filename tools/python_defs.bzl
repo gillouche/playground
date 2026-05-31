@@ -28,8 +28,10 @@ def python_application(
         unit_tests = [],
         integration_tests = [],
         test_deps = [],
+        test_args = [],
         data = [],
         env = {},
+        extra_imports = [],
         base_image = "@python_base_linux_arm64",
         image_repository = "",
         visibility = ["//visibility:public"]):
@@ -47,8 +49,10 @@ def python_application(
         unit_tests: Unit test files
         integration_tests: Integration test files
         test_deps: Additional test dependencies
+        test_args: Extra args to pass to pytest (e.g., ["-o", "asyncio_mode=auto"])
         data: Data files to include
         env: Environment variables for the binary
+        extra_imports: Additional import paths relative to the package (e.g., ["src/generated"])
         base_image: OCI base image (default: python_base for ARM64)
         image_repository: Nexus repository path (auto-inferred from package path)
         visibility: Bazel visibility
@@ -72,7 +76,7 @@ def python_application(
         name = name + "_lib",
         srcs = srcs,
         deps = deps,
-        imports = ["src"],
+        imports = ["src"] + extra_imports,
         data = data,
         visibility = visibility,
     )
@@ -92,11 +96,9 @@ def python_application(
             name = name + "_unit_test",
             srcs = ["//tools:pytest_runner.py"] + unit_tests + srcs,
             main = "//tools:pytest_runner.py",
-            # Let pytest discover tests in current directory
-            args = ["-v", "--import-mode=importlib", "."],
+            args = ["-v", "--import-mode=importlib"] + test_args + ["."],
             deps = deps + test_deps,
-            # Add "." for current package and "src" for source imports
-            imports = [".", "src"],
+            imports = [".", "src"] + extra_imports,
             size = "small",
             tags = ["unit"],
             visibility = visibility,
@@ -107,9 +109,9 @@ def python_application(
             name = name + "_integration_test",
             srcs = ["//tools:pytest_runner.py"] + integration_tests + srcs,
             main = "//tools:pytest_runner.py",
-            args = ["-v", "--import-mode=importlib", "."],
+            args = ["-v", "--import-mode=importlib"] + test_args + ["."],
             deps = deps + test_deps,
-            imports = [".", "src"],
+            imports = [".", "src"] + extra_imports,
             size = "medium",
             tags = ["integration"],
             visibility = visibility,
@@ -155,6 +157,7 @@ def python_application(
             name = name + "_image_arm64",
             actual = ":" + name + "_image",
             platform = "//tools/platforms:linux_arm64",
+            tags = ["manual"],
             visibility = visibility,
         )
 
@@ -162,13 +165,15 @@ def python_application(
             name = name + "_push",
             image = ":" + name + "_image_arm64",
             repository = image_repository,
+            tags = ["manual"],
             visibility = visibility,
         )
 
         oci_load(
             name = name + "_load",
-            image = ":" + name + "_image",
+            image = ":" + name + "_image_arm64",
             repo_tags = ["{}:latest".format(name)],
+            tags = ["manual"],
             visibility = visibility,
         )
 

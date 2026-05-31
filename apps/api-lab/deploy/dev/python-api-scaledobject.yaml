@@ -1,0 +1,24 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: python-api
+  labels:
+    component: python-api
+    app: api-lab
+    environment: dev
+spec:
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: python-api
+  minReplicaCount: 1
+  maxReplicaCount: 1
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://monitoring-kube-prometheus-prometheus.monitoring:9090
+      metricName: http_requests_per_second
+      query: sum(rate(http_requests_total{component="python-api"}[2m]))
+      threshold: "100"

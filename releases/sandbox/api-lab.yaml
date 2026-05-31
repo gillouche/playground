@@ -1,0 +1,41 @@
+metadata:
+  app: api-lab
+  version: sandbox
+  created_at: 2026-03-11T00:00:00+00:00
+
+images:
+  python-api:
+    tag: latest
+    commit: local
+    full_tag: local/python-api/latest
+    image:
+      ref: python-api:latest
+      digest: local
+  python-auth-api:
+    tag: latest
+    commit: local
+    full_tag: local/python-auth-api/latest
+    image:
+      ref: python-auth-api:latest
+      digest: local
+  python-grpc-api:
+    tag: latest
+    commit: local
+    full_tag: local/python-grpc-api/latest
+    image:
+      ref: python-grpc-api:latest
+      digest: local
+  graphql-gateway:
+    tag: latest
+    commit: local
+    full_tag: local/graphql-gateway/latest
+    image:
+      ref: graphql-gateway:latest
+      digest: local
+  rust-traffic-generator:
+    tag: latest
+    commit: local
+    full_tag: local/rust-traffic-generator/latest
+    image:
+      ref: rust-traffic-generator:latest
+      digest: local

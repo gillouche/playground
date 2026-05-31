@@ -1,33 +1,31 @@
 # Playground
 
-Monorepo for my distributed systems experiments. Polyglot (Python, Go, Rust), built with Bazel, managed by Nix, deployed via GitOps.
+A polyglot monorepo for experimenting with distributed systems in a homelab environment.
 
-## Structure
-*   `apps/` - Source code for apps/components.
-*   `libs/` - Shared libraries.
-*   `tools/` - Build & Release scripts.
-*   `nix/` - Dev/CI environment definition.
-*   `releases/` - Release BOMs.
-*   `docs/` - Runbooks.
+Built with Python, Go, Rust, and TypeScript. Uses Bazel for builds, Nix for development environments, and GitOps for deployment.
+
+## Documentation
+
+Full documentation is available as a local website:
+
+```bash
+cd docs
+uv sync
+./generate.sh serve
+```
+
+Then open [http://localhost:8000](http://localhost:8000).
 
 ## Quick Start
-1.  **Get Tools:**
-    ```bash
-    use flake ./nix#bazel
-    ```
 
-2.  **Build & Test:**
-    ```bash
-    bazel test //...
-    ```
+```bash
+nix develop ./nix          # Enter dev environment
+bazel test //apps/...      # Run all tests
+```
 
-3.  **Run Locally:**
-    ```bash
-    bazel run //apps/demo-app/greeting-service:main
-    ```
+## Apps
 
-## Runbooks 📘
-*   [Local Development](docs/runbooks/local-development.md)
-*   [Release New Version](docs/runbooks/release-new-version.md)
-*   [Rollback Production](docs/runbooks/rollback-production.md)
-*   [Add New Service](docs/runbooks/add-new-service.md)
+| App | Description |
+|-----|-------------|
+| [api-lab](apps/api-lab/) | Multi-protocol library API (REST, gRPC, GraphQL) in Python, Go, TypeScript |
+| [demo-app](apps/demo-app/) | Python microservices demo (greeting, infra-check, traffic generator) |

@@ -1,0 +1,10 @@
+resources:
+  - allow-ingress-network-policy.yaml
+  - pdb.yaml
+labels:
+  - pairs:
+      app: api-lab
+    includeSelectors: false
+    includeTemplates: true
+commonAnnotations:
+  owner: gillouche

@@ -1,0 +1,34 @@
+load("@pip_apilab//:requirements.bzl", "requirement")
+
+py_library(
+    name = "python-common",
+    srcs = glob(
+        ["src/**/*.py"],
+        exclude = ["src/generated/**"],
+    ),
+    imports = ["src"],
+    visibility = ["//apps/api-lab:__subpackages__"],
+    deps = [
+        "//apps/api-lab/openapi:python_models",
+        requirement("pydantic"),
+        requirement("pydantic-settings"),
+        requirement("sqlalchemy"),
+        requirement("asyncpg"),
+        requirement("redis"),
+        requirement("prometheus-client"),
+        requirement("opentelemetry-api"),
+        requirement("opentelemetry-sdk"),
+        requirement("opentelemetry-exporter-otlp"),
+        requirement("opentelemetry-instrumentation-fastapi"),
+        requirement("opentelemetry-instrumentation-sqlalchemy"),
+        requirement("opentelemetry-instrumentation-asyncpg"),
+        requirement("opentelemetry-instrumentation-redis"),
+        requirement("opentelemetry-instrumentation-httpx"),
+        requirement("opentelemetry-instrumentation-grpc"),
+        requirement("opentelemetry-instrumentation-logging"),
+        requirement("tenacity"),
+        requirement("loguru"),
+        requirement("pyjwt"),
+        requirement("cryptography"),
+    ],
+)

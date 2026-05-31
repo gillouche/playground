@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-api
+  labels:
+    component: python-api
+    app: api-lab
+    environment: sandbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: python-api
+  template:
+    metadata:
+      labels:
+        component: python-api
+        app: api-lab
+        environment: sandbox
+    spec:
+      containers:
+        - name: python-api
+          image: nexus.gillouche.homelab/docker-hosted/api-lab/python-rest-api
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: python-api-config
+            - secretRef:
+                name: python-api-secrets
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 1Gi
+              cpu: 500m
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5

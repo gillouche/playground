@@ -10,3 +10,4 @@ resources:
   - kafka.yaml
   - mongodb.yaml
   - secrets.yaml
+  - keycloak.yaml

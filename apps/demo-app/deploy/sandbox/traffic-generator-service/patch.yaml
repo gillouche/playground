@@ -6,11 +6,16 @@ spec:
   replicas: 1
   template:
     spec:
+      affinity:
+        $patch: replace
+      securityContext:
+        $patch: replace
       containers:
       - name: traffic-generator-service
         image: traffic-generator-service:latest
         imagePullPolicy: Never
-        command: ["/bin/sh", "-c", "echo STARTING; /usr/local/bin/python /app/src/main.py; echo FINISHED $?"]
+        securityContext:
+          $patch: replace
         env:
         - name: PYTHONUNBUFFERED
           value: "1"

@@ -6,11 +6,14 @@ pkgs.mkShell {
   packages = base.packages ++ (with pkgs; [
     rustc
     cargo
+    rustfmt
+    clippy
     cargo-tarpaulin
   ]);
 
   shellHook = base.shellHook + ''
-    echo "Rust $(rustc --version)"
-    echo "Cargo $(cargo --version)"
+    if [ -z "$_RUST_SHELL_LOADED" ]; then
+      export _RUST_SHELL_LOADED=1
+    fi
   '';
 }

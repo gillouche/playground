@@ -1,0 +1,95 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "B",
+    "C4",
+    "UP",
+    "ARG",
+    "SIM",
+    "TCH",
+    "PTH",
+    "PLR",
+    "PLW",
+    "RUF",
+    "S",
+    "A",
+    "DTZ",
+    "T20",
+    "PIE",
+    "RSE",
+    "RET",
+    "FLY",
+    "PERF",
+    "LOG",
+]
+ignore = [
+    # PLR0913/PLR0912/PLR0915: function size heuristics — we let reviewers judge
+    "PLR0913",
+    "PLR0912",
+    "PLR0915",
+    # ARG001/ARG002: unused args are common with FastAPI dependency injection
+    "ARG001",
+    "ARG002",
+    # B008: FastAPI uses Depends() as default arg — intentional
+    "B008",
+    # S101: assert is fine outside of test helpers; we never use it for auth
+    "S101",
+    # RET504: unnecessary assignment before return reduces traceback noise
+    "RET504",
+    # PLR2004: magic value comparisons read fine for HTTP status codes
+    "PLR2004",
+    # S104: 0.0.0.0 bind is required inside containers (k8s controls exposure)
+    "S104",
+    # S105: false positives on field names like "password" in pydantic models
+    "S105",
+    # S603: subprocess invocations in tools/ scripts are trusted
+    "S603",
+    # A005: module shadowing a stdlib name is OK when it's an internal namespace
+    "A005",
+    # PERF102/PERF401: micro-optimisations hurt readability with no real impact
+    "PERF102",
+    "PERF401",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S105", "S106", "ARG001", "ARG002", "PLR2004"]
+"*/tests/**/*.py" = ["S101", "S105", "S106", "ARG001", "ARG002", "PLR2004"]
+"system-tests/**/*.py" = ["S101", "S105", "S106", "ARG001", "ARG002", "PLR2004"]
+"*/generated/*.py" = ["ALL"]
+"database/*.py" = ["T201", "S608"]
+"tools/*.py" = ["T201", "S607"]
+
+[tool.mypy]
+python_version = "3.14"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/generated/*"]
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "pass",
+]

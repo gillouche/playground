@@ -1,0 +1,57 @@
+patches:
+  - path: python-api-configmap.yaml
+  - path: python-auth-api-configmap.yaml
+  - path: python-grpc-api-configmap.yaml
+  - path: graphql-gateway-configmap.yaml
+  - path: rust-traffic-generator-configmap.yaml
+
+resources:
+  - ../base
+  - ../rollouts-base
+  - api-lab-credentials.yaml
+  - ../../python-api/deploy/base
+  - python-api-egress-networkpolicy.yaml
+  - python-api-ingress.yaml
+  - python-api-rollout.yaml
+  - python-api-servicemonitor.yaml
+  - python-api-scaledobject.yaml
+  - ../../python-auth-api/deploy/base
+  - python-auth-api-egress-networkpolicy.yaml
+  - python-auth-api-ingress.yaml
+  - python-auth-api-rollout.yaml
+  - python-auth-api-servicemonitor.yaml
+  - python-auth-api-scaledobject.yaml
+  - ../../python-grpc-api/deploy/base
+  - python-grpc-api-egress-networkpolicy.yaml
+  - python-grpc-api-rollout.yaml
+  - python-grpc-api-scaledobject.yaml
+  - ../../graphql-gateway/deploy/base
+  - graphql-gateway-rollout.yaml
+  - graphql-gateway-ingress.yaml
+  - graphql-gateway-servicemonitor.yaml
+  - graphql-gateway-scaledobject.yaml
+  - graphql-gateway-egress-networkpolicy.yaml
+  - ../../rust-traffic-generator/deploy/base
+  - monitoring-grafana-dashboard.yaml
+
+images:
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/python-api
+    newTag: "latest"
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/python-auth-api
+    newTag: "latest"
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/python-grpc-api
+    newTag: "latest"
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/graphql-gateway
+    newTag: "latest"
+  - name: nexus.gillouche.homelab/docker-hosted/api-lab/rust-traffic-generator
+    newTag: "latest"
+
+labels:
+  - pairs:
+      environment: dev
+      app: api-lab
+    includeSelectors: false
+    includeTemplates: true
+
+commonAnnotations:
+  owner: gillouche

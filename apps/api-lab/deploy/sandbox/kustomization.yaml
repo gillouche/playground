@@ -1,0 +1,9 @@
+namespace: playground-api-lab-sandbox
+
+resources:
+  - namespace.yaml
+  - python-api
+  - python-grpc-api
+  - python-auth-api
+  - rust-traffic-generator
+  - graphql-gateway

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rust-traffic-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: rust-traffic-generator
+  template:
+    metadata:
+      labels:
+        component: rust-traffic-generator
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/node-group
+                    operator: In
+                    values:
+                      - rpi
+      containers:
+        - name: rust-traffic-generator
+          image: nexus.gillouche.homelab/docker-hosted/api-lab/rust-traffic-generator
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: rust-traffic-generator-config
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 10m
+            limits:
+              memory: 128Mi
+              cpu: 100m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rust-traffic-generator
+spec:
+  selector:
+    component: rust-traffic-generator
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http

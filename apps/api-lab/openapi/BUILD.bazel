@@ -1,0 +1,38 @@
+load("@pip_apilab//:requirements.bzl", "requirement")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+exports_files(["openapi.yaml"])
+
+filegroup(
+    name = "openapi_spec",
+    srcs = ["openapi.yaml"],
+    visibility = ["//apps/api-lab:__subpackages__"],
+)
+
+py_binary(
+    name = "generate_python",
+    srcs = ["generate_models.py"],
+    main = "generate_models.py",
+    deps = [requirement("pyyaml")],
+)
+
+genrule(
+    name = "python_generated",
+    srcs = ["openapi.yaml"],
+    outs = [
+        "python/generated/__init__.py",
+        "python/generated/models.py",
+        "python/generated/api_interface.py",
+    ],
+    cmd = "$(location :generate_python) --spec $(location openapi.yaml) --out-dir $(@D)/python/generated",
+    tools = [":generate_python"],
+    visibility = ["//apps/api-lab:__subpackages__"],
+)
+
+py_library(
+    name = "python_models",
+    srcs = [":python_generated"],
+    imports = ["python"],
+    visibility = ["//apps/api-lab:__subpackages__"],
+    deps = [requirement("pydantic")],
+)

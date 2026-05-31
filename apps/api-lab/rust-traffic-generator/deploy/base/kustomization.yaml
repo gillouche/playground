@@ -1,0 +1,8 @@
+resources:
+  - deploy.yaml
+  - configmap.yaml
+labels:
+  - pairs:
+      component: rust-traffic-generator
+    includeSelectors: false
+    includeTemplates: true

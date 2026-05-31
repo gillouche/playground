@@ -1,0 +1,24 @@
+#@ load("@ytt:data", "data")
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: graphql-gateway-config
+  labels:
+    component: graphql-gateway
+data:
+  ENVIRONMENT: #@ data.values.env
+  APP: #@ data.values.app
+  COMPONENT: #@ data.values.component
+  APP_VERSION: #@ data.values.app_version
+  COMPONENT_VERSION: #@ data.values.component_version
+  GIT_TAG: #@ data.values.git_tag
+  GIT_COMMIT: #@ data.values.git_commit
+  #@ if data.values.env == "dev":
+  LOG_LEVEL: DEBUG
+  #@ else:
+  LOG_LEVEL: INFO
+  #@ end
+  REST_API_URL: #@ "http://python-api.playground-apps-" + data.values.env + "-api-lab.svc.cluster.local:8080"
+  ENABLE_TRACING: #@ "false" if data.values.env == "sandbox" else "true"
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring.svc.cluster.local:4317

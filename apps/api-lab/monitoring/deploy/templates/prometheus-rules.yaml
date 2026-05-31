@@ -1,0 +1,53 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: api-lab-alerts
+  labels:
+    app: api-lab
+    release: monitoring
+spec:
+  groups:
+    - name: api-lab.rules
+      rules:
+        - alert: ApiLabHighErrorRate
+          expr: |
+            sum(rate(http_requests_total{status=~"5..", app="api-lab"}[5m]))
+            /
+            sum(rate(http_requests_total{app="api-lab"}[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High error rate in api-lab"
+            description: "Error rate is above 5% for 5 minutes."
+
+        - alert: ApiLabHighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(http_request_duration_seconds_bucket{app="api-lab"}[5m]))
+            ) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High latency in api-lab"
+            description: "P95 latency is above 1 second for 5 minutes."
+
+        - alert: ApiLabCircuitBreakerOpen
+          expr: api_lab_circuit_breaker_state{state="open"} == 1
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Circuit breaker open in api-lab"
+            description: "A circuit breaker is in open state."
+
+        - alert: ApiLabRestartLoop
+          expr: |
+            increase(kube_pod_container_status_restarts_total{container=~"python-api|python-auth-api|python-grpc-api|graphql-gateway", namespace=~".*api-lab.*"}[1h]) > 3
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Restart loop detected in api-lab"
+            description: "Container {{ $labels.container }} has restarted more than 3 times in the last hour."

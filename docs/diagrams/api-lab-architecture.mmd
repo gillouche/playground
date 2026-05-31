@@ -1,0 +1,51 @@
+graph TB
+    subgraph Clients
+        REST_CLIENT[REST Client]
+        GRPC_CLIENT[gRPC Client]
+        GQL_CLIENT[GraphQL Client]
+        TRAFFIC[Rust Traffic Generator]
+    end
+
+    subgraph API Lab Services
+        REST[Python REST API<br/>FastAPI :8080]
+        AUTH[Python Auth API<br/>FastAPI :8084]
+        GRPC[Python gRPC API<br/>asyncio :50051]
+        GQL[GraphQL Gateway<br/>Strawberry :8083]
+    end
+
+    subgraph Shared
+        SVC[BookService<br/>Business Logic]
+        CACHE[Redis Cache<br/>TTL-based]
+        DB[(PostgreSQL<br/>books, reservations)]
+        KEYCLOAK[(Keycloak<br/>JWT issuer)]
+    end
+
+    subgraph Observability
+        PROM[Prometheus<br/>Metrics]
+        OTEL[OpenTelemetry<br/>Traces]
+    end
+
+    REST_CLIENT --> REST
+    REST_CLIENT --> AUTH
+    GRPC_CLIENT --> GRPC
+    GQL_CLIENT --> GQL
+    TRAFFIC --> REST
+
+    GQL -->|HTTP| REST
+
+    AUTH -->|admin| KEYCLOAK
+    REST -->|JWKS| KEYCLOAK
+    GRPC -->|JWKS| KEYCLOAK
+    GQL -->|JWKS| KEYCLOAK
+
+    REST --> SVC
+    GRPC --> SVC
+
+    SVC --> CACHE
+    SVC --> DB
+    CACHE --> DB
+
+    REST --> PROM
+    REST --> OTEL
+    GRPC --> PROM
+    GQL --> PROM

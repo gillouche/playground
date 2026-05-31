@@ -1,4 +1,6 @@
-# golangci-lint configuration for Go projects in apps/
+# golangci-lint v2 configuration for Go projects in apps/
+version: "2"
+
 run:
   timeout: 5m
   modules-download-mode: readonly
@@ -6,20 +8,21 @@ run:
 linters:
   enable:
     - errcheck      # Check for unchecked errors
-    - gosimple      # Simplify code
     - govet         # Go vet
     - ineffassign   # Detect ineffectual assignments
-    - staticcheck   # Static analysis
+    - staticcheck   # Static analysis (includes gosimple)
     - unused        # Find unused code
-    - gofmt         # Check formatting
-    - goimports     # Check imports
     - misspell      # Find misspellings
     - unconvert     # Remove unnecessary conversions
     - unparam       # Find unused parameters
     - gocritic      # Opinionated linter
     - revive        # Fast, configurable linter
     - gosec         # Security checks
-    - prealloc      # Find slice preallocation opportunities
+
+formatters:
+  enable:
+    - gofmt         # Check formatting
+    - goimports     # Check imports
 
 linters-settings:
   govet:

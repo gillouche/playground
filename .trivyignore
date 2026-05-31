@@ -1,3 +1,16 @@
-# glibc: Integer overflow in memalign leads to heap corruption
-# Base image dependency - waiting for upstream fix
-CVE-2026-0861
+# Trivy ignores for api-lab images.
+#
+# Format: one CVE per line, with a comment justifying the ignore.
+# Remove an entry once the upstream patch is in our base image.
+
+# OpenSSL CVEs in libssl3t64 from the Debian Trixie layer of the
+# python-distroless base image. Fix path is in
+# github.com/gillouche/container-factory (rebuild the base image once
+# Debian publishes a patched libssl3t64 package). Cluster is homelab-only
+# (no internet exposure), and none of these CVEs affect functionality we
+# use (no 32-bit, no DANE TLSA, no CMS processing).
+CVE-2026-31789
+CVE-2026-28387
+CVE-2026-28388
+CVE-2026-28389
+CVE-2026-28390

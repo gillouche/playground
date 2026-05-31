@@ -1,0 +1,112 @@
+[project]
+site_name = "Playground Docs"
+site_description = "Documentation for the Playground homelab monorepo"
+repo_url = "https://github.com/gillouche/playground"
+docs_dir = "content"
+site_dir = "site"
+
+nav = [
+    { "Home" = "index.md" },
+    { "Getting Started" = "getting-started/index.md" },
+    { "Common" = [
+        "common/architecture.md",
+        "common/build-system.md",
+        "common/ci-cd.md",
+        "common/templates.md",
+        "common/releases.md",
+        "common/local-development.md",
+    ]},
+    { "Apps" = [
+        "apps/index.md",
+        { "API Lab" = [
+            "apps/api-lab/index.md",
+            "apps/api-lab/python-rest-api.md",
+            "apps/api-lab/python-grpc-api.md",
+            "apps/api-lab/graphql-gateway.md",
+            "apps/api-lab/python-auth-api.md",
+            "apps/api-lab/database.md",
+            "apps/api-lab/rust-traffic-generator.md",
+            { "API Reference" = [
+                "apps/api-lab/api-reference/index.md",
+                "apps/api-lab/api-reference/rest-api.md",
+                "apps/api-lab/api-reference/grpc-api.md",
+                "apps/api-lab/api-reference/graphql-api.md",
+            ]},
+            "apps/api-lab/operations.md",
+        ]},
+        { "Demo App" = [
+            "apps/demo-app/index.md",
+            "apps/demo-app/greeting-service.md",
+            "apps/demo-app/infra-check-service.md",
+            "apps/demo-app/traffic-generator.md",
+            "apps/demo-app/operations.md",
+        ]},
+    ]},
+    { "Troubleshooting" = "troubleshooting.md" },
+]
+
+[project.theme]
+variant = "modern"
+language = "en"
+
+features = [
+    "content.code.copy",
+    "content.code.select",
+    "content.tabs.link",
+    "navigation.expand",
+    "navigation.footer",
+    "navigation.indexes",
+    "navigation.instant",
+    "navigation.sections",
+    "navigation.tabs",
+    "navigation.tabs.sticky",
+    "navigation.top",
+    "navigation.tracking",
+    "search.highlight",
+    "toc.follow",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[project.theme.icon]
+repo = "fontawesome/brands/github"
+
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.attr_list]
+[project.markdown_extensions.def_list]
+[project.markdown_extensions.footnotes]
+[project.markdown_extensions.md_in_html]
+
+[project.markdown_extensions.toc]
+permalink = true
+
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+line_spans = "__span"
+pygments_lang_class = true
+
+[project.markdown_extensions.pymdownx.inlinehilite]
+[project.markdown_extensions.pymdownx.details]
+
+[project.markdown_extensions.pymdownx.superfences]
+
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+combine_header_slug = true
+
+[project.markdown_extensions.pymdownx.tasklist]
+custom_checkbox = true
